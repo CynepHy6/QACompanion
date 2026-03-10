@@ -5,7 +5,7 @@
     const canvas = document.getElementById('annotation-canvas');
     const ctx = canvas.getContext('2d');
 
-    let currentTool = 'arrow'; // 'arrow', 'rectangle', or 'text'
+    let currentTool = 'arrow'; // 'arrow', 'rectangle', 'text', or 'blur'
     let isDrawing = false;
     let isEditingText = false;
     let startX, startY;
@@ -18,6 +18,7 @@
     const LINE_WIDTH = 3;
     const TEXT_FONT_SIZE = 20;
     const TEXT_FONT = `bold ${TEXT_FONT_SIZE}px 'IBM Plex Sans', sans-serif`;
+    const BLUR_RADIUS = 12; // px – strength of the blur effect
 
     // Text input element
     const textInput = document.getElementById('text-input');
@@ -84,6 +85,8 @@
             drawRectangle(annotation.startX, annotation.startY, annotation.width, annotation.height);
         } else if (annotation.type === 'text') {
             drawText(annotation.x, annotation.y, annotation.text);
+        } else if (annotation.type === 'blur') {
+            drawBlur(annotation.x, annotation.y, annotation.width, annotation.height);
         }
     }
 
@@ -118,6 +121,26 @@
         ctx.beginPath();
         ctx.rect(x, y, width, height);
         ctx.stroke();
+    }
+
+    // Draw blurred region
+    function drawBlur(x, y, width, height) {
+        if (!baseImage || Math.abs(width) < 2 || Math.abs(height) < 2) return;
+
+        // Normalize so rect always starts at top-left
+        const rx = width < 0 ? x + width : x;
+        const ry = height < 0 ? y + height : y;
+        const rw = Math.abs(width);
+        const rh = Math.abs(height);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rx, ry, rw, rh);
+        ctx.clip(); // confine blur to the selected rectangle
+        ctx.filter = `blur(${BLUR_RADIUS}px)`;
+        // Redraw the base image with blur; clip prevents it bleeding outside the rect
+        ctx.drawImage(baseImage, 0, 0);
+        ctx.restore();
     }
 
     // Draw text
@@ -231,6 +254,10 @@
             const width = pos.x - startX;
             const height = pos.y - startY;
             drawRectangle(startX, startY, width, height);
+        } else if (currentTool === 'blur') {
+            const width = pos.x - startX;
+            const height = pos.y - startY;
+            drawBlur(startX, startY, width, height);
         }
     });
 
@@ -257,6 +284,18 @@
                 width: pos.x - startX,
                 height: pos.y - startY
             });
+        } else if (currentTool === 'blur') {
+            const width = pos.x - startX;
+            const height = pos.y - startY;
+            if (Math.abs(width) >= 2 && Math.abs(height) >= 2) {
+                annotations.push({
+                    type: 'blur',
+                    x: startX,
+                    y: startY,
+                    width: width,
+                    height: height
+                });
+            }
         }
 
         redrawCanvas();
@@ -270,12 +309,14 @@
         document.getElementById('arrow-tool').classList.toggle('active', tool === 'arrow');
         document.getElementById('rectangle-tool').classList.toggle('active', tool === 'rectangle');
         document.getElementById('text-tool').classList.toggle('active', tool === 'text');
+        document.getElementById('blur-tool').classList.toggle('active', tool === 'blur');
         canvas.className = 'tool-' + tool;
     }
 
     document.getElementById('arrow-tool').addEventListener('click', () => setActiveTool('arrow'));
     document.getElementById('rectangle-tool').addEventListener('click', () => setActiveTool('rectangle'));
     document.getElementById('text-tool').addEventListener('click', () => setActiveTool('text'));
+    document.getElementById('blur-tool').addEventListener('click', () => setActiveTool('blur'));
 
     // Undo button
     document.getElementById('undo-button').addEventListener('click', undo);
@@ -328,6 +369,8 @@
             document.getElementById('rectangle-tool').click();
         } else if (e.key === 't' || e.key === 'T') {
             document.getElementById('text-tool').click();
+        } else if (e.key === 'b' || e.key === 'B') {
+            document.getElementById('blur-tool').click();
         } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             undo();
