@@ -31,23 +31,13 @@ test.describe('Reports and Export Functionality', () => {
     await popupPage.reload();
     await popupPage.waitForTimeout(500);
 
-    // Add some test data
+    await popupPage.fill('#draftDescription', 'Test Bug for Export');
     await popupPage.click('#BugBtn');
-    await popupPage.waitForTimeout(300);
-    await popupPage.fill('#newBugDescription', 'Test Bug for Export');
-    await popupPage.click('#addNewBugBtn');
     await waitForStorageUpdate(popupPage, 300);
 
     await popupPage.click('#NoteBtn');
-    await popupPage.waitForTimeout(300);
-    await popupPage.fill('#newNoteDescription', 'Test Note for Export');
-    await popupPage.click('#addNewNoteBtn');
-    await waitForStorageUpdate(popupPage, 300);
-
-    await popupPage.click('#IdeaBtn');
-    await popupPage.waitForTimeout(300);
-    await popupPage.fill('#newIdeaDescription', 'Test Idea for Export');
-    await popupPage.click('#addNewIdeaBtn');
+    await popupPage.fill('#draftDescription', 'Test Note for Export');
+    await popupPage.click('#NoteBtn');
     await waitForStorageUpdate(popupPage, 300);
   });
 
@@ -94,7 +84,7 @@ test.describe('Reports and Export Functionality', () => {
       const reportContent = await reportPage.content();
       expect(reportContent).toContain('Test Bug for Export');
       expect(reportContent).toContain('Test Note for Export');
-      expect(reportContent).toContain('Test Idea for Export');
+      await expect(reportPage.locator('.filter-pill')).toHaveCount(3);
 
       await reportPage.close();
     }
@@ -104,7 +94,7 @@ test.describe('Reports and Export Functionality', () => {
     // Get current session
     const originalSession = await getSessionData(popupPage);
     const originalCount = originalSession.annotations.length;
-    expect(originalCount).toBeGreaterThanOrEqual(3);
+    expect(originalCount).toBeGreaterThanOrEqual(2);
 
     // Find specific annotation to verify later
     const testBug = originalSession.annotations.find(a => a.name === 'Test Bug for Export');
@@ -134,10 +124,8 @@ test.describe('Reports and Export Functionality', () => {
 
     const bugCounter = await popupPage.locator('#bugCounter').textContent();
     const noteCounter = await popupPage.locator('#noteCounter').textContent();
-    const ideaCounter = await popupPage.locator('#ideaCounter').textContent();
 
     expect(parseInt(bugCounter.trim() || '0')).toBeGreaterThanOrEqual(1);
     expect(parseInt(noteCounter.trim() || '0')).toBeGreaterThanOrEqual(1);
-    expect(parseInt(ideaCounter.trim() || '0')).toBeGreaterThanOrEqual(1);
   });
 });

@@ -4,17 +4,18 @@ export class ExportSessionCSV {
     }
 
     getCSVData() {
-        let csvData = "TimeStamp,Type,Name,URL\n";
+        let csvData = "TimeStamp,Type,Name,URL,ScreenshotCount\n";
         const annotations = this.session.getAnnotations();
 
-        for (let i = 0; i < annotations.length; i++) {
-            const annotation = annotations[i];
+        for (let annotationIndex = 0; annotationIndex < annotations.length; annotationIndex++) {
+            const annotation = annotations[annotationIndex];
             const timeStamp = annotation.getTimeStamp().toString('dd-MM-yyyy HH:mm');
             const type = annotation.getType();
             const name = annotation.getName();
             const url = annotation.getURL();
+            const screenshotCount = annotation.getImageURLs().length;
 
-            csvData += `${timeStamp},${type},${name},${url}\n`;
+            csvData += `${timeStamp},${type},${name},${url},${screenshotCount}\n`;
         }
 
         return csvData;

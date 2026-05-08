@@ -1,4 +1,4 @@
-import { deleteAnnotation } from './reportData.js';
+import { deleteAnnotation, deleteAnnotationImage, updateAnnotationName } from './reportData.js';
 import { displayAnnotationsTable } from './reportUI.js';
 import { downloadCompleteReport, downloadAllImages } from './reportDownload.js';
 
@@ -18,15 +18,15 @@ export function getCurrentFilter() {
 export function setupAllListeners(session) {
     setupFilterListeners(session);
     setupDeleteListeners();
-    setupImagePreviewListeners();
     setupDownloadListener(session);
+    setupTableActionListeners();
 }
 
 /**
  * Re-binds row-level listeners after table re-render.
  */
 export function rebindTableListeners() {
-    setupImagePreviewListeners();
+    return;
 }
 
 function setupFilterListeners(session) {
@@ -42,14 +42,6 @@ function setupFilterListeners(session) {
 }
 
 function setupDeleteListeners() {
-    // Delegate click on delete buttons
-    document.getElementById('annotationsTableBody').addEventListener('click', (e) => {
-        const btn = e.target.closest('.delete-btn');
-        if (!btn) return;
-        annotationToDelete = parseInt(btn.dataset.index);
-        document.getElementById('divOverlay').style.display = 'block';
-    });
-
     document.getElementById('cancelDelete').addEventListener('click', () => {
         document.getElementById('divOverlay').style.display = 'none';
         annotationToDelete = null;
@@ -65,15 +57,6 @@ function setupDeleteListeners() {
     });
 }
 
-function setupImagePreviewListeners() {
-    document.querySelectorAll('.preview-image').forEach(img => {
-        img.addEventListener('click', () => showImagePreview(img.dataset.preview));
-        img.addEventListener('mouseenter', (e) => showHoverPreview(img.dataset.preview, e));
-        img.addEventListener('mousemove', updateHoverPosition);
-        img.addEventListener('mouseleave', hideHoverPreview);
-    });
-}
-
 function setupDownloadListener(session) {
     document.getElementById('downloadReportBtn').addEventListener('click', () => {
         downloadCompleteReport(session);
@@ -81,6 +64,68 @@ function setupDownloadListener(session) {
 
     document.getElementById('downloadImagesBtn').addEventListener('click', () => {
         downloadAllImages(session);
+    });
+}
+
+function setupTableActionListeners() {
+    document.getElementById('annotationsTableBody').addEventListener('click', async (event) => {
+        const deleteButton = event.target.closest('.delete-btn');
+        if (deleteButton) {
+            annotationToDelete = deleteButton.dataset.annotationId;
+            document.getElementById('divOverlay').style.display = 'block';
+            return;
+        }
+
+        const saveButton = event.target.closest('.save-description-btn');
+        if (saveButton) {
+            const rowElement = saveButton.closest('tr');
+            const descriptionField = rowElement.querySelector('.description-editor');
+            await updateAnnotationName(saveButton.dataset.annotationId, descriptionField.value);
+            location.reload();
+            return;
+        }
+
+        const deleteImageButton = event.target.closest('.delete-image-btn');
+        if (deleteImageButton) {
+            await deleteAnnotationImage(
+                deleteImageButton.dataset.annotationId,
+                Number(deleteImageButton.dataset.imageIndex)
+            );
+            location.reload();
+            return;
+        }
+
+        const previewImage = event.target.closest('.preview-image');
+        if (previewImage) {
+            showImagePreview(previewImage.dataset.preview);
+        }
+    });
+
+    document.getElementById('annotationsTableBody').addEventListener('mouseover', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage) {
+            return;
+        }
+
+        showHoverPreview(previewImage.dataset.preview, event);
+    });
+
+    document.getElementById('annotationsTableBody').addEventListener('mousemove', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage) {
+            return;
+        }
+
+        updateHoverPosition(event);
+    });
+
+    document.getElementById('annotationsTableBody').addEventListener('mouseout', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage || previewImage.contains(event.relatedTarget)) {
+            return;
+        }
+
+        hideHoverPreview();
     });
 }
 

@@ -56,10 +56,20 @@ test.describe('Smoke Tests', () => {
     const popupPage = await openExtensionPopup(context, extensionId);
 
     // Wait for elements to be visible (use Playwright locators with timeout)
+    await expect(popupPage.locator('.type-button')).toHaveCount(2);
     await expect(popupPage.locator('#BugBtn')).toBeVisible({ timeout: 10000 });
     await expect(popupPage.locator('#NoteBtn')).toBeVisible();
-    await expect(popupPage.locator('#IdeaBtn')).toBeVisible();
-    await expect(popupPage.locator('#QuestionBtn')).toBeVisible();
+    await expect(popupPage.locator('#resetBtn')).toBeVisible();
+    await expect(popupPage.locator('#previewBtn')).toBeVisible();
+    await expect(popupPage.locator('#addScreenshotBtn')).toBeVisible();
+    await expect(popupPage.locator('#addCropScreenshotBtn')).toBeVisible();
+    await expect(popupPage.locator('#clearDraftBtn')).toBeVisible();
+    await expect(popupPage.locator('#actionTabBtn')).toBeVisible();
+    await expect(popupPage.locator('#recorderTabBtn')).toBeVisible();
+    await popupPage.click('#recorderTabBtn');
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeVisible();
+    await expect(popupPage.locator('#playRecordingBtn')).toBeVisible();
+    await expect(popupPage.locator('#saveDraftBtn')).toHaveCount(0);
 
     console.log('✅ All required elements found');
 

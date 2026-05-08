@@ -220,25 +220,15 @@
             transform: translateY(0);
         }
 
-        #save-with-annotations {
+        #save-button {
             background: var(--color-accent);
             color: white;
             box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
         }
 
-        #save-with-annotations:hover {
+        #save-button:hover {
             background: #B91C1C;
             box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
-        }
-
-        #save-without-annotations {
-            background: var(--color-surface);
-            color: var(--color-text);
-            border: 1px solid var(--color-border);
-        }
-
-        #save-without-annotations:hover {
-            background: var(--color-surface-hover);
         }
 
         #cancel-button {
@@ -408,8 +398,7 @@
             </div>
 
             <div class="toolbar-section">
-                <button class="action-button" id="save-with-annotations">Save with Annotations</button>
-                <button class="action-button" id="save-without-annotations">Save without Annotations</button>
+                <button class="action-button" id="save-button">Save</button>
                 <button class="action-button" id="cancel-button">Cancel</button>
             </div>
         </div>

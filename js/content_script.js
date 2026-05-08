@@ -400,3 +400,454 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 else {
     console.log("Content script: Already initialized. Waiting for 'startSelection' message.");
 }
+
+if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
+    window.qaCompanionRecorderInitialized = true;
+
+    let recorderEnabled = false;
+    let lastSyncedRecordingId = '';
+    let replayHighlightElement = null;
+    let replayHighlightTimer = null;
+    const pendingInputTimers = new Map();
+
+    function buildCssPath(targetElement) {
+        if (!targetElement || targetElement.nodeType !== Node.ELEMENT_NODE) {
+            return '';
+        }
+
+        const pathParts = [];
+        let currentElement = targetElement;
+
+        while (currentElement && currentElement.nodeType === Node.ELEMENT_NODE && currentElement !== document.body) {
+            let selectorPart = currentElement.tagName.toLowerCase();
+            if (currentElement.id) {
+                selectorPart += `#${currentElement.id}`;
+                pathParts.unshift(selectorPart);
+                break;
+            }
+
+            let siblingIndex = 1;
+            let previousSibling = currentElement.previousElementSibling;
+            while (previousSibling) {
+                if (previousSibling.tagName === currentElement.tagName) {
+                    siblingIndex += 1;
+                }
+                previousSibling = previousSibling.previousElementSibling;
+            }
+
+            selectorPart += `:nth-of-type(${siblingIndex})`;
+            pathParts.unshift(selectorPart);
+            currentElement = currentElement.parentElement;
+        }
+
+        return pathParts.join(' > ');
+    }
+
+    function buildElementLocator(targetElement) {
+        if (targetElement.id) {
+            return {
+                strategy: 'id',
+                value: targetElement.id
+            };
+        }
+
+        if (targetElement.name) {
+            return {
+                strategy: 'name',
+                value: targetElement.name
+            };
+        }
+
+        const dataAttribute = Array.from(targetElement.attributes || []).find((attributeItem) => {
+            return attributeItem.name.startsWith('data-') && attributeItem.value !== '';
+        });
+        if (dataAttribute) {
+            return {
+                strategy: 'data',
+                name: dataAttribute.name,
+                value: dataAttribute.value
+            };
+        }
+
+        return {
+            strategy: 'css',
+            value: buildCssPath(targetElement)
+        };
+    }
+
+    function normalizeRecordedValue(targetElement) {
+        if (targetElement.tagName === 'SELECT') {
+            return targetElement.value || '';
+        }
+
+        if (targetElement.type === 'checkbox' || targetElement.type === 'radio') {
+            return targetElement.checked ? 'checked' : 'unchecked';
+        }
+
+        if (targetElement.isContentEditable) {
+            return targetElement.innerText || '';
+        }
+
+        return targetElement.value || '';
+    }
+
+    function createRecordedStep(stepType, targetElement) {
+        return {
+            type: stepType,
+            url: window.location.href,
+            locator: buildElementLocator(targetElement),
+            value: normalizeRecordedValue(targetElement),
+            inputType: targetElement.type || '',
+            tagName: targetElement.tagName || '',
+            text: (targetElement.textContent || '').trim().slice(0, 120)
+        };
+    }
+
+    function postRecordedStep(stepType, targetElement) {
+        try {
+            chrome.runtime.sendMessage({
+                type: 'appendRecordedStep',
+                step: createRecordedStep(stepType, targetElement)
+            });
+        } catch (error) {
+            console.error('Recorder: failed to send step.', error);
+        }
+    }
+
+    function getLocatorKey(locatorData) {
+        if (!locatorData) {
+            return 'unknown';
+        }
+
+        return [
+            locatorData.strategy || '',
+            locatorData.name || '',
+            locatorData.value || ''
+        ].join(':');
+    }
+
+    function flushPendingInputRecords() {
+        for (const [locatorKey, timerData] of pendingInputTimers.entries()) {
+            clearTimeout(timerData.timerId);
+            postRecordedStep(timerData.stepType, timerData.targetElement);
+            pendingInputTimers.delete(locatorKey);
+        }
+    }
+
+    function handleRecordedClick(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = event.target.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"]');
+        if (!targetElement) {
+            return;
+        }
+
+        flushPendingInputRecords();
+        postRecordedStep('click', targetElement);
+    }
+
+    function scheduleInputRecord(stepType, targetElement) {
+        const locatorData = buildElementLocator(targetElement);
+        const locatorKey = `${stepType}:${getLocatorKey(locatorData)}`;
+        const activeTimer = pendingInputTimers.get(locatorKey);
+        if (activeTimer) {
+            clearTimeout(activeTimer.timerId);
+        }
+
+        const timerId = setTimeout(() => {
+            postRecordedStep(stepType, targetElement);
+            pendingInputTimers.delete(locatorKey);
+        }, 300);
+
+        pendingInputTimers.set(locatorKey, {
+            timerId,
+            stepType,
+            targetElement
+        });
+    }
+
+    function handleRecordedInput(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = event.target;
+        if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        if (targetElement.tagName === 'INPUT' || targetElement.tagName === 'TEXTAREA' || targetElement.isContentEditable) {
+            scheduleInputRecord('input', targetElement);
+        }
+    }
+
+    function handleRecordedChange(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = event.target;
+        if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        postRecordedStep('change', targetElement);
+    }
+
+    function handleRecordedSubmit(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = event.target;
+        if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        postRecordedStep('submit', targetElement);
+    }
+
+    function attachRecorderListeners() {
+        document.addEventListener('click', handleRecordedClick, true);
+        document.addEventListener('input', handleRecordedInput, true);
+        document.addEventListener('change', handleRecordedChange, true);
+        document.addEventListener('submit', handleRecordedSubmit, true);
+    }
+
+    function detachRecorderListeners() {
+        document.removeEventListener('click', handleRecordedClick, true);
+        document.removeEventListener('input', handleRecordedInput, true);
+        document.removeEventListener('change', handleRecordedChange, true);
+        document.removeEventListener('submit', handleRecordedSubmit, true);
+
+        for (const timerId of pendingInputTimers.values()) {
+            clearTimeout(timerId.timerId);
+        }
+
+        pendingInputTimers.clear();
+    }
+
+    function setRecorderMode(isRecording) {
+        if (recorderEnabled === isRecording) {
+            return;
+        }
+
+        recorderEnabled = isRecording;
+        if (recorderEnabled) {
+            attachRecorderListeners();
+        } else {
+            detachRecorderListeners();
+        }
+    }
+
+    function syncRecorderMode() {
+        try {
+            chrome.runtime.sendMessage({ type: 'getRecorderModeForSender' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    return;
+                }
+
+                const isRecording = Boolean(response && response.isRecording);
+                setRecorderMode(isRecording);
+
+                if (!isRecording) {
+                    lastSyncedRecordingId = '';
+                    return;
+                }
+
+                const nextRecordingId = typeof response.recordingId === 'string' ? response.recordingId : '';
+                const lastKnownUrl = typeof response.lastKnownUrl === 'string' ? response.lastKnownUrl : '';
+                if (nextRecordingId !== '' && nextRecordingId !== lastSyncedRecordingId) {
+                    lastSyncedRecordingId = nextRecordingId;
+                }
+
+                if (lastKnownUrl !== '' && lastKnownUrl !== window.location.href) {
+                    postRecordedStep('navigation', document.body || document.documentElement);
+                }
+            });
+        } catch (error) {
+            console.error('Recorder: failed to sync mode.', error);
+        }
+    }
+
+    function findElementByLocator(locatorData) {
+        if (!locatorData || typeof locatorData !== 'object') {
+            return null;
+        }
+
+        if (locatorData.strategy === 'id') {
+            return document.getElementById(locatorData.value);
+        }
+
+        if (locatorData.strategy === 'name') {
+            const namedElements = document.getElementsByName(locatorData.value);
+            return namedElements.length > 0 ? namedElements[0] : null;
+        }
+
+        if (locatorData.strategy === 'data' && locatorData.name) {
+            return document.querySelector(`[${locatorData.name}="${locatorData.value.replace(/"/g, '\\"')}"]`);
+        }
+
+        if (locatorData.strategy === 'css') {
+            return document.querySelector(locatorData.value);
+        }
+
+        return null;
+    }
+
+    function dispatchInputEvents(targetElement) {
+        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function ensureReplayHighlightElement() {
+        if (replayHighlightElement) {
+            return replayHighlightElement;
+        }
+
+        replayHighlightElement = document.createElement('div');
+        replayHighlightElement.style.position = 'fixed';
+        replayHighlightElement.style.border = '2px solid #6366f1';
+        replayHighlightElement.style.boxShadow = '0 0 0 4px rgba(99, 102, 241, 0.18)';
+        replayHighlightElement.style.borderRadius = '8px';
+        replayHighlightElement.style.pointerEvents = 'none';
+        replayHighlightElement.style.zIndex = '2147483647';
+        replayHighlightElement.style.display = 'none';
+        document.documentElement.appendChild(replayHighlightElement);
+        return replayHighlightElement;
+    }
+
+    function hideReplayHighlight() {
+        if (replayHighlightTimer) {
+            clearTimeout(replayHighlightTimer);
+            replayHighlightTimer = null;
+        }
+
+        if (replayHighlightElement) {
+            replayHighlightElement.style.display = 'none';
+        }
+    }
+
+    function highlightReplayTarget(targetElement) {
+        const highlightBox = ensureReplayHighlightElement();
+        const elementRect = targetElement.getBoundingClientRect();
+        highlightBox.style.top = `${Math.max(elementRect.top - 4, 0)}px`;
+        highlightBox.style.left = `${Math.max(elementRect.left - 4, 0)}px`;
+        highlightBox.style.width = `${Math.max(elementRect.width + 8, 0)}px`;
+        highlightBox.style.height = `${Math.max(elementRect.height + 8, 0)}px`;
+        highlightBox.style.display = 'block';
+
+        if (replayHighlightTimer) {
+            clearTimeout(replayHighlightTimer);
+        }
+
+        replayHighlightTimer = setTimeout(() => {
+            hideReplayHighlight();
+        }, 1200);
+    }
+
+    function applyRecordedValue(targetElement, stepData) {
+        const { inputType, value } = stepData;
+
+        if (targetElement.tagName === 'SELECT') {
+            targetElement.value = value;
+            dispatchInputEvents(targetElement);
+            return;
+        }
+
+        if (inputType === 'checkbox' || inputType === 'radio') {
+            targetElement.checked = value === 'checked';
+            targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
+
+        if (targetElement.isContentEditable) {
+            targetElement.innerText = value;
+            dispatchInputEvents(targetElement);
+            return;
+        }
+
+        targetElement.focus();
+        targetElement.value = value;
+        dispatchInputEvents(targetElement);
+    }
+
+    async function replayStep(stepData) {
+        const targetElement = findElementByLocator(stepData.locator);
+        if (!targetElement) {
+            return {
+                success: false,
+                error: `Element not found for ${stepData.type}.`
+            };
+        }
+
+        targetElement.scrollIntoView({ block: 'center', inline: 'center' });
+        highlightReplayTarget(targetElement);
+
+        if (stepData.type === 'input' || stepData.type === 'change') {
+            applyRecordedValue(targetElement, stepData);
+            return { success: true };
+        }
+
+        if (stepData.type === 'submit') {
+            if (typeof targetElement.requestSubmit === 'function') {
+                targetElement.requestSubmit();
+            } else {
+                targetElement.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            }
+
+            return { success: true };
+        }
+
+        if (stepData.type === 'click') {
+            targetElement.click();
+            return { success: true };
+        }
+
+        return {
+            success: false,
+            error: `Unsupported replay step type: ${stepData.type}.`
+        };
+    }
+
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type === 'setRecordingMode') {
+            if (!request.isRecording) {
+                flushPendingInputRecords();
+            }
+            setRecorderMode(Boolean(request.isRecording));
+            sendResponse({ status: 'ok', isRecording: recorderEnabled });
+            return true;
+        }
+
+        if (request.type === 'playRecordingStep') {
+            replayStep(request.step || {})
+                .then((result) => sendResponse(result))
+                .catch((error) => {
+                    sendResponse({
+                        success: false,
+                        error: error.message || 'Replay failed.'
+                    });
+                });
+            return true;
+        }
+
+        return false;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            syncRecorderMode();
+        }
+    });
+    window.addEventListener('focus', syncRecorderMode);
+    window.addEventListener('pagehide', () => {
+        if (recorderEnabled) {
+            flushPendingInputRecords();
+        }
+        hideReplayHighlight();
+    });
+    syncRecorderMode();
+}

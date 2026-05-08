@@ -11,149 +11,30 @@
 </head>
 
 <body>
-    <div class="card">
+    <div class="card popup-card">
         <div class="card-header">
-            <h5>Add new Annotation</h5>
+            <div class="popup-toolbar">
+                <div class="btn-group btn-group-sm session-group session-group--left" role="group" aria-label="Session Options">
+                    <button id="previewBtn" class="btn btn-secondary" title="View Session report" data-toggle="tooltip"
+                        data-placement="top"></button>
+                    <button id="exportCSVBtn" class="btn btn-secondary" title="Export session to CSV" data-toggle="tooltip"
+                        data-placement="top"></button>
+                    <button id="exportJsonBtn" class="btn btn-secondary" title="Export session to JSON"
+                        data-toggle="tooltip" data-placement="top"></button>
+                    <button id="importJsonBtn" class="btn btn-secondary" title="Import session from JSON"
+                        data-toggle="tooltip" data-placement="top">
+                    </button>
+                    <input type="file" name="jsonFile" class="file-input" id="importJsonInput" hidden="true"></input>
+                </div>
+                <div class="btn-group btn-group-sm session-group session-group--right" role="group" aria-label="Session reset">
+                    <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="Reset session data" aria-label="Reset session data">
+                        <span class="visually-hidden">Reset session data</span>
+                    </button>
+                </div>
+            </div>
+            <p class="draft-subtitle">Collect notes and screenshots first, then save the step explicitly.</p>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <button id="BugBtn" class="BugButton btn btn-danger btn-block">
-                    <span title="Click to add a new bug">Bug</span>
-                    <span id="bugCounter" class="badge badge-light"></span>
-                </button>
-            </div>
-            <div id="addNewBug" class="reportAnnotation card-body">
-                <div class="form-group">
-                    <textarea id="newBugDescription" rows="4" placeholder="Bug description..."
-                        title="[Enter] to add a new line" class="form-control-sm"></textarea>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group-sm annotation-group" role="group" aria-label="Annotation Options">
-                        <button id="addNewBugBtn" class="btn btn-outline-danger add" title="Add new Bug [Crtl + Enter]"
-                            data-toggle="tooltip" data-placement="top">&nbsp;</button>
-                        <button id="addNewBugSCBtn" class="btn btn-outline-danger screenshot"
-                            title="Add new Bug with screenshot [Shift + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewBugCropBtn" class="btn btn-outline-danger crop-screenshot"
-                            title="Add new Bug with cropped screenshot" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button name="Cancel" class="btn btn-outline-secondary btn-sm cancel"
-                            title="Cancel annotation">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <button id="NoteBtn" class="NoteButton btn btn-warning btn-block">
-                    <span title="Click to add a new note">Note</span>
-                    <span id="noteCounter" class="badge badge-light"></span>
-                </button>
-            </div>
-            <div id="addNewNote" class="reportAnnotation card-body">
-                <div class="form-group">
-                    <textarea id="newNoteDescription" rows="4" placeholder="Note description..."
-                        title="[Enter] to add a new line" class="form-control-sm"></textarea>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group-sm annotation-group" role="group" aria-label="Annotation Options">
-                        <button id="addNewNoteBtn" class="btn btn-outline-warning add"
-                            title="Add new Note [Crtl + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewNoteSCBtn" class="btn btn-outline-warning screenshot"
-                            title="Add new Note with screenshot [Shift + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewNoteCropBtn" class="btn btn-outline-warning crop-screenshot"
-                            title="Add new Note with cropped screenshot" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button name="Cancel" class="btn btn-outline-secondary btn-sm cancel"
-                            title="Cancel annotation">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <button id="QuestionBtn" class="QuestionButton btn btn-success btn-block">
-                    <span title="Click to add a new question">Question</span>
-                    <span id="questionCounter" class="badge badge-light"></span>
-                </button>
-            </div>
-            <div id="addNewQuestion" class="reportAnnotation card-body">
-                <div class="form-group">
-                    <textarea id="newQuestionDescription" rows="4" placeholder="Question description..."
-                        title="[Enter] to add a new line" class="form-control-sm"></textarea>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group-sm annotation-group" role="group" aria-label="Annotation Options">
-                        <button id="addNewQuestionBtn" class="btn btn-outline-success add"
-                            title="Add new Question [Crtl + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewQuestionSCBtn" class="btn btn-outline-success screenshot"
-                            title="Add new Question with screenshot [Shift + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewQuestionCropBtn" class="btn btn-outline-success crop-screenshot"
-                            title="Add new Question with cropped screenshot" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button name="Cancel" class="btn btn-outline-secondary btn-sm cancel"
-                            title="Cancel annotation">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <button id="IdeaBtn" class="IdeaButton btn btn-info btn-block">
-                    <span title="Click to add a new idea">Idea</span>
-                    <span id="ideaCounter" class="badge badge-light"></span>
-                </button>
-            </div>
-            <div id="addNewIdea" class="reportAnnotation card-body">
-                <div class="form-group">
-                    <textarea id="newIdeaDescription" rows="4" placeholder="Idea description..."
-                        title="[Enter] to add a new line" class="form-control-sm"></textarea>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group-sm annotation-group" role="group" aria-label="Annotation Options">
-                        <button id="addNewIdeaBtn" class="btn btn-outline-info add" title="Add new Idea [Crtl + Enter]"
-                            data-toggle="tooltip" data-placement="top">&nbsp;</button>
-                        <button id="addNewIdeaSCBtn" class="btn btn-outline-info screenshot"
-                            title="Add new Idea with screenshot [Shift + Enter]" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button id="addNewIdeaCropBtn" class="btn btn-outline-info crop-screenshot"
-                            title="Add new Idea with cropped screenshot" data-toggle="tooltip"
-                            data-placement="top">&nbsp;</button>
-                        <button name="Cancel" class="btn btn-outline-secondary btn-sm cancel"
-                            title="Cancel annotation">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer card-footer">
-        <div>
-            <div class="btn-group btn-group-sm session-group" role="group" aria-label="Session Options">
-                <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="Reset session data">Reset</button>
-                <button id="exportCSVBtn" class="btn btn-secondary" title="Export session to CSV" data-toggle="tooltip"
-                    data-placement="top"></button>
-                <button id="exportJsonBtn" class="btn btn-secondary" title="Export session to JSON"
-                    data-toggle="tooltip" data-placement="top"></button>
-                <button id="importJsonBtn" class="btn btn-secondary" title="Import session from JSON"
-                    data-toggle="tooltip" data-placement="top">
-                </button>
-                <input type="file" name="jsonFile" class="file-input" id="importJsonInput" hidden="true"></input>
-
-                <button id="previewBtn" class="btn btn-secondary" title="View Session report" data-toggle="tooltip"
-                    data-placement="top"></button>
-
-            </div>
-
-        </div>
         <div id="resetConfirmation" class="card" style="display:none">
             <div class="card-header bg-danger text-white">This will reset the current session.</div>
             <div class="card-body">
@@ -162,6 +43,116 @@
                     title="Reset current session">Yes</button>
                 <button id="resetNo" class="cancelButton btn btn-success btn-sm" title="Cancel reset">No</button>
             </div>
+        </div>
+
+        <div class="card-body">
+            <div class="mode-tabs" role="tablist" aria-label="Popup modes">
+                <button id="actionTabBtn" class="mode-tab is-active" type="button" role="tab" aria-selected="true">Action</button>
+                <button id="recorderTabBtn" class="mode-tab" type="button" role="tab" aria-selected="false">Recorder</button>
+            </div>
+
+            <section id="actionPanel" class="mode-panel" aria-label="Action mode">
+                <p class="mode-description">Capture bugs and notes with screenshots, then save the step explicitly.</p>
+
+                <div class="type-grid" role="group" aria-label="Annotation type">
+                    <button id="BugBtn" class="type-button type-button--bug" data-type="Bug">
+                        <span id="bugButtonLabel">Bug</span>
+                        <span id="bugCounter" class="badge badge-light"></span>
+                    </button>
+                    <button id="NoteBtn" class="type-button type-button--note" data-type="Note">
+                        <span id="noteButtonLabel">Note</span>
+                        <span id="noteCounter" class="badge badge-light"></span>
+                    </button>
+                </div>
+
+                <section class="draft-panel">
+                    <div class="draft-panel__header">
+                        <div>
+                            <h6 id="draftTitle" class="draft-title">New Bug</h6>
+                            <p class="draft-caption">Description remains editable until you add the step.</p>
+                        </div>
+                        <span id="draftImageCount" class="draft-counter">0 screenshots</span>
+                    </div>
+
+                    <div class="form-group">
+                        <textarea
+                            id="draftDescription"
+                            rows="4"
+                            placeholder="Describe what you found..."
+                            title="Ctrl + Enter to save the step"
+                            class="form-control-sm draft-textarea"></textarea>
+                    </div>
+
+                    <div class="draft-toolbar" aria-label="Draft actions">
+                        <div class="draft-toolbar__group draft-toolbar__group--left" role="group" aria-label="Draft capture actions">
+                            <button
+                                id="addScreenshotBtn"
+                                class="btn toolbar-button toolbar-button--icon toolbar-button--screenshot"
+                                title="Add screenshot"
+                                aria-label="Add screenshot">
+                                <span class="visually-hidden">Add screenshot</span>
+                            </button>
+                            <button
+                                id="addCropScreenshotBtn"
+                                class="btn toolbar-button toolbar-button--icon toolbar-button--crop"
+                                title="Crop screenshot"
+                                aria-label="Crop screenshot">
+                                <span class="visually-hidden">Crop screenshot</span>
+                            </button>
+                        </div>
+                        <div class="draft-toolbar__group draft-toolbar__group--right" role="group" aria-label="Draft clear action">
+                            <button
+                                id="clearDraftBtn"
+                                class="btn toolbar-button toolbar-button--icon toolbar-button--clear"
+                                title="Clear draft"
+                                aria-label="Clear draft">
+                                <span class="visually-hidden">Clear draft</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="draftImages" class="draft-images draft-images--empty">
+                        <p class="draft-images__empty">No screenshots yet.</p>
+                    </div>
+                </section>
+            </section>
+
+            <section id="recorderPanel" class="mode-panel" aria-label="Recorder mode" hidden>
+                <section class="recording-panel" aria-label="Record and replay actions">
+                    <div class="recording-panel__header">
+                        <div>
+                            <h6 class="recording-title">Recorder</h6>
+                            <p id="recordingStatus" class="recording-caption">Recorder idle</p>
+                        </div>
+                        <span id="recordingStepCount" class="draft-counter">0 steps</span>
+                    </div>
+                    <p class="mode-description mode-description--compact">Record user actions on the current page and replay the last captured flow.</p>
+                    <div class="recording-toolbar" role="group" aria-label="Recording controls">
+                        <button id="recordingToggleBtn" class="btn recording-button recording-button--record" type="button">Record</button>
+                        <button id="playRecordingBtn" class="btn recording-button recording-button--play" type="button">Play</button>
+                    </div>
+                </section>
+
+                <section class="recording-steps-panel" aria-label="Recorded steps">
+                    <div class="recording-steps-panel__header">
+                        <h6 class="recording-title">Recorded Steps</h6>
+                        <div class="recording-steps-panel__actions">
+                            <span id="recordingScreenshotCount" class="draft-counter">0 screenshots</span>
+                            <button
+                                id="clearRecordingBtn"
+                                class="btn toolbar-button toolbar-button--icon toolbar-button--clear"
+                                title="Clear recording"
+                                aria-label="Clear recording"
+                                type="button">
+                                <span class="visually-hidden">Clear recording</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="recordingStepsList" class="recording-steps-list recording-steps-list--empty">
+                        <p class="recording-steps-list__empty">No recorded steps yet.</p>
+                    </div>
+                </section>
+            </section>
         </div>
     </div>
 </body>

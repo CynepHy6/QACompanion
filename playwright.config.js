@@ -53,8 +53,7 @@ module.exports = defineConfig({
       name: 'chromium-extension',
       use: {
         ...devices['Desktop Chrome'],
-        // In CI (Linux), use plain chromium; locally on Windows/macOS use msedge
-        ...(isCI ? {} : { channel: 'msedge' }),
+        // Browser channel is selected in the E2E helper to keep local runs portable
         // Note: Extension loading happens in test setup via helper functions
       },
     },

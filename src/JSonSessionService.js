@@ -1,37 +1,65 @@
-import { Bug, Note, Idea, Question } from './Annotation.js';
+import { Bug, Note, normalizeImageURLs } from './Annotation.js';
 import { Session } from './Session.js';
+
+const CONSTRUCTOR_BY_TYPE = {
+    Bug,
+    Note
+};
+
+function getSessionTimestamp(rawObject) {
+    return rawObject.StartDateTime || rawObject.startDateTime || Date.now();
+}
+
+function getSessionBrowserInfo(rawObject) {
+    return rawObject.BrowserInfo || rawObject.browserInfo || null;
+}
+
+function getAnnotationImages(rawAnnotation) {
+    if (Array.isArray(rawAnnotation.imageURLs)) {
+        return rawAnnotation.imageURLs;
+    }
+
+    return normalizeImageURLs(rawAnnotation.imageURL || []);
+}
 
 export class JSonSessionService {
     getJSon(session) {
-        return JSON.stringify(session);
+        return JSON.stringify(session.toSerializableObject(), null, 2);
     }
 
     getSession(jsonString) {
-        const object = JSON.parse(jsonString);
+        const rawObject = JSON.parse(jsonString);
         const annotations = [];
+        const rawAnnotations = Array.isArray(rawObject.annotations) ? rawObject.annotations : [];
 
-        const tempAnnotations = object.annotations;
-        if (tempAnnotations.length != 0) {
-            for (let i = 0; i < tempAnnotations.length; i++) {
-                const ann = tempAnnotations[i];
-                annotations.push(this.getAnnotaionFromType(ann));
+        for (const rawAnnotation of rawAnnotations) {
+            const annotation = this.getAnnotationFromType(rawAnnotation);
+            if (annotation) {
+                annotations.push(annotation);
             }
         }
-        const sessionDate = new Date(object.StartDateTime);
-        const session = new Session(sessionDate, object.BrowserInfo);
+
+        const session = new Session(getSessionTimestamp(rawObject), getSessionBrowserInfo(rawObject));
         session.setAnnotations(annotations);
         return session;
     }
 
-    getAnnotaionFromType(annotation) {
-        const name = annotation.name;
-        const url = annotation.url;
-        const timestamp = new Date(annotation.timestamp);
-        const image = annotation.imageURL;
+    getAnnotationFromType(rawAnnotation) {
+        const AnnotationConstructor = CONSTRUCTOR_BY_TYPE[rawAnnotation.type];
+        if (!AnnotationConstructor) {
+            return null;
+        }
 
-        if (annotation.type == "Bug") return new Bug(name, url, timestamp, image);
-        if (annotation.type == "Note") return new Note(name, url, timestamp, image);
-        if (annotation.type == "Idea") return new Idea(name, url, timestamp, image);
-        if (annotation.type == "Question") return new Question(name, url, timestamp, image);
+        return new AnnotationConstructor(
+            rawAnnotation.name,
+            rawAnnotation.url,
+            rawAnnotation.timestamp,
+            getAnnotationImages(rawAnnotation),
+            rawAnnotation.id || null
+        );
+    }
+
+    getAnnotaionFromType(rawAnnotation) {
+        return this.getAnnotationFromType(rawAnnotation);
     }
 }

@@ -1,288 +1,115 @@
 import { JSonSessionService } from '../../src/JSonSessionService';
 import { Session } from '../../src/Session';
-import { Bug, Idea, Note, Question } from '../../src/Annotation';
-
-describe("Manage Session with Json format", function () {
-    describe("export session to Json", function () {
-        it("should export every session data to JSon format", function () {
-            var BrowserInfo = { browser: "TestBrowser", browserVersion: "10.0.1.3", os: "TestOS" };
-            var currentDateTime = new Date(2015, 10, 30, 6, 51); // Assuming this creates a date in local TZ
-
-            var session = new Session(currentDateTime, BrowserInfo);
-
-            // These will also be local TZ, then toJSON converts to UTC
-            session.addBug(new Bug("Add Bug", "http://TestSite/bugUrl.com", new Date(2015, 9, 30, 8, 0, 0))); // Month is 0-indexed for Date constructor
-            session.addIdea(new Idea("Add Idea", "http://TestSite/IdeaUrl.com", new Date(2015, 9, 30, 8, 5, 0)));
-            session.addNote(new Note("Add Note", "http://TestSite/NoteUrl.com", new Date(2015, 9, 30, 8, 10, 0)));
-            session.addQuestion(new Question("Add Question", "http://TestSite/QuestionUrl.com", new Date(2015, 9, 30, 8, 15, 0)));
-
-            var parsedExpected = JSON.parse(`{
-                "BrowserInfo": {"browser":"TestBrowser","browserVersion":"10.0.1.3","os":"TestOS"},
-                "StartDateTime": "${new Date(2015, 10, 30, 6, 51).toJSON()}",
-                "annotations": [
-                    {
-                        "type": "Bug",
-                        "name": "Add Bug",
-                        "url": "http://TestSite/bugUrl.com",
-                        "timestamp": "${new Date(2015, 9, 30, 8, 0, 0).toJSON()}"
-                    },
-                    {
-                        "type": "Idea",
-                        "name": "Add Idea",
-                        "url": "http://TestSite/IdeaUrl.com",
-                        "timestamp": "${new Date(2015, 9, 30, 8, 5, 0).toJSON()}"
-                    },
-                    {
-                        "type": "Note",
-                        "name": "Add Note",
-                        "url": "http://TestSite/NoteUrl.com",
-                        "timestamp": "${new Date(2015, 9, 30, 8, 10, 0).toJSON()}"
-                    },
-                    {
-                        "type": "Question",
-                        "name": "Add Question",
-                        "url": "http://TestSite/QuestionUrl.com",
-                        "timestamp": "${new Date(2015, 9, 30, 8, 15, 0).toJSON()}"
-                    }
-                ]
-            }`);
-
-            var JSONService = new JSonSessionService();
-            var actualJson = JSONService.getJSon(session);
-
-            var parsedActual = JSON.parse(actualJson);
-
-            // Comparar los objetos JavaScript en lugar de los strings JSON
-            expect(parsedActual).toEqual(parsedExpected);
-        });
-
-        it("should export session with no annotations", function () {
-            var BrowserInfo = { browser: "TestBrowser", browserVersion: "10.0.1.3", os: "TestOS" };
-            var currentDateTime = new Date(2015, 10, 30, 6, 51);
-
-            var session = new Session(currentDateTime, BrowserInfo);
-            var expectedJSon = `{"BrowserInfo":{"browser":"TestBrowser","browserVersion":"10.0.1.3","os":"TestOS"},"StartDateTime":"${currentDateTime.toJSON()}","annotations":[]}`
-            var JSONService = new JSonSessionService();
-            var actualJson = JSONService.getJSon(session);
-
-            expect(actualJson).toEqual(expectedJSon); // Swapped actual and expected to match Jest's typical order, and compare JSON strings
-        });
-    });
-    describe("import session from Json", function () {
-        it("should create a session object from json with no annotations", function () {
-            const testDate = new Date(2015, 10, 30, 6, 51);
-            const testDateJSON = testDate.toJSON();
-            var JSonString = `{"BrowserInfo":"TestBrowser 10.0.1.3","StartDateTime":"${testDateJSON}","annotations":[]}`;
-
-            var BrowserInfo = "TestBrowser 10.0.1.3";
-            // For expectedSession, use the exact same date object that generated the JSON string to ensure consistency
-            var expectedSession = new Session(new Date(testDateJSON), BrowserInfo);
-
-            var JSONService = new JSonSessionService();
-            var actualSession = JSONService.getSession(JSonString);
-
-            // Compare the toJSON strings of dates, or getTime() values for robust comparison
-            expect(actualSession.getStartDateTime().getTime()).toEqual(expectedSession.getStartDateTime().getTime());
-            expect(actualSession.getBrowserInfo()).toEqual(expectedSession.getBrowserInfo());
-            expect(actualSession.getAnnotations()).toEqual(expectedSession.getAnnotations());
-        });
-        it("should create a session object from json with many annotations", function () {
-            const sessionStartDate = new Date(2015, 10, 30, 6, 51);
-            const bugDate = new Date(2015, 9, 30, 8, 0, 0);
-            const ideaDate = new Date(2015, 9, 30, 8, 5, 0);
-            const noteDate = new Date(2015, 9, 30, 8, 10, 0);
-            const questionDate = new Date(2015, 9, 30, 8, 15, 0);
-
-            // El JSON de entrada parseado
-            var JSonString = `{
-        "BrowserInfo": "TestBrowser 10.0.1.3",
-        "StartDateTime": "${sessionStartDate.toJSON()}",
-        "annotations": [
-            {
-                "type": "Bug",
-                "name": "Add Bug",
-                "url": "http://TestSite/bugUrl.com",
-                "timestamp": "${bugDate.toJSON()}"
-            },
-            {
-                "type": "Idea",
-                "name": "Add Idea",
-                "url": "http://TestSite/IdeaUrl.com",
-                "timestamp": "${ideaDate.toJSON()}"
-            },
-            {
-                "type": "Note",
-                "name": "Add Note",
-                "url": "http://TestSite/NoteUrl.com",
-                "timestamp": "${noteDate.toJSON()}"
-            },
-            {
-                "type": "Question",
-                "name": "Add Question",
-                "url": "http://TestSite/QuestionUrl.com",
-                "timestamp": "${questionDate.toJSON()}"
-            }
-        ]
-    }`;
-
-            var BrowserInfo = "TestBrowser 10.0.1.3";
-            // Use the .toJSON() string for constructing dates for expectedSession to ensure they are parsed identically
-            var expectedSession = new Session(new Date(sessionStartDate.toJSON()), BrowserInfo);
-            expectedSession.addBug(new Bug("Add Bug", "http://TestSite/bugUrl.com", new Date(bugDate.toJSON())));
-            expectedSession.addIdea(new Idea("Add Idea", "http://TestSite/IdeaUrl.com", new Date(ideaDate.toJSON())));
-            expectedSession.addNote(new Note("Add Note", "http://TestSite/NoteUrl.com", new Date(noteDate.toJSON())));
-            expectedSession.addQuestion(new Question("Add Question", "http://TestSite/QuestionUrl.com", new Date(questionDate.toJSON())));
-
-            var JSONService = new JSonSessionService();
-            var actualSession = JSONService.getSession(JSonString);
-
-            // En lugar de comparar directamente los objetos Session, creamos representaciones JSON de ambos y los comparamos
-            var actualSessionJson = JSON.stringify(actualSession);
-            var expectedSessionJson = JSON.stringify(expectedSession);
-
-            // Parseamos los JSON para ignorar diferencias de formato
-            var parsedActual = JSON.parse(actualSessionJson);
-            var parsedExpected = JSON.parse(expectedSessionJson);
-
-            // Comparamos los objetos parseados
-            expect(parsedActual).toEqual(parsedExpected);
-        });
-    });
-    describe("Exportar and importa sesion", function () {
-        it("Import an exported session should be consistent", function () {
-
-            var BrowserInfo = "TestBrowser 10.0.1.3";
-            var currentDateTime = new Date(2015, 10, 30, 6, 51); // Local time
-
-            var initSession = new Session(currentDateTime, BrowserInfo);
-
-            // Use 0-indexed months for Date constructor
-            initSession.addBug(new Bug("Add Bug", "http://TestSite/bugUrl.com", new Date(2015, 9, 30, 8, 0, 0)));
-            initSession.addIdea(new Idea("Add Idea", "http://TestSite/IdeaUrl.com", new Date(2015, 9, 30, 8, 5, 0)));
-            initSession.addNote(new Note("Add Note", "http://TestSite/NoteUrl.com", new Date(2015, 9, 30, 8, 10, 0)));
-            initSession.addQuestion(new Question("Add Question", "http://TestSite/QuestionUrl.com", new Date(2015, 9, 30, 8, 15, 0)));
-
-            var JSONService = new JSonSessionService();
-
-            var newSession = JSONService.getSession(JSONService.getJSon(initSession));
-
-            expect(initSession).toEqual(newSession);
-
-        });
-    });
-
-    describe('getSession error handling', function() {
-        let jsonService;
-
-        beforeEach(function() {
-            jsonService = new JSonSessionService();
-        });
-
-        it('should throw error for invalid JSON string', function() {
-            const invalidJsonString = "this is not json";
-            expect(() => {
-                jsonService.getSession(invalidJsonString);
-            }).toThrow(SyntaxError); // JSON.parse throws SyntaxError
-        });
-
-        it('should throw an error or return null for JSON not matching session structure (empty object)', function() {
-            const jsonString = "{}";
-            // Depending on implementation, this might throw TypeError if properties are accessed on undefined,
-            // or it might return a Session object with undefined/default values.
-            // Current implementation of getSession directly accesses properties like object.StartDateTime.
-            // If object.StartDateTime is undefined, new Date(undefined) results in an Invalid Date.
-            // Session constructor might handle this, or it might result in an unexpected session state.
-            // Let's test for a TypeError or if it creates a session with invalid dates.
-            expect(() => {
-                 const session = jsonService.getSession(jsonString);
-                 // Further check if session or its properties are valid if no error is thrown
-                 // For example, if StartDateTime is crucial and becomes "Invalid Date"
-                 if (session && session.getStartDateTime() instanceof Date && isNaN(session.getStartDateTime().getTime())) {
-                    throw new Error("Session created with Invalid Date");
-                 } else if (!session) {
-                    throw new Error("Session is null or undefined");
-                 }
-            }).toThrow(); // Broad error check, refine if specific error is known/expected
-        });
-
-        it('should throw an error or return null for JSON not matching session structure (empty array)', function() {
-            const jsonString = "[]";
-            // JSON.parse of "[]" results in an array. Accessing .StartDateTime on an array will be undefined.
-            expect(() => {
-                const session = jsonService.getSession(jsonString);
-                 if (session && session.getStartDateTime() instanceof Date && isNaN(session.getStartDateTime().getTime())) {
-                    throw new Error("Session created with Invalid Date from array JSON");
-                 } else if (!session && typeof session !== 'object') { // if it returns something not an object
-                    throw new Error("Session is not an object or is null/undefined");
-                 }
-            }).toThrow();
-        });
-
-        it('should throw an error or return null for JSON with unexpected structure', function() {
-            const jsonString = '{ "foo": "bar" }';
-            expect(() => {
-                const session = jsonService.getSession(jsonString);
-                if (session && session.getStartDateTime() instanceof Date && isNaN(session.getStartDateTime().getTime())) {
-                    throw new Error("Session created with Invalid Date from custom JSON");
-                 } else if (!session) {
-                    throw new Error("Session is null or undefined");
-                 }
-            }).toThrow();
-        });
-    });
-});
+import { Bug, Note } from '../../src/Annotation';
 
 describe('JSonSessionService', function () {
     let jsonService;
     let testSession;
-    let testBug;
-    let testNote;
-    let testIdea;
-    let testQuestion;
 
     beforeEach(function () {
         jsonService = new JSonSessionService();
-        testSession = new Session(new Date(), { browser: "Chrome", browserVersion: "1.0.0", os: "TestPlatform" });
+        testSession = new Session(new Date(2015, 10, 30, 6, 51), {
+            browser: "Chrome",
+            browserVersion: "1.0.0",
+            os: "TestPlatform"
+        });
 
-        // Crear anotaciones de prueba
-        testBug = new Bug("Test Bug", "http://test.com", new Date().getTime(), "http://test.com/bug.jpg");
-        testNote = new Note("Test Note", "http://test.com", new Date().getTime(), "http://test.com/note.jpg");
-        testIdea = new Idea("Test Idea", "http://test.com", new Date().getTime(), "http://test.com/idea.jpg");
-        testQuestion = new Question("Test Question", "http://test.com", new Date().getTime(), "http://test.com/question.jpg");
-
-        testSession.addBug(testBug);
-        testSession.addNote(testNote);
-        testSession.addIdea(testIdea);
-        testSession.addQuestion(testQuestion);
+        testSession.addBug(new Bug("Test Bug", "http://test.com/bug", new Date(2015, 9, 30, 8, 0, 0), [
+            "http://test.com/bug-1.jpg",
+            "http://test.com/bug-2.jpg"
+        ]));
+        testSession.addNote(new Note("Test Note", "http://test.com/note", new Date(2015, 9, 30, 8, 10, 0), "http://test.com/note.jpg"));
     });
 
     describe('getJSon', function () {
-        it('should convert session to JSON string', function () {
+        it('should convert session to JSON string with ids and imageURLs', function () {
             const jsonString = jsonService.getJSon(testSession);
             const parsedJson = JSON.parse(jsonString);
 
-            expect(parsedJson.annotations.length).toBe(4);
-            expect(parsedJson.BrowserInfo).toEqual({ browser: "Chrome", browserVersion: "1.0.0", os: "TestPlatform" });
-            expect(new Date(parsedJson.StartDateTime)).toEqual(testSession.getStartDateTime());
+            expect(parsedJson.BrowserInfo).toEqual({
+                browser: "Chrome",
+                browserVersion: "1.0.0",
+                os: "TestPlatform"
+            });
+            expect(typeof parsedJson.StartDateTime).toBe('number');
+            expect(parsedJson.annotations).toHaveLength(2);
+            expect(parsedJson.annotations[0].type).toBe('Bug');
+            expect(parsedJson.annotations[0].id).toEqual(expect.any(String));
+            expect(parsedJson.annotations[0].imageURLs).toEqual([
+                "http://test.com/bug-1.jpg",
+                "http://test.com/bug-2.jpg"
+            ]);
+            expect(parsedJson.annotations[0].imageURL).toBe("http://test.com/bug-1.jpg");
+        });
+
+        it('should export session with no annotations', function () {
+            const emptySession = new Session(new Date(2015, 10, 30, 6, 51), {
+                browser: "Chrome",
+                browserVersion: "1.0.0",
+                os: "TestPlatform"
+            });
+
+            const parsedJson = JSON.parse(jsonService.getJSon(emptySession));
+            expect(parsedJson.annotations).toEqual([]);
         });
     });
 
     describe('getSession', function () {
-        it('should convert JSON string back to session', function () {
-            const jsonString = jsonService.getJSon(testSession);
-            const restoredSession = jsonService.getSession(jsonString);
+        it('should recreate session from exported json', function () {
+            const restoredSession = jsonService.getSession(jsonService.getJSon(testSession));
+            const restoredAnnotations = restoredSession.getAnnotations();
 
-            expect(restoredSession.getAnnotations().length).toBe(4);
-            expect(restoredSession.getBrowserInfo()).toEqual({ browser: "Chrome", browserVersion: "1.0.0", os: "TestPlatform" });
-            expect(restoredSession.getStartDateTime()).toEqual(testSession.getStartDateTime());
+            expect(restoredSession.getBrowserInfo()).toEqual(testSession.getBrowserInfo());
+            expect(restoredSession.getStartDateTime().getTime()).toBe(testSession.getStartDateTime().getTime());
+            expect(restoredAnnotations).toHaveLength(2);
+            expect(restoredAnnotations[0].getImageURLs()).toEqual([
+                "http://test.com/bug-1.jpg",
+                "http://test.com/bug-2.jpg"
+            ]);
+            expect(restoredAnnotations[0].getId()).toEqual(expect.any(String));
+        });
+
+        it('should keep compatibility with legacy imageURL field', function () {
+            const legacyJson = JSON.stringify({
+                BrowserInfo: { browser: "Chrome", browserVersion: "1.0.0", os: "TestPlatform" },
+                StartDateTime: new Date(2015, 10, 30, 6, 51).getTime(),
+                annotations: [
+                    {
+                        type: "Bug",
+                        name: "Legacy Bug",
+                        url: "http://test.com/legacy",
+                        timestamp: new Date(2015, 9, 30, 8, 0, 0).getTime(),
+                        imageURL: "http://test.com/legacy.jpg"
+                    }
+                ]
+            });
+
+            const restoredSession = jsonService.getSession(legacyJson);
+            expect(restoredSession.getAnnotations()).toHaveLength(1);
+            expect(restoredSession.getAnnotations()[0].getImageURLs()).toEqual(["http://test.com/legacy.jpg"]);
         });
 
         it('should handle empty annotations array', function () {
             const emptySession = new Session(new Date(), "Chrome");
-            const jsonString = jsonService.getJSon(emptySession);
-            const restoredSession = jsonService.getSession(jsonString);
+            const restoredSession = jsonService.getSession(jsonService.getJSon(emptySession));
 
-            expect(restoredSession.getAnnotations().length).toBe(0);
+            expect(restoredSession.getAnnotations()).toHaveLength(0);
+        });
+
+        it('should normalize unexpected structures instead of throwing for valid JSON', function () {
+            const emptyObjectSession = jsonService.getSession("{}");
+            const emptyArraySession = jsonService.getSession("[]");
+            const customObjectSession = jsonService.getSession('{ "foo": "bar" }');
+
+            expect(emptyObjectSession.getAnnotations()).toEqual([]);
+            expect(emptyArraySession.getAnnotations()).toEqual([]);
+            expect(customObjectSession.getAnnotations()).toEqual([]);
+        });
+
+        it('should throw error for invalid JSON string', function () {
+            expect(() => {
+                jsonService.getSession("this is not json");
+            }).toThrow(SyntaxError);
         });
     });
 
@@ -293,7 +120,7 @@ describe('JSonSessionService', function () {
                 name: "Test Bug",
                 url: "http://test.com",
                 timestamp: new Date().getTime(),
-                imageURL: "http://test.com/bug.jpg"
+                imageURLs: ["http://test.com/bug.jpg"]
             };
 
             const noteJson = {
@@ -304,26 +131,16 @@ describe('JSonSessionService', function () {
                 imageURL: "http://test.com/note.jpg"
             };
 
-            const ideaJson = {
-                type: "Idea",
-                name: "Test Idea",
+            const unknownJson = {
+                type: "Unsupported",
+                name: "Unsupported Type",
                 url: "http://test.com",
-                timestamp: new Date().getTime(),
-                imageURL: "http://test.com/idea.jpg"
-            };
-
-            const questionJson = {
-                type: "Question",
-                name: "Test Question",
-                url: "http://test.com",
-                timestamp: new Date().getTime(),
-                imageURL: "http://test.com/question.jpg"
+                timestamp: new Date().getTime()
             };
 
             expect(jsonService.getAnnotaionFromType(bugJson) instanceof Bug).toBe(true);
             expect(jsonService.getAnnotaionFromType(noteJson) instanceof Note).toBe(true);
-            expect(jsonService.getAnnotaionFromType(ideaJson) instanceof Idea).toBe(true);
-            expect(jsonService.getAnnotaionFromType(questionJson) instanceof Question).toBe(true);
+            expect(jsonService.getAnnotaionFromType(unknownJson)).toBeNull();
         });
     });
 });

@@ -1,64 +1,31 @@
-# A Chrome Extension for Exploratory Testing
+# QA Companion
 
-A Chrome extension designed for making web exploratory testing easier
+QA Companion is a Chrome extension for exploratory testing sessions with notes, multiple screenshots, and lightweight reporting.
 
-**Features**
+## Features
 
- - Report bugs, ideas, notes and questions easily
- - Take screenshots during the session. Keep focused 
- - URL will be tracked automatically
- - See session results in a report
- - Export and import sessions
- - Export session to JSON, CSV or HTML
+- Create annotations as `Bug` or `Note`
+- Keep a draft in the popup and save a step explicitly
+- Attach multiple screenshots to one step
+- Edit saved descriptions in the report
+- Remove individual screenshots from saved steps
+- Export and import sessions
+- Export session data to JSON, CSV, or HTML
 
+## Origin
 
-Install from [Chrome Store](https://chrome.google.com/webstore/detail/exploratory-testing-chrom/khigmghadjljgjpamimgjjmpmlbgmekj)
+This project is based on the original Exploratory Testing Chrome Extension by `morvader`:
+- Chrome Web Store: <https://chrome.google.com/webstore/detail/exploratory-testing-chrom/khigmghadjljgjpamimgjjmpmlbgmekj>
+- Source repository: <https://github.com/morvader/ExploratoryTestingChromeExtension>
 
+Change history for this fork: `CHANGELOG.md`
 
-**Annotate any thought while you test easily and take screenshots without changing context**
+## Local setup
 
-<img src="./screenshots/new_Annotation.PNG" width="440">
+Install dependencies:
 
+```bash
+npm install
+```
 
-**View session results in a report**
-
-<img src="./screenshots/report.PNG" width="800">
-
-## Development and Testing
-
-This section provides instructions for setting up the project locally for development and running tests.
-
-### Project Setup
-
-1.  **Prerequisites**: Ensure you have [Node.js](https://nodejs.org/) installed (which includes npm).
-2.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    cd your-repo-name
-    ```
-    *(Using a common placeholder format for the repo URL. The user can update this if they wish).*
-3.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
-    This will install Jest, Babel, and other necessary development dependencies as defined in `package.json`.
-
-### Running Tests
-
-The project uses [Jest](https://jestjs.io/) for unit testing.
-
-1.  **Execute Tests**:
-    ```bash
-    npm test
-    ```
-    Alternatively, you can run Jest directly:
-    ```bash
-    npx jest
-    ```
-2.  **Test Results**: Most tests should pass.
-    *   **Known Issue**: The test suite for `test/spec/ExportSessionCSV.test.js` is currently non-functional due to a syntax error that occurred during the migration to Jest and could not be resolved with available tools. This specific suite will fail or be skipped. All other test suites should pass.
-
----
-_PS: I'm not a web designer, so any help with web design or UX will be appreciated._
-
-twitter: @morvader
+Then load the extension as unpacked in Chrome/Chromium from this folder.

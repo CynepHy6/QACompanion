@@ -7,18 +7,16 @@ Este directorio contiene tests end-to-end (e2e) para la extensión de Chrome de 
 ### Tests Básicos (`basic-functionality.spec.js`)
 - ✅ Carga correcta del popup de la extensión
 - ✅ Contadores iniciales en cero
-- ✅ Añadir anotaciones (Bug, Note, Idea, Question)
+- ✅ Añadir anotaciones (`Bug` y `Note`)
 - ✅ Actualización de contadores al añadir anotaciones
+- ✅ Persistencia del borrador hasta guardado explícito
 - ✅ Captura de URL de la página activa
-- ✅ Limpieza de campos después de añadir anotaciones
-- ✅ Múltiples anotaciones simultáneas
 
 ### Tests de Capturas Recortadas (`crop-screenshot.spec.js`) ⭐ NUEVO
-- ✅ Botones de crop visibles para todos los tipos de anotación
+- ✅ Botón de crop compartido para los tipos soportados
 - ✅ Alerta cuando falta descripción antes de crop
 - ✅ Inicio de selección de área de crop
-- ✅ Message passing correcto al content script
-- ✅ Verificación de IDs de botones
+- ✅ Message passing correcto al background
 
 ### Tests de Informes y Exportación (`reports-export.spec.js`)
 - ✅ Exportación a CSV
@@ -123,8 +121,8 @@ test.describe('Mi Suite de Tests', () => {
 
   test('mi test', async () => {
     // Tu código de test aquí
-    await popupPage.fill('#bugName', 'Test Bug');
-    await popupPage.click('#addBug');
+    await popupPage.fill('#draftDescription', 'Test Bug');
+    await popupPage.click('#saveDraftBtn');
   });
 
   test.afterAll(async () => {

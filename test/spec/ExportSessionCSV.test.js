@@ -4,7 +4,7 @@
 
 import { ExportSessionCSV } from '../../src/ExportSessionCSV';
 import { Session } from '../../src/Session';
-import { Bug, Idea, Note, Question } from '../../src/Annotation';
+import { Bug, Note } from '../../src/Annotation';
 
 describe("Export Session to CSV", function () {
 
@@ -19,15 +19,11 @@ describe("Export Session to CSV", function () {
 
 			// Month 9 is October for annotations
 			session.addBug(new Bug("Add Bug", "http://TestSite/bugUrl.com", new Date(2015, 9, 30, 8, 0, 0)));
-			session.addIdea(new Idea("Add Idea", "http://TestSite/IdeaUrl.com", new Date(2015, 9, 30, 8, 5, 0)));
 			session.addNote(new Note("Add Note", "http://TestSite/NoteUrl.com", new Date(2015, 9, 30, 8, 10, 0)));
-			session.addQuestion(new Question("Add Question", "http://TestSite/QuestionUrl.com", new Date(2015, 9, 30, 8, 15, 0)));
 
-			var expectedCSV = "TimeStamp,Type,Name,URL\n" +
-				"30-10-2015 08:00,Bug,Add Bug,http://TestSite/bugUrl.com\n" +
-				"30-10-2015 08:05,Idea,Add Idea,http://TestSite/IdeaUrl.com\n" +
-				"30-10-2015 08:10,Note,Add Note,http://TestSite/NoteUrl.com\n" +
-				"30-10-2015 08:15,Question,Add Question,http://TestSite/QuestionUrl.com\n";
+			var expectedCSV = "TimeStamp,Type,Name,URL,ScreenshotCount\n" +
+				"30-10-2015 08:00,Bug,Add Bug,http://TestSite/bugUrl.com,0\n" +
+				"30-10-2015 08:10,Note,Add Note,http://TestSite/NoteUrl.com,0\n";
 
 			var actualCSV = new ExportSessionCSV(session).getCSVData();
 
@@ -58,7 +54,7 @@ describe('ExportSessionCSV', function () {
 	describe('getCSVData', function () {
 		it('should generate correct CSV header', function () {
 			const csvData = exportCSV.getCSVData();
-			expect(csvData.startsWith('TimeStamp,Type,Name,URL\n')).toBe(true);
+			expect(csvData.startsWith('TimeStamp,Type,Name,URL,ScreenshotCount\n')).toBe(true);
 		});
 
 		it('should include all annotations in CSV', function () {
@@ -83,7 +79,7 @@ describe('ExportSessionCSV', function () {
 			const emptyExportCSV = new ExportSessionCSV(emptySession);
 			const csvData = emptyExportCSV.getCSVData();
 
-			expect(csvData).toBe('TimeStamp,Type,Name,URL\n');
+			expect(csvData).toBe('TimeStamp,Type,Name,URL,ScreenshotCount\n');
 		});
 	});
 
@@ -144,7 +140,7 @@ describe('ExportSessionCSV', function () {
 
 		it('should handle empty session gracefully', function () {
 			const csvData = exportCSV.getCSVData();
-			expect(csvData).toBe('TimeStamp,Type,Name,URL\n');
+			expect(csvData).toBe('TimeStamp,Type,Name,URL,ScreenshotCount\n');
 		});
 	});
 });

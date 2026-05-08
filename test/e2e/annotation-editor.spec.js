@@ -13,13 +13,13 @@ const {
  * 1. Draw arrows and rectangles on cropped screenshots
  * 2. Save annotated screenshots
  * 3. Use keyboard shortcuts for tools
- * 4. Cancel or save without annotations
+ * 4. Cancel editing
  *
  * Flow:
  * - User crops a screenshot
  * - Annotation editor opens in iframe
  * - User draws annotations (arrows, rectangles) on the canvas
- * - User saves with/without annotations or cancels
+ * - User saves or cancels
  * - Annotated image is sent to background and saved with the annotation
  */
 test.describe('Annotation Editor Functionality', () => {
@@ -83,11 +83,9 @@ test.describe('Annotation Editor Functionality', () => {
     await expect(rectangleTool).toBeVisible();
 
     // Verify action buttons
-    const saveWithAnnotations = editorPage.locator('#save-with-annotations');
-    const saveWithoutAnnotations = editorPage.locator('#save-without-annotations');
+    const saveButton = editorPage.locator('#save-button');
     const cancelButton = editorPage.locator('#cancel-button');
-    await expect(saveWithAnnotations).toBeVisible();
-    await expect(saveWithoutAnnotations).toBeVisible();
+    await expect(saveButton).toBeVisible();
     await expect(cancelButton).toBeVisible();
 
     console.log('✓ Annotation editor structure verified');
@@ -294,9 +292,9 @@ test.describe('Annotation Editor Functionality', () => {
     await editorPage.close();
   });
 
-  test('should send message when saving with annotations', async () => {
+  test('should send message when saving', async () => {
     /**
-     * Verify that clicking "Save with Annotations" sends the correct postMessage
+     * Verify that clicking "Save" sends the correct postMessage
      * with the annotated image data.
      */
 
@@ -323,8 +321,8 @@ test.describe('Annotation Editor Functionality', () => {
       });
     });
 
-    // Click save with annotations
-    await editorPage.click('#save-with-annotations');
+    // Click save
+    await editorPage.click('#save-button');
 
     const message = await messagePromise;
 
@@ -333,50 +331,7 @@ test.describe('Annotation Editor Functionality', () => {
     expect(message.imageData).toContain('data:image/');
     expect(message.hasAnnotations).toBe(true);
 
-    console.log('✓ Save with annotations sends correct message');
-
-    await editorPage.close();
-  });
-
-  test('should send original image when saving without annotations', async () => {
-    /**
-     * Verify that clicking "Save without Annotations" sends back
-     * the original image without any modifications.
-     */
-
-    const editorPage = await context.newPage();
-    const editorUrl = `chrome-extension://${extensionId}/js/annotation_editor.html`;
-    await editorPage.goto(editorUrl);
-    await editorPage.waitForLoadState('domcontentloaded');
-
-    // Initialize with test image
-    const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
-    await editorPage.evaluate((imageData) => {
-      window.postMessage({ type: 'initAnnotationEditor', imageData }, '*');
-    }, testImageData);
-    await editorPage.waitForTimeout(500);
-
-    // Listen for postMessage
-    const messagePromise = editorPage.evaluate(() => {
-      return new Promise((resolve) => {
-        window.addEventListener('message', (event) => {
-          if (event.data.type === 'annotationComplete') {
-            resolve(event.data);
-          }
-        });
-      });
-    });
-
-    // Click save without annotations
-    await editorPage.click('#save-without-annotations');
-
-    const message = await messagePromise;
-
-    expect(message.type).toBe('annotationComplete');
-    expect(message.imageData).toBe(testImageData);
-    expect(message.hasAnnotations).toBe(false);
-
-    console.log('✓ Save without annotations sends original image');
+    console.log('✓ Save sends correct message');
 
     await editorPage.close();
   });
@@ -449,7 +404,7 @@ test.describe('Annotation Editor Functionality', () => {
 
   test('should save with Ctrl+Enter shortcut', async () => {
     /**
-     * Verify that Ctrl+Enter keyboard shortcut saves with annotations.
+     * Verify that Ctrl+Enter keyboard shortcut saves.
      */
 
     const editorPage = await context.newPage();
@@ -483,7 +438,7 @@ test.describe('Annotation Editor Functionality', () => {
     expect(message.type).toBe('annotationComplete');
     expect(message.hasAnnotations).toBe(true);
 
-    console.log('✓ Ctrl+Enter saves with annotations');
+    console.log('✓ Ctrl+Enter saves');
 
     await editorPage.close();
   });
@@ -544,7 +499,7 @@ test.describe('Annotation Editor Functionality', () => {
       });
     });
 
-    await editorPage.click('#save-with-annotations');
+    await editorPage.click('#save-button');
 
     const message = await messagePromise;
 

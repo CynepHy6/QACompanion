@@ -2,6 +2,22 @@ const path = require('path');
 const fs = require('fs');
 const { chromium } = require('@playwright/test');
 
+function resolveBrowserChannel() {
+  if (process.env.PLAYWRIGHT_CHANNEL) {
+    return process.env.PLAYWRIGHT_CHANNEL;
+  }
+
+  if (process.platform === 'win32') {
+    return 'msedge';
+  }
+
+  if (process.platform === 'linux' && fs.existsSync('/opt/microsoft/msedge/msedge')) {
+    return 'msedge';
+  }
+
+  return 'chromium';
+}
+
 /**
  * Extension Helper for Playwright E2E tests
  * Provides utilities to load and interact with the Chrome Extension
@@ -56,11 +72,14 @@ async function launchBrowserWithExtension() {
 
   // Auto-detection mode
   console.log(`Loading extension from: ${extensionPath}`);
-  console.log('🔧 Using Microsoft Edge (best extension support)');
+  const browserChannel = resolveBrowserChannel();
+  console.log(
+    `🔧 Using browser channel: ${browserChannel}`
+  );
 
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: !isHeaded,
-    channel: 'msedge', // Use Microsoft Edge - works better with extensions
+    channel: browserChannel,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -70,7 +89,7 @@ async function launchBrowserWithExtension() {
   });
 
   console.log('Browser context launched, waiting for extension to initialize...');
-  await new Promise(resolve => setTimeout(resolve, 5000)); // Edge needs more time
+  await new Promise(resolve => setTimeout(resolve, browserChannel === 'msedge' ? 5000 : 3000));
 
   // Try multiple methods to get extension ID
   let extensionId = null;
@@ -167,6 +186,20 @@ async function openExtensionPopup(context, extensionId) {
  * @param {import('@playwright/test').Page} popupPage
  */
 async function clearExtensionStorage(popupPage) {
+  await popupPage.evaluate(() => {
+    const sendMessage = (message) => {
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage(message, () => resolve());
+      });
+    };
+
+    return Promise.all([
+      sendMessage({ type: 'clearSession' }),
+      sendMessage({ type: 'clearDraft', typeName: 'Bug' }),
+      sendMessage({ type: 'clearRecordingData' })
+    ]);
+  });
+
   // Clear storage
   await popupPage.evaluate(() => {
     return new Promise((resolve) => {
@@ -215,6 +248,16 @@ async function getSessionData(popupPage) {
   });
 }
 
+async function getRecordingData(popupPage) {
+  return await popupPage.evaluate(() => {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['recording'], (result) => {
+        resolve(result.recording || null);
+      });
+    });
+  });
+}
+
 /**
  * Waits for storage to update after an action
  * @param {import('@playwright/test').Page} popupPage
@@ -228,7 +271,7 @@ async function waitForStorageUpdate(popupPage, timeout = 2000) {
  * Takes a screenshot with the extension
  * @param {import('@playwright/test').Page} testPage - The page where you want to take screenshot
  * @param {import('@playwright/test').Page} popupPage - The popup page
- * @param {string} type - Type of annotation ('bug', 'note', 'idea', 'question')
+ * @param {string} type - Type of annotation ('bug' or 'note')
  */
 async function takeScreenshotWithExtension(testPage, popupPage, type = 'bug') {
   // Focus on the test page
@@ -237,9 +280,9 @@ async function takeScreenshotWithExtension(testPage, popupPage, type = 'bug') {
   // Take screenshot via extension (simulating the screenshot button click)
   await popupPage.bringToFront();
 
-  // Click the appropriate screenshot button based on type
-  const screenshotButtonId = `#screenshot${type.charAt(0).toUpperCase() + type.slice(1)}`;
-  await popupPage.click(screenshotButtonId);
+  const normalizedType = type === 'note' ? 'Note' : 'Bug';
+  await popupPage.click(`#${normalizedType}Btn`);
+  await popupPage.click('#addScreenshotBtn');
 
   // Wait for screenshot to be taken and processed
   await waitForStorageUpdate(popupPage, 1000);
@@ -285,6 +328,7 @@ module.exports = {
   openExtensionPopup,
   clearExtensionStorage,
   getSessionData,
+  getRecordingData,
   waitForStorageUpdate,
   takeScreenshotWithExtension,
   injectContentScript,

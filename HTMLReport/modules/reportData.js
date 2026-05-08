@@ -1,5 +1,5 @@
 import { Session } from '../../src/Session.js';
-import { Bug, Note, Idea, Question } from '../../src/Annotation.js';
+import { Bug, Note } from '../../src/Annotation.js';
 
 /**
  * Loads and reconstructs the session from the Chrome extension background.
@@ -18,14 +18,18 @@ export async function loadSessionData() {
 
     const session = new Session(sessionData.startDateTime, sessionData.browserInfo);
 
-    const annotationConstructors = { Bug, Note, Idea, Question };
-    const addMethods = { Bug: 'addBug', Note: 'addNote', Idea: 'addIdea', Question: 'addQuestion' };
+    const annotationConstructors = { Bug, Note };
+    const addMethods = { Bug: 'addBug', Note: 'addNote' };
 
     sessionData.annotations.forEach(annotation => {
         const Constructor = annotationConstructors[annotation.type];
         if (Constructor) {
             const newAnnotation = new Constructor(
-                annotation.name, annotation.url, annotation.timestamp, annotation.imageURL
+                annotation.name,
+                annotation.url,
+                annotation.timestamp,
+                annotation.imageURLs || annotation.imageURL || [],
+                annotation.id || null
             );
             session[addMethods[annotation.type]](newAnnotation);
         }
@@ -36,13 +40,31 @@ export async function loadSessionData() {
 
 /**
  * Deletes an annotation via the Chrome extension background.
- * @param {number} annotationID - Index of the annotation to delete.
+ * @param {string} annotationId - Stable annotation identifier.
  * @returns {Promise<object>} The response from the background script.
  */
-export function deleteAnnotation(annotationID) {
+export function deleteAnnotation(annotationId) {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage(
-            { type: "deleteAnnotation", annotationID },
+            { type: "deleteAnnotation", annotationId },
+            resolve
+        );
+    });
+}
+
+export function updateAnnotationName(annotationId, newName) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            { type: "updateAnnotationName", annotationId, newName },
+            resolve
+        );
+    });
+}
+
+export function deleteAnnotationImage(annotationId, imageIndex) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+            { type: "deleteAnnotationImage", annotationId, imageIndex },
             resolve
         );
     });
@@ -58,11 +80,13 @@ export function serializeSession(session) {
         startDateTime: session.getStartDateTime(),
         browserInfo: session.getBrowserInfo(),
         annotations: session.getAnnotations().map(a => ({
+            id: a.id,
             type: a.constructor.name,
             name: a.name,
             url: a.url,
             timestamp: a.timestamp,
-            imageURL: a.imageURL
+            imageURL: a.imageURL,
+            imageURLs: a.getImageURLs()
         }))
     };
 }

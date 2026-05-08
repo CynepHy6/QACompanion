@@ -322,7 +322,7 @@
     document.getElementById('undo-button').addEventListener('click', undo);
 
     // Action buttons
-    document.getElementById('save-with-annotations').addEventListener('click', () => {
+    document.getElementById('save-button').addEventListener('click', () => {
         // Get final canvas as data URL
         const annotatedImageData = canvas.toDataURL('image/png');
 
@@ -331,15 +331,6 @@
             type: 'annotationComplete',
             imageData: annotatedImageData,
             hasAnnotations: true
-        }, '*');
-    });
-
-    document.getElementById('save-without-annotations').addEventListener('click', () => {
-        // Send original image back
-        window.parent.postMessage({
-            type: 'annotationComplete',
-            imageData: imageData,
-            hasAnnotations: false
         }, '*');
     });
 
@@ -375,7 +366,7 @@
             e.preventDefault();
             undo();
         } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-            document.getElementById('save-with-annotations').click();
+            document.getElementById('save-button').click();
         }
     });
 

@@ -6,24 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always reference these skills when working on the codebase:
 
-- `.claude/skills/frontend-design/skill.md` for all CSS changes and UI componentes
+- `.claude/skills/frontend-design/SKILL.md` for CSS changes and UI components
 
 When working with E2E tests:
-- **ALWAYS** use the `playwright-cli` skill for:
+- use `.claude/skills/playwright-cli/SKILL.md` for:
   - Generating new tests
   - Exploring UI elements
   - Creating selectors
   - Capturing screenshots
-- Only write tests manually when the skill can't handle the specific case
-
-- Always use context7 when I need code generation, setup or configuration steps, or
-library/API documentation. This means you should automatically use the Context7 MCP
-tools to resolve library id and get library docs without me having to explicitly ask.
+- Only write tests manually when the skill cannot handle the specific case
 
 
 ## Project Overview
 
-Exploratory Testing Chrome Extension (Manifest v3) - A tool for web exploratory testing that allows testers to report bugs, ideas, notes, and questions with screenshots during testing sessions.
+QA Companion (Manifest v3) is a Chrome extension for exploratory testing with notes, screenshots, draft-based popup flow, and HTML reporting.
 
 ## Build and Test Commands
 
@@ -56,10 +52,14 @@ Session
 ├── BrowserInfo (os, browser version, cookies enabled)
 ├── StartDateTime
 └── annotations[]
-    ├── Bug (extends Annotation)
-    ├── Note (extends Annotation)
-    ├── Idea (extends Annotation)
-    └── Question (extends Annotation)
+    └── Annotation
+        ├── id
+        ├── type
+        ├── name
+        ├── url
+        ├── timestamp
+        ├── imageURLs[]
+        └── legacy imageURL
 ```
 
 ### Key Source Files
@@ -67,7 +67,7 @@ Session
 | File | Purpose |
 |------|---------|
 | `src/Session.js` | Main session management class |
-| `src/Annotation.js` | Annotation base class and subclasses (Bug, Note, Idea, Question) |
+| `src/Annotation.js` | Annotation base class and subclasses (Bug, Note) |
 | `src/browserInfo.js` | System/browser information collector |
 | `src/JSonSessionService.js` | JSON serialization/deserialization |
 | `src/ExportSessionCSV.js` | CSV export functionality |
@@ -75,8 +75,10 @@ Session
 ### Message Passing Protocol
 
 Communication between popup and background:
-- `addBug`, `addIdea`, `addNote`, `addQuestion`: Add annotation with optional screenshot
-- `updateAnnotationName`, `deleteAnnotation`: Modify annotations
+- `getDraft`, `updateDraft`, `clearDraft`: Draft management
+- `addDraftScreenshot`, `removeDraftImage`, `initiateCropSelection`: Draft screenshots
+- `createAnnotationFromDraft`: Save current draft as annotation
+- `updateAnnotationName`, `deleteAnnotation`, `deleteAnnotationImage`: Modify saved annotations
 - `exportSessionCSV`, `exportSessionJSon`, `importSessionJSon`: Import/export
 - `clearSession`, `getSessionData`, `getFullSession`: Session management
 - `csToBgCropData`: Process cropped screenshot from content script
@@ -90,10 +92,9 @@ Uses `chrome.storage.local` for persistence. The extension handles quota errors 
 - **Framework**: Jest 29.7.0
 - **Test location**: `test/spec/**/*.test.js`
 - **Chrome API mocks**: Defined in `jest.setup.js`
+- **E2E location**: `test/e2e/**/*.spec.js`
 
 When adding new Chrome API calls, update the mocks in `jest.setup.js`.
-
-**Known issue**: `test/spec/ExportSessionCSV.test.js` has syntax errors and needs fixing.
 
 ## Technology Stack
 
@@ -117,7 +118,7 @@ The HTML report (`HTMLReport/preview.html`) supports two download options:
    - **Only available in preview.html** (the initial report view)
    - NOT available in downloaded HTML reports (to avoid Windows security warnings)
    - Includes a README.txt file with session information
-   - Screenshots are named with type and timestamp
+   - Screenshots are named with type, timestamp, and per-annotation index
 
 ### Libraries
 

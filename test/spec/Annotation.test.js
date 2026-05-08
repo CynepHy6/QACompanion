@@ -1,4 +1,4 @@
-import { Annotation, Bug, Idea, Note, Question } from '../../src/Annotation';
+import { Annotation, Bug, Note } from '../../src/Annotation';
 
 describe('Annotation Classes', function () {
     let testName = "Test Annotation";
@@ -14,10 +14,12 @@ describe('Annotation Classes', function () {
         });
 
         it('should create an annotation with correct properties', function () {
+            expect(typeof annotation.getId()).toBe('string');
             expect(annotation.getName()).toBe(testName);
             expect(annotation.getURL()).toBe(testUrl);
             expect(annotation.getTimeStamp().getTime()).toBe(testTimestamp);
             expect(annotation.getImageURL()).toBe(testImageUrl);
+            expect(annotation.getImageURLs()).toEqual([testImageUrl]);
         });
 
         it('should allow changing the name', function () {
@@ -30,6 +32,20 @@ describe('Annotation Classes', function () {
             const newImageUrl = "http://test.com/new-image.jpg";
             annotation.setImageURL(newImageUrl);
             expect(annotation.getImageURL()).toBe(newImageUrl);
+            expect(annotation.getImageURLs()).toEqual([newImageUrl]);
+        });
+
+        it('should support multiple image URLs', function () {
+            annotation.addImages([
+                "http://test.com/second-image.jpg",
+                "http://test.com/third-image.jpg"
+            ]);
+
+            expect(annotation.getImageURLs()).toEqual([
+                testImageUrl,
+                "http://test.com/second-image.jpg",
+                "http://test.com/third-image.jpg"
+            ]);
         });
     });
 
@@ -49,22 +65,6 @@ describe('Annotation Classes', function () {
         });
     });
 
-    describe('Idea Class', function () {
-        let idea;
-
-        beforeEach(function () {
-            idea = new Idea(testName, testUrl, testTimestamp, testImageUrl);
-        });
-
-        it('should create an idea with correct type', function () {
-            expect(idea.getType()).toBe("Idea");
-        });
-
-        it('should inherit from Annotation', function () {
-            expect(idea instanceof Annotation).toBe(true);
-        });
-    });
-
     describe('Note Class', function () {
         let note;
 
@@ -78,22 +78,6 @@ describe('Annotation Classes', function () {
 
         it('should inherit from Annotation', function () {
             expect(note instanceof Annotation).toBe(true);
-        });
-    });
-
-    describe('Question Class', function () {
-        let question;
-
-        beforeEach(function () {
-            question = new Question(testName, testUrl, testTimestamp, testImageUrl);
-        });
-
-        it('should create a question with correct type', function () {
-            expect(question.getType()).toBe("Question");
-        });
-
-        it('should inherit from Annotation', function () {
-            expect(question instanceof Annotation).toBe(true);
         });
     });
 }); 

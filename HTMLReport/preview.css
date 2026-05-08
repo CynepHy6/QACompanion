@@ -12,10 +12,6 @@
     --color-bug-light: #fef2f2;
     --color-note: #22c55e;
     --color-note-light: #f0fdf4;
-    --color-idea: #f59e0b;
-    --color-idea-light: #fffbeb;
-    --color-question: #3b82f6;
-    --color-question-light: #eff6ff;
 
     --color-primary: #6366f1;
     --color-primary-dark: #4f46e5;
@@ -239,8 +235,6 @@ body {
 
 .stat-card--bug .stat-card__icon { background-color: var(--color-bug-light); }
 .stat-card--note .stat-card__icon { background-color: var(--color-note-light); }
-.stat-card--idea .stat-card__icon { background-color: var(--color-idea-light); }
-.stat-card--question .stat-card__icon { background-color: var(--color-question-light); }
 
 .stat-card__content {
     display: flex;
@@ -255,8 +249,6 @@ body {
 
 .stat-card--bug .stat-card__count { color: var(--color-bug); }
 .stat-card--note .stat-card__count { color: var(--color-note); }
-.stat-card--idea .stat-card__count { color: var(--color-idea); }
-.stat-card--question .stat-card__count { color: var(--color-question); }
 
 .stat-card__label {
     font-size: 0.78rem;
@@ -374,8 +366,6 @@ body {
 
 .filter-pill--bug.active { background: var(--color-bug); border-color: var(--color-bug); }
 .filter-pill--note.active { background: var(--color-note); border-color: var(--color-note); }
-.filter-pill--idea.active { background: var(--color-idea); border-color: var(--color-idea); }
-.filter-pill--question.active { background: var(--color-question); border-color: var(--color-question); }
 
 /* ============================================
    Button Group & Download Button
@@ -475,8 +465,6 @@ body {
 
 .annotation-row--bug td:first-child { border-left: 3px solid var(--color-bug); }
 .annotation-row--note td:first-child { border-left: 3px solid var(--color-note); }
-.annotation-row--idea td:first-child { border-left: 3px solid var(--color-idea); }
-.annotation-row--question td:first-child { border-left: 3px solid var(--color-question); }
 
 .col-actions {
     width: 70px;
@@ -497,15 +485,39 @@ body {
 
 .type-badge--bug { background: var(--color-bug-light); color: var(--color-bug); }
 .type-badge--note { background: var(--color-note-light); color: var(--color-note); }
-.type-badge--idea { background: var(--color-idea-light); color: var(--color-idea); }
-.type-badge--question { background: var(--color-question-light); color: var(--color-question); }
 
 /* Table cell styles */
 .annotation-description {
     max-width: 300px;
+    min-width: 280px;
+}
+
+.description-editor,
+.annotation-description-text {
+    width: 100%;
+    min-height: 92px;
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.5;
+    font: inherit;
+}
+
+.description-editor {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    resize: vertical;
+    background: var(--color-surface);
+}
+
+.description-editor:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.annotation-description-text {
+    min-height: auto;
 }
 
 .annotation-url {
@@ -545,14 +557,25 @@ body {
    Screenshot Thumbnails
    ============================================ */
 .screenshot-cell {
-    width: 56px;
-    text-align: center;
+    min-width: 210px;
     position: relative;
 }
 
+.screenshot-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+    gap: 10px;
+}
+
+.screenshot-thumb {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .preview-image {
-    width: 36px;
-    height: 36px;
+    width: 100%;
+    height: 76px;
     cursor: pointer;
     border: 2px solid var(--color-border);
     border-radius: var(--radius-sm);
@@ -562,8 +585,35 @@ body {
 
 .preview-image:hover {
     border-color: var(--color-primary);
-    transform: scale(1.1);
+    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
+}
+
+.delete-image-btn,
+.save-description-btn {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.delete-image-btn:hover,
+.save-description-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: #f5f3ff;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* ============================================

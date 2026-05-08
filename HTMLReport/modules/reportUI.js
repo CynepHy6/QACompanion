@@ -1,15 +1,11 @@
 const ANNOTATION_ICONS = {
     Bug: '../images/bug.svg',
-    Note: '../images/note.svg',
-    Idea: '../images/light-bulb.svg',
-    Question: '../images/question.svg'
+    Note: '../images/note.svg'
 };
 
 const ANNOTATION_COLORS = {
     Bug: '#ef4444',
-    Note: '#22c55e',
-    Idea: '#f59e0b',
-    Question: '#3b82f6'
+    Note: '#22c55e'
 };
 
 /**
@@ -46,9 +42,7 @@ export function displaySessionInfo(session) {
 export function displayStats(session) {
     const stats = [
         { type: 'Bug', label: 'Bugs', count: session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
-        { type: 'Note', label: 'Notes', count: session.getNotes().length, icon: ANNOTATION_ICONS.Note },
-        { type: 'Idea', label: 'Ideas', count: session.getIdeas().length, icon: ANNOTATION_ICONS.Idea },
-        { type: 'Question', label: 'Questions', count: session.getQuestions().length, icon: ANNOTATION_ICONS.Question }
+        { type: 'Note', label: 'Notes', count: session.getNotes().length, icon: ANNOTATION_ICONS.Note }
     ];
 
     const statsContainer = document.getElementById('statsCards');
@@ -71,9 +65,7 @@ export function displayStats(session) {
 export function createAnnotationsChart(session) {
     const data = [
         session.getBugs().length,
-        session.getNotes().length,
-        session.getIdeas().length,
-        session.getQuestions().length
+        session.getNotes().length
     ];
 
     // Don't render chart if no annotations
@@ -86,14 +78,12 @@ export function createAnnotationsChart(session) {
     new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Bugs', 'Notes', 'Ideas', 'Questions'],
+            labels: ['Bugs', 'Notes'],
             datasets: [{
                 data,
                 backgroundColor: [
                     ANNOTATION_COLORS.Bug,
-                    ANNOTATION_COLORS.Note,
-                    ANNOTATION_COLORS.Idea,
-                    ANNOTATION_COLORS.Question
+                    ANNOTATION_COLORS.Note
                 ],
                 borderWidth: 0,
                 hoverOffset: 4
@@ -133,6 +123,7 @@ export function displayAnnotationsTable(session, currentFilter) {
 
     tableBody.innerHTML = filtered.map((annotation, index) => {
         const type = annotation.constructor.name;
+        const imageURLs = annotation.getImageURLs();
         return `
         <tr class="annotation-row annotation-row--${type.toLowerCase()}">
             <td>
@@ -141,26 +132,50 @@ export function displayAnnotationsTable(session, currentFilter) {
                     ${type}
                 </span>
             </td>
-            <td class="annotation-description">${escapeHtml(annotation.name)}</td>
+            <td class="annotation-description">
+                <textarea
+                    class="description-editor"
+                    data-annotation-id="${annotation.id}"
+                    rows="4">${escapeHtml(annotation.name)}</textarea>
+            </td>
             <td class="annotation-url">
                 ${annotation.url ? `<a href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener">${truncateUrl(annotation.url)}</a>` : '<span class="text-muted">N/A</span>'}
             </td>
             <td class="annotation-time">${annotation.timestamp ? new Date(annotation.timestamp).toLocaleString() : 'N/A'}</td>
             <td class="screenshot-cell">
-                ${annotation.imageURL
-                ? `<img src="${annotation.imageURL}"
-                         class="preview-image"
-                         data-index="${index}"
-                         data-preview="${annotation.imageURL}"
-                         alt="Screenshot">`
+                ${imageURLs.length > 0
+                ? `<div class="screenshot-gallery">
+                    ${imageURLs.map((imageURL, imageIndex) => `
+                        <div class="screenshot-thumb">
+                            <img src="${imageURL}"
+                                 class="preview-image"
+                                 data-annotation-id="${annotation.id}"
+                                 data-image-index="${imageIndex}"
+                                 data-preview="${imageURL}"
+                                 alt="Screenshot ${imageIndex + 1}">
+                            <button
+                                class="delete-image-btn"
+                                data-annotation-id="${annotation.id}"
+                                data-image-index="${imageIndex}"
+                                title="Remove screenshot">
+                                Remove
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>`
                 : '<span class="text-muted">--</span>'}
             </td>
             <td>
-                <button class="delete-btn" data-index="${index}" title="Delete annotation">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <div class="row-actions">
+                    <button class="save-description-btn" data-annotation-id="${annotation.id}" title="Save description">
+                        Save
+                    </button>
+                    <button class="delete-btn" data-annotation-id="${annotation.id}" title="Delete annotation">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M5.5 5.5v6m5-6v6M2 3.5h12m-1.5 0l-.533 8.528A1.5 1.5 0 0110.477 13.5H5.523a1.5 1.5 0 01-1.49-1.472L3.5 3.5m3-1.5h3a1 1 0 011 1v.5h-5V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
+                        </svg>
+                    </button>
+                </div>
             </td>
         </tr>`;
     }).join('');

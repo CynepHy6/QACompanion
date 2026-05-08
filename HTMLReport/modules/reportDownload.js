@@ -5,9 +5,15 @@ import { serializeSession } from './reportData.js';
  */
 export async function downloadAllImages(session) {
     const annotations = session.getAnnotations();
-    const imagesWithScreenshots = annotations.filter(a => a.imageURL);
+    const screenshots = annotations.flatMap((annotation) => {
+        return annotation.getImageURLs().map((imageURL, imageIndex) => ({
+            annotation,
+            imageURL,
+            imageIndex
+        }));
+    });
 
-    if (imagesWithScreenshots.length === 0) {
+    if (screenshots.length === 0) {
         alert('No screenshots available to download.');
         return;
     }
@@ -24,20 +30,22 @@ export async function downloadAllImages(session) {
     const readmeContent = `Exploratory Testing Screenshots
 Generated: ${new Date().toLocaleString()}
 Source: Exploratory Testing Chrome Extension
-Total screenshots: ${imagesWithScreenshots.length}
+Total screenshots: ${screenshots.length}
 
 This ZIP file is safe and contains screenshots captured during your testing session.`;
     zip.file('README.txt', readmeContent);
 
     // Add all images to the ZIP
-    for (let i = 0; i < imagesWithScreenshots.length; i++) {
-        const annotation = imagesWithScreenshots[i];
-        const type = annotation.constructor.name;
-        const timestamp = annotation.timestamp ? new Date(annotation.timestamp).toISOString().replace(/[:.]/g, '-') : `annotation-${i}`;
-        const fileName = `${i + 1}_${type}_${timestamp}.png`;
+    for (let screenshotIndex = 0; screenshotIndex < screenshots.length; screenshotIndex++) {
+        const screenshot = screenshots[screenshotIndex];
+        const type = screenshot.annotation.constructor.name;
+        const timestamp = screenshot.annotation.timestamp
+            ? new Date(screenshot.annotation.timestamp).toISOString().replace(/[:.]/g, '-')
+            : `annotation-${screenshotIndex}`;
+        const fileName = `${screenshotIndex + 1}_${type}_${timestamp}_${screenshot.imageIndex + 1}.png`;
 
         // Convert base64 to binary
-        const base64Data = annotation.imageURL.split(',')[1];
+        const base64Data = screenshot.imageURL.split(',')[1];
         imgFolder.file(fileName, base64Data, { base64: true });
     }
 
@@ -60,9 +68,7 @@ This ZIP file is safe and contains screenshots captured during your testing sess
 
 const SVG_PATHS = {
     Bug: '../images/bug.svg',
-    Note: '../images/note.svg',
-    Idea: '../images/light-bulb.svg',
-    Question: '../images/question.svg'
+    Note: '../images/note.svg'
 };
 
 /**
@@ -135,6 +141,17 @@ function removeInteractiveElements(container) {
     // Remove delete column from each row
     container.querySelectorAll('tbody tr').forEach(row => {
         if (row.lastElementChild) row.lastElementChild.remove();
+    });
+
+    container.querySelectorAll('.description-editor').forEach((editor) => {
+        const textBlock = document.createElement('div');
+        textBlock.className = 'annotation-description-text';
+        textBlock.textContent = editor.value;
+        editor.replaceWith(textBlock);
+    });
+
+    container.querySelectorAll('.save-description-btn, .delete-image-btn').forEach((button) => {
+        button.remove();
     });
 }
 
