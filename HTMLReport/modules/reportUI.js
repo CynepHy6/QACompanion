@@ -68,11 +68,21 @@ export function displayRecordingCard(recordingState) {
         return;
     }
 
+    const hasReplayFailure = recordingState.failedStepId && recordingState.lastError;
+    const titleText = hasReplayFailure
+        ? 'Replay Stopped'
+        : (recordingState.steps.length > 0 ? 'Flow Captured' : 'No Recorded Flow');
+    const bodyText = hasReplayFailure
+        ? recordingState.lastError
+        : (recordingState.steps.length > 0
+            ? 'Recorded actions are included below and restored on import.'
+            : 'No recorder steps were available in the exported state.');
+
     recordingStateCard.innerHTML = `
         <div class="state-card__header">
             <div>
                 <p class="state-card__eyebrow">Recorder Snapshot</p>
-                <h3 class="state-card__title">${recordingState.steps.length > 0 ? 'Flow Captured' : 'No Recorded Flow'}</h3>
+                <h3 class="state-card__title">${titleText}</h3>
             </div>
             <span class="state-card__badge${recordingState.steps.length > 0 ? '' : ' is-muted'}">${recordingState.steps.length} steps</span>
         </div>
@@ -90,7 +100,7 @@ export function displayRecordingCard(recordingState) {
                 <span class="state-metric__value">${recordingState.stoppedAt ? formatDateTime(recordingState.stoppedAt) : 'N/A'}</span>
             </div>
         </div>
-        <p class="state-card__body">${recordingState.steps.length > 0 ? 'Recorded actions are included below and restored on import.' : 'No recorder steps were available in the exported state.'}</p>
+        <p class="state-card__body">${escapeHtml(bodyText)}</p>
     `;
 }
 
@@ -111,8 +121,9 @@ export function displayRecordingTimeline(recordingState) {
 
     recordingTimeline.innerHTML = recordingState.steps.map((stepItem, stepIndex) => {
         const linkedScreenshot = screenshotByStepId.get(stepItem.stepId);
+        const isFailedStep = recordingState.failedStepId === stepItem.stepId;
         return `
-            <article class="recording-step">
+            <article class="recording-step${isFailedStep ? ' is-failed' : ''}">
                 <div class="recording-step__header">
                     <span class="recording-step__index">Step ${stepIndex + 1}</span>
                     <span class="recording-step__type">${escapeHtml(stepItem.type)}</span>
@@ -126,6 +137,7 @@ export function displayRecordingTimeline(recordingState) {
                     </div>
                     <div class="recording-step__content">
                         <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
+                        ${isFailedStep && recordingState.lastError ? `<p class="recording-step__error">${escapeHtml(recordingState.lastError)}</p>` : ''}
                         ${stepItem.url ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
                         ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
                     </div>

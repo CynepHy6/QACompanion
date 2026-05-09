@@ -81,6 +81,7 @@ function sanitizeRecording(recordingState = {}) {
         status: 'idle',
         tabId: null,
         activeStepId: '',
+        failedStepId: '',
         lastError: ''
     };
 }

@@ -72,6 +72,7 @@ export function createEmptyRecording() {
         lastKnownUrl: '',
         lastError: '',
         activeStepId: '',
+        failedStepId: '',
         steps: [],
         screenshots: []
     };
@@ -92,6 +93,7 @@ export function normalizeRecording(rawRecording = {}) {
         lastKnownUrl: typeof rawRecording.lastKnownUrl === 'string' ? rawRecording.lastKnownUrl : '',
         lastError: typeof rawRecording.lastError === 'string' ? rawRecording.lastError : '',
         activeStepId: typeof rawRecording.activeStepId === 'string' ? rawRecording.activeStepId : '',
+        failedStepId: typeof rawRecording.failedStepId === 'string' ? rawRecording.failedStepId : '',
         steps: Array.isArray(rawRecording.steps)
             ? rawRecording.steps.map((stepItem) => normalizeRecordingStep(stepItem)).filter((stepItem) => stepItem.stepId !== '')
             : [],

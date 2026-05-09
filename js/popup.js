@@ -53,6 +53,7 @@ function getRecordingStateSignature(recordingState) {
     stoppedAt: recordingState?.stoppedAt || null,
     lastError: recordingState?.lastError || '',
     activeStepId: recordingState?.activeStepId || '',
+    failedStepId: recordingState?.failedStepId || '',
     stepCount: recordingState?.stepCount || 0,
     screenshotCount: recordingState?.screenshotCount || 0,
     canPlay: Boolean(recordingState?.canPlay),
@@ -70,6 +71,7 @@ function createEmptyRecordingState() {
     stoppedAt: null,
     lastError: '',
     activeStepId: '',
+    failedStepId: '',
     stepCount: 0,
     screenshotCount: 0,
     canPlay: false,
@@ -280,6 +282,18 @@ function getRecordingStepSummary(stepItem) {
   return stepItem.type;
 }
 
+function getHighlightedRecordingStepId() {
+  if (currentRecording.status === 'replaying' && currentRecording.activeStepId !== '') {
+    return currentRecording.activeStepId;
+  }
+
+  if (currentRecording.failedStepId) {
+    return currentRecording.failedStepId;
+  }
+
+  return '';
+}
+
 function escapeHtml(textValue) {
   return String(textValue)
     .replaceAll('&', '&amp;')
@@ -314,29 +328,36 @@ function renderRecordingSteps() {
   hidePopupHoverPreview();
   recordingStepsList.innerHTML = currentRecording.steps.map((stepItem, stepIndex) => {
     const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
-    const isActiveStep = currentRecording.activeStepId === stepItem.stepId;
+    const isActiveStep = currentRecording.status === 'replaying' && currentRecording.activeStepId === stepItem.stepId;
+    const isFailedStep = currentRecording.failedStepId === stepItem.stepId;
+    const stepStateClassName = isFailedStep ? ' is-failed' : (isActiveStep ? ' is-active' : '');
+    const failureDetailsMarkup = isFailedStep && currentRecording.lastError
+      ? `<p class="recording-step-card__error">${escapeHtml(currentRecording.lastError)}</p>`
+      : '';
     return `
-      <article class="recording-step-card${isActiveStep ? ' is-active' : ''}" data-step-id="${escapeHtml(stepItem.stepId)}">
+      <article class="recording-step-card${stepStateClassName}" data-step-id="${escapeHtml(stepItem.stepId)}">
         <div class="recording-step-card__meta">
           <span class="recording-step-card__index">Step ${stepIndex + 1}</span>
           <span class="recording-step-card__type">${escapeHtml(stepItem.type)}</span>
         </div>
         ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="Step ${stepIndex + 1} screenshot" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
         <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
+        ${failureDetailsMarkup}
       </article>
     `;
   }).join('');
 
-  if (currentRecording.activeStepId === '') {
+  const highlightedStepId = getHighlightedRecordingStepId();
+  if (highlightedStepId === '') {
     lastScrolledReplayStepId = '';
     return;
   }
 
-  if (currentPopupMode !== 'recorder' || currentRecording.activeStepId === lastScrolledReplayStepId) {
+  if (currentPopupMode !== 'recorder' || highlightedStepId === lastScrolledReplayStepId) {
     return;
   }
 
-  const activeStepCard = recordingStepsList.querySelector(`[data-step-id="${CSS.escape(currentRecording.activeStepId)}"]`);
+  const activeStepCard = recordingStepsList.querySelector(`[data-step-id="${CSS.escape(highlightedStepId)}"]`);
   if (!activeStepCard) {
     return;
   }
@@ -346,7 +367,7 @@ function renderRecordingSteps() {
     inline: 'nearest',
     behavior: 'smooth'
   });
-  lastScrolledReplayStepId = currentRecording.activeStepId;
+  lastScrolledReplayStepId = highlightedStepId;
 }
 
 function getRecordingStatusText() {
@@ -508,7 +529,11 @@ async function loadRecordingState() {
   }
 
   currentRecording = nextRecordingState;
-  if (currentRecording.status === 'recording' || currentRecording.status === 'replaying') {
+  if (
+    currentRecording.status === 'recording' ||
+    currentRecording.status === 'replaying' ||
+    currentRecording.failedStepId
+  ) {
     currentPopupMode = 'recorder';
   }
   renderRecordingControls();
@@ -637,7 +662,9 @@ async function playRecording() {
   currentRecording = {
     ...currentRecording,
     status: 'replaying',
-    lastError: ''
+    lastError: '',
+    activeStepId: '',
+    failedStepId: ''
   };
   renderRecordingControls();
 
@@ -826,8 +853,8 @@ function bindEvents() {
 
   elements.playRecordingButton.addEventListener('click', () => {
     playRecording().catch((error) => {
+      console.warn('Replay failed:', error.message);
       loadRecordingState().catch(() => {});
-      alert(error.message);
     });
   });
 

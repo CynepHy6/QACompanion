@@ -131,6 +131,49 @@ test.describe('Recording and Replay', () => {
     await expect(testPage.locator('#customChipState')).toHaveText('ON');
   });
 
+  test('should stop replay and highlight the failed step when the target element is missing', async () => {
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+
+    await testPage.click('#customChip');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 500);
+
+    const recordingData = await getRecordingData(popupPage);
+    const recordedClickStep = recordingData.steps.find((stepItem) => stepItem.type === 'click');
+
+    expect(recordedClickStep).toBeTruthy();
+
+    await testPage.evaluate(() => {
+      const chipElement = document.getElementById('customChip');
+      if (!chipElement) {
+        return;
+      }
+
+      chipElement.removeAttribute('id');
+    });
+
+    const playbackResponse = await sendRuntimeMessage(popupPage, { type: 'playRecordingFlow' });
+    expect(playbackResponse.status).toBe('error');
+    expect(playbackResponse.error).toBe('Step 1 failed: target element not found.');
+
+    await expect.poll(async () => {
+      const latestRecordingState = await sendRuntimeMessage(popupPage, { type: 'getRecordingState' });
+      return latestRecordingState.recording;
+    }).toMatchObject({
+      status: 'idle',
+      lastError: 'Step 1 failed: target element not found.',
+      failedStepId: recordedClickStep.stepId
+    });
+
+    await popupPage.click('#recorderTabBtn');
+    await expect(popupPage.locator('#recordingStatus')).toContainText('Step 1 failed: target element not found.', {
+      timeout: 4000
+    });
+    await expect(popupPage.locator('.recording-step-card.is-failed')).toHaveCount(1);
+  });
+
   test('should require confirmation before clearing recorded steps', async () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });

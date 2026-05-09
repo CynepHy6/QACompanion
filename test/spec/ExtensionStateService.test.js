@@ -57,6 +57,7 @@ describe('ExtensionStateService', function () {
             lastKnownUrl: 'http://example.test/page',
             lastError: 'temporary',
             activeStepId: 'step-2',
+            failedStepId: 'step-2',
             steps: [
                 {
                     stepId: 'step-1',
@@ -131,6 +132,7 @@ describe('ExtensionStateService', function () {
         expect(exportedState.recording.status).toBe('idle');
         expect(exportedState.recording.tabId).toBeNull();
         expect(exportedState.recording.activeStepId).toBe('');
+        expect(exportedState.recording.failedStepId).toBe('');
         expect(exportedState.recording.lastError).toBe('');
     });
 

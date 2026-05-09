@@ -108,6 +108,7 @@ function createRecordingPayload() {
         stoppedAt: recording.stoppedAt,
         lastError: recording.lastError,
         activeStepId: recording.activeStepId,
+        failedStepId: recording.failedStepId,
         stepCount: recording.steps.length,
         screenshotCount: recording.screenshots.length,
         canPlay: recording.steps.length > 0 && recording.status === 'idle',
@@ -137,6 +138,10 @@ function updateRecordingStatus(nextStatus, errorMessage = '') {
     if (nextStatus !== 'replaying') {
         recording.activeStepId = '';
     }
+}
+
+function clearReplayFailureState() {
+    recording.failedStepId = '';
 }
 
 function shouldCaptureRecordingScreenshot(stepType) {
@@ -226,6 +231,41 @@ function markRecordingStopped() {
 async function setActiveReplayStep(stepId) {
     recording.activeStepId = typeof stepId === 'string' ? stepId : '';
     await saveRecording();
+}
+
+function createReplayStepError(stepItem, stepIndex, playbackResponse = null) {
+    const stepNumber = stepIndex + 1;
+    const replayError = new Error(`Step ${stepNumber} failed: unable to replay the recorded action.`);
+    replayError.failedStepId = stepItem?.stepId || '';
+
+    if (playbackResponse?.reason === 'target-not-found') {
+        replayError.message = `Step ${stepNumber} failed: target element not found.`;
+        return replayError;
+    }
+
+    if (typeof playbackResponse?.error === 'string' && playbackResponse.error.trim() !== '') {
+        replayError.message = `Step ${stepNumber} failed: ${playbackResponse.error}`;
+    }
+
+    return replayError;
+}
+
+function normalizeReplayStepError(stepItem, stepIndex, originalError) {
+    if (originalError?.failedStepId && typeof originalError.failedStepId === 'string') {
+        return originalError;
+    }
+
+    const stepNumber = stepIndex + 1;
+    const replayError = new Error(`Step ${stepNumber} failed: unable to replay the recorded action.`);
+    replayError.failedStepId = stepItem?.stepId || '';
+
+    if (typeof originalError?.message === 'string' && originalError.message.trim() !== '') {
+        replayError.message = originalError.message.startsWith(`Step ${stepNumber} failed:`)
+            ? originalError.message
+            : `Step ${stepNumber} failed: ${originalError.message}`;
+    }
+
+    return replayError;
 }
 
 async function saveDraft() {
@@ -381,7 +421,16 @@ function getSessionSummaryPayload() {
 }
 
 function getFullSessionPayload() {
-    return buildExtensionStatePayload(session, draft, recording);
+    const extensionState = buildExtensionStatePayload(session, draft, recording);
+    return {
+        ...extensionState,
+        recording: {
+            ...extensionState.recording,
+            lastError: recording.lastError,
+            activeStepId: recording.activeStepId,
+            failedStepId: recording.failedStepId
+        }
+    };
 }
 
 function formatExportTimestamp(dateValue) {
@@ -462,6 +511,7 @@ async function startRecordingFlow() {
     nextRecording.startedAt = Date.now();
     nextRecording.tabId = activeTab.id;
     nextRecording.lastKnownUrl = activeTab.url || '';
+    nextRecording.failedStepId = '';
 
     recording = nextRecording;
 
@@ -659,6 +709,7 @@ async function playRecordingFlow() {
     playbackToken = playbackId;
     recording.status = 'replaying';
     recording.lastError = '';
+    clearReplayFailureState();
     recording.tabId = activeTab.id;
     await saveRecording();
 
@@ -677,20 +728,24 @@ async function playRecordingFlow() {
 
             const stepItem = recording.steps[stepIndex];
             await setActiveReplayStep(stepItem.stepId);
-            if (stepItem.type === 'navigation') {
-                const currentTab = await chrome.tabs.get(activeTab.id);
-                if (currentTab.url !== stepItem.url) {
-                    await chrome.tabs.update(activeTab.id, { url: stepItem.url });
-                }
+            try {
+                if (stepItem.type === 'navigation') {
+                    const currentTab = await chrome.tabs.get(activeTab.id);
+                    if (currentTab.url !== stepItem.url) {
+                        await chrome.tabs.update(activeTab.id, { url: stepItem.url });
+                    }
 
-                await waitForTabComplete(activeTab.id, stepItem.url);
-                await ensureContentScriptReady(activeTab.id);
-            } else {
-                await waitForTabComplete(activeTab.id);
-                const playbackResponse = await playRecordedStepOnTab(activeTab.id, stepItem);
-                if (!playbackResponse || playbackResponse.success !== true) {
-                    throw new Error(playbackResponse?.error || `Failed to replay step ${stepItem.type}.`);
+                    await waitForTabComplete(activeTab.id, stepItem.url);
+                    await ensureContentScriptReady(activeTab.id);
+                } else {
+                    await waitForTabComplete(activeTab.id);
+                    const playbackResponse = await playRecordedStepOnTab(activeTab.id, stepItem);
+                    if (!playbackResponse || playbackResponse.success !== true) {
+                        throw createReplayStepError(stepItem, stepIndex, playbackResponse);
+                    }
                 }
+            } catch (error) {
+                throw normalizeReplayStepError(stepItem, stepIndex, error);
             }
 
             const nextStep = getNextStepForPlayback(stepIndex);
@@ -701,10 +756,12 @@ async function playRecordingFlow() {
 
         updateRecordingStatus('idle');
         markRecordingStopped();
+        clearReplayFailureState();
         await saveRecording();
         clearPlaybackToken();
         return createRecordingPayload();
     } catch (error) {
+        recording.failedStepId = typeof error?.failedStepId === 'string' ? error.failedStepId : '';
         updateRecordingStatus('idle', error.message || 'Replay failed.');
         markRecordingStopped();
         await saveRecording();
@@ -716,6 +773,7 @@ async function playRecordingFlow() {
 async function cancelPlayback() {
     playbackToken = null;
     if (recording.status === 'replaying') {
+        clearReplayFailureState();
         updateRecordingStatus('idle', 'Replay cancelled.');
         markRecordingStopped();
         await saveRecording();

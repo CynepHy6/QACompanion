@@ -90,8 +90,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
     // This listener is added once per page load/script injection context
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.type === "startSelection") {
-            console.log("Content script: 'startSelection' message received with type:", request.annotationType, "and description:", request.description ? request.description.substring(0, 50) + "..." : "N/A");
-
             // Check if extension context is valid
             if (!isExtensionContextValid()) {
                 // Silently show notification without console warnings
@@ -177,7 +175,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 
         document.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('keydown', handleKeyDown);
-        console.log("Content script: Initialized for new selection. Mousedown and keydown listeners added. Notification shown.");
     }
 
     function handleMouseDown(event) {
@@ -196,7 +193,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
-        console.log("Content script: Mouse down, drawing started.");
     }
 
     function handleMouseMove(event) {
@@ -224,7 +220,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
         event.preventDefault();
         event.stopPropagation();
 
-        console.log("Content script: Mouse up, drawing ended.");
         cleanUpInProgressSelectionListeners();
 
         let finalX = parseInt(selectionBox.style.left, 10);
@@ -246,7 +241,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
                 }, 50); // Wait 50ms for the DOM to fully update
             });
         } else {
-            console.log("Content script: Selection was too small or invalid.");
             safeSendMessage({
                 type: "selectionCancelled",
                 annotationType: currentAnnotationType
@@ -323,9 +317,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
                     annotationType: currentAnnotationType,
                     description: currentDescription
                 });
-
-                console.log("Content script: Sent annotated crop data to background");
-
                 // Reset and cleanup
                 currentAnnotationType = null;
                 currentDescription = null;
@@ -359,10 +350,8 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 
     function handleKeyDown(event) {
         if (event.key === 'Escape') {
-            console.log("Content script: Escape key pressed.");
             if (isDrawing) {
                 isDrawing = false;
-                console.log("Content script: Cancelling active drawing.");
             }
             if (selectionBox) selectionBox.style.display = 'none';
             cleanUpAllSelectionListeners();
@@ -372,7 +361,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
                 type: "selectionCancelled",
                 annotationType: currentAnnotationType // Include type
             });
-            console.log("Content script: Selection cancelled via Escape. Sent 'selectionCancelled' for type:", currentAnnotationType);
             // Reset stored type and description
             currentAnnotationType = null;
             currentDescription = null;
@@ -382,7 +370,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
     function cleanUpInProgressSelectionListeners() {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
-        console.log("Content script: Cleaned up mousemove and mouseup listeners.");
     }
 
     function cleanUpAllSelectionListeners() {
@@ -390,7 +377,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
         document.removeEventListener('keydown', handleKeyDown);
-        console.log("Content script: Cleaned up all selection listeners (mousedown, mousemove, mouseup, keydown).");
     }
 
     // Initial creation of the selection box
@@ -398,7 +384,6 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 
 }
 else {
-    console.log("Content script: Already initialized. Waiting for 'startSelection' message.");
 }
 
 if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
@@ -713,7 +698,11 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         }
 
         if (locatorData.strategy === 'css') {
-            return document.querySelector(locatorData.value);
+            try {
+                return document.querySelector(locatorData.value);
+            } catch {
+                return null;
+            }
         }
 
         return null;
@@ -801,7 +790,8 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         if (!targetElement) {
             return {
                 success: false,
-                error: `Element not found for ${stepData.type}.`
+                reason: 'target-not-found',
+                error: 'Target element not found.'
             };
         }
 
