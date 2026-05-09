@@ -1,4 +1,4 @@
-import { Bug, Note, normalizeImageURLs } from './Annotation.js';
+import { Bug, Note, normalizeImageEntries } from './Annotation.js';
 import { Session } from './Session.js';
 
 const CONSTRUCTOR_BY_TYPE = {
@@ -14,12 +14,12 @@ function getSessionBrowserInfo(rawObject) {
     return rawObject.BrowserInfo || rawObject.browserInfo || null;
 }
 
-function getAnnotationImages(rawAnnotation) {
-    if (Array.isArray(rawAnnotation.imageURLs)) {
-        return rawAnnotation.imageURLs;
+function getAnnotationImageEntries(rawAnnotation) {
+    if (Array.isArray(rawAnnotation.imageEntries)) {
+        return rawAnnotation.imageEntries;
     }
 
-    return normalizeImageURLs(rawAnnotation.imageURL || []);
+    return normalizeImageEntries(rawAnnotation.imageURLs || rawAnnotation.imageURL || []);
 }
 
 export class JSonSessionService {
@@ -54,7 +54,7 @@ export class JSonSessionService {
             rawAnnotation.name,
             rawAnnotation.url,
             rawAnnotation.timestamp,
-            getAnnotationImages(rawAnnotation),
+            getAnnotationImageEntries(rawAnnotation),
             rawAnnotation.id || null
         );
     }

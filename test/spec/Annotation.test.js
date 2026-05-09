@@ -20,6 +20,12 @@ describe('Annotation Classes', function () {
             expect(annotation.getTimeStamp().getTime()).toBe(testTimestamp);
             expect(annotation.getImageURL()).toBe(testImageUrl);
             expect(annotation.getImageURLs()).toEqual([testImageUrl]);
+            expect(annotation.getImageEntries()).toEqual([
+                expect.objectContaining({
+                    imageURL: testImageUrl,
+                    createdAt: expect.any(Number)
+                })
+            ]);
         });
 
         it('should allow changing the name', function () {
@@ -46,6 +52,7 @@ describe('Annotation Classes', function () {
                 "http://test.com/second-image.jpg",
                 "http://test.com/third-image.jpg"
             ]);
+            expect(annotation.getImageEntries()).toHaveLength(3);
         });
     });
 

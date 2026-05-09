@@ -28,7 +28,7 @@ export async function loadSessionData() {
                 annotation.name,
                 annotation.url,
                 annotation.timestamp,
-                annotation.imageURLs || annotation.imageURL || [],
+                annotation.imageEntries || annotation.imageURLs || annotation.imageURL || [],
                 annotation.id || null
             );
             session[addMethods[annotation.type]](newAnnotation);
@@ -86,7 +86,8 @@ export function serializeSession(session) {
             url: a.url,
             timestamp: a.timestamp,
             imageURL: a.imageURL,
-            imageURLs: a.getImageURLs()
+            imageURLs: a.getImageURLs(),
+            imageEntries: a.getImageEntries()
         }))
     };
 }

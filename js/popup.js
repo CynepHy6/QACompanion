@@ -27,6 +27,25 @@ let clearDraftArmed = false;
 let clearRecordingArmed = false;
 let screenshotCooldownTimer = null;
 let recordingStatePollTimer = null;
+let hoverPreviewAnchorElement = null;
+let armedDraftImageIndex = null;
+
+function getRecordingStateSignature(recordingState) {
+  return JSON.stringify({
+    id: recordingState?.id || '',
+    status: recordingState?.status || '',
+    startedAt: recordingState?.startedAt || null,
+    stoppedAt: recordingState?.stoppedAt || null,
+    lastError: recordingState?.lastError || '',
+    activeStepId: recordingState?.activeStepId || '',
+    stepCount: recordingState?.stepCount || 0,
+    screenshotCount: recordingState?.screenshotCount || 0,
+    canPlay: Boolean(recordingState?.canPlay),
+    hasRecording: Boolean(recordingState?.hasRecording),
+    steps: Array.isArray(recordingState?.steps) ? recordingState.steps : [],
+    screenshots: Array.isArray(recordingState?.screenshots) ? recordingState.screenshots : []
+  });
+}
 
 function createEmptyRecordingState() {
   return {
@@ -81,6 +100,7 @@ function getElements() {
     imagesContainer: document.getElementById('draftImages'),
     importInput: document.getElementById('importJsonInput'),
     playRecordingButton: document.getElementById('playRecordingBtn'),
+    popupHoverPreview: document.getElementById('popupImageHoverPreview'),
     recorderPanel: document.getElementById('recorderPanel'),
     recorderTabButton: document.getElementById('recorderTabBtn'),
     recordingScreenshotCountLabel: document.getElementById('recordingScreenshotCount'),
@@ -244,6 +264,7 @@ function renderRecordingSteps() {
   }
 
   recordingStepsList.className = 'recording-steps-list';
+  hidePopupHoverPreview();
   recordingStepsList.innerHTML = currentRecording.steps.map((stepItem, stepIndex) => {
     const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
     const locatorText = stepItem.locator?.value ? stepItem.locator.value : '';
@@ -254,7 +275,7 @@ function renderRecordingSteps() {
           <span class="recording-step-card__index">Step ${stepIndex + 1}</span>
           <span class="recording-step-card__type">${escapeHtml(stepItem.type)}</span>
         </div>
-        ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="Step ${stepIndex + 1} screenshot" class="recording-step-card__preview">` : ''}
+        ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="Step ${stepIndex + 1} screenshot" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
         <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
         ${locatorText ? `<p class="recording-step-card__locator">${escapeHtml(locatorText)}</p>` : ''}
       </article>
@@ -379,6 +400,7 @@ function renderDraft() {
 
 function renderDraftImages() {
   const { imagesContainer } = getElements();
+  hidePopupHoverPreview();
 
   if (currentDraft.imageURLs.length === 0) {
     imagesContainer.className = 'draft-images draft-images--empty';
@@ -389,13 +411,13 @@ function renderDraftImages() {
   imagesContainer.className = 'draft-images';
   imagesContainer.innerHTML = currentDraft.imageURLs.map((imageURL, imageIndex) => `
     <div class="draft-image-card__preview-shell">
-      <img src="${imageURL}" alt="Draft screenshot ${imageIndex + 1}" class="draft-image-card__preview">
+      <img src="${imageURL}" alt="Draft screenshot ${imageIndex + 1}" class="draft-image-card__preview popup-preview-image" data-preview="${imageURL}">
       <button
-        class="draft-image-card__remove"
+        class="draft-image-card__remove${armedDraftImageIndex === imageIndex ? ' is-armed' : ''}"
         data-image-index="${imageIndex}"
-        title="Remove screenshot"
-        aria-label="Remove screenshot">
-        <span class="visually-hidden">Remove screenshot</span>
+        title="${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}"
+        aria-label="${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}">
+        <span class="visually-hidden">${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}</span>
       </button>
     </div>
   `).join('');
@@ -426,7 +448,15 @@ async function updateCounters() {
 
 async function loadRecordingState() {
   const response = await sendRuntimeMessage({ type: 'getRecordingState' });
-  currentRecording = response?.recording || createEmptyRecordingState();
+  const nextRecordingState = response?.recording || createEmptyRecordingState();
+  const previousSignature = getRecordingStateSignature(currentRecording);
+  const nextSignature = getRecordingStateSignature(nextRecordingState);
+
+  if (previousSignature === nextSignature) {
+    return;
+  }
+
+  currentRecording = nextRecordingState;
   if (currentRecording.status === 'recording' || currentRecording.status === 'replaying') {
     currentPopupMode = 'recorder';
   }
@@ -515,6 +545,7 @@ async function saveDraftAnnotation() {
 
 async function removeDraftImage(imageIndex) {
   setClearDraftArmed(false);
+  armedDraftImageIndex = null;
   const response = await sendRuntimeMessage({
     type: 'removeDraftImage',
     imageIndex
@@ -677,7 +708,41 @@ function bindEvents() {
       return;
     }
 
-    removeDraftImage(Number(removeButton.dataset.imageIndex)).catch((error) => alert(error.message));
+    const imageIndex = Number(removeButton.dataset.imageIndex);
+    if (armedDraftImageIndex !== imageIndex) {
+      armedDraftImageIndex = imageIndex;
+      renderDraftImages();
+      return;
+    }
+
+    removeDraftImage(imageIndex).catch((error) => alert(error.message));
+  });
+
+  document.addEventListener('mouseover', (event) => {
+    const previewImage = event.target.closest('.popup-preview-image');
+    if (!previewImage) {
+      return;
+    }
+
+    showPopupHoverPreview(previewImage);
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    const previewImage = event.target.closest('.popup-preview-image');
+    if (!previewImage || previewImage !== hoverPreviewAnchorElement) {
+      return;
+    }
+
+    updatePopupHoverPreviewPosition(previewImage);
+  });
+
+  document.addEventListener('mouseout', (event) => {
+    const previewImage = event.target.closest('.popup-preview-image');
+    if (!previewImage || previewImage.contains(event.relatedTarget)) {
+      return;
+    }
+
+    hidePopupHoverPreview();
   });
 
   document.getElementById('exportCSVBtn').addEventListener('click', () => {
@@ -757,6 +822,94 @@ function bindEvents() {
 
     setClearRecordingArmed(false);
   });
+
+  document.addEventListener('click', (event) => {
+    if (armedDraftImageIndex === null) {
+      return;
+    }
+
+    if (event.target.closest('.draft-image-card__remove')) {
+      return;
+    }
+
+    armedDraftImageIndex = null;
+    renderDraftImages();
+  });
+
+  window.addEventListener('blur', hidePopupHoverPreview);
+  window.addEventListener('resize', () => {
+    if (!hoverPreviewAnchorElement) {
+      return;
+    }
+
+    updatePopupHoverPreviewPosition(hoverPreviewAnchorElement);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      hidePopupHoverPreview();
+    }
+  });
+}
+
+function showPopupHoverPreview(previewImage) {
+  const { popupHoverPreview } = getElements();
+  const previewSource = previewImage?.dataset.preview || previewImage?.getAttribute('src') || '';
+  if (!popupHoverPreview || previewSource === '') {
+    return;
+  }
+
+  popupHoverPreview.querySelector('img').src = previewSource;
+  popupHoverPreview.classList.add('is-active');
+  popupHoverPreview.setAttribute('aria-hidden', 'false');
+  hoverPreviewAnchorElement = previewImage;
+  updatePopupHoverPreviewPosition(previewImage);
+}
+
+function updatePopupHoverPreviewPosition(previewImage) {
+  const { popupHoverPreview } = getElements();
+  if (!popupHoverPreview || !popupHoverPreview.classList.contains('is-active') || !previewImage?.isConnected) {
+    return;
+  }
+
+  const anchorRect = previewImage.getBoundingClientRect();
+  const previewRect = popupHoverPreview.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const gapSize = 10;
+  const edgePadding = 8;
+  let previewLeft = anchorRect.left + ((anchorRect.width - previewRect.width) / 2);
+  let previewTop = anchorRect.top - previewRect.height - gapSize;
+
+  if (previewTop < edgePadding) {
+    previewTop = anchorRect.bottom + gapSize;
+  }
+
+  if (previewTop + previewRect.height > viewportHeight - edgePadding) {
+    previewTop = Math.max(edgePadding, viewportHeight - previewRect.height - edgePadding);
+  }
+
+  if (previewLeft < edgePadding) {
+    previewLeft = edgePadding;
+  }
+
+  if (previewLeft + previewRect.width > viewportWidth - edgePadding) {
+    previewLeft = viewportWidth - previewRect.width - edgePadding;
+  }
+
+  popupHoverPreview.style.left = `${previewLeft}px`;
+  popupHoverPreview.style.top = `${previewTop}px`;
+}
+
+function hidePopupHoverPreview() {
+  const { popupHoverPreview } = getElements();
+  if (!popupHoverPreview) {
+    return;
+  }
+
+  popupHoverPreview.classList.remove('is-active');
+  popupHoverPreview.setAttribute('aria-hidden', 'true');
+  popupHoverPreview.querySelector('img').src = '';
+  hoverPreviewAnchorElement = null;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

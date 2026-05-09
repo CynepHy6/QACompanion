@@ -40,6 +40,16 @@ describe('JSonSessionService', function () {
                 "http://test.com/bug-2.jpg"
             ]);
             expect(parsedJson.annotations[0].imageURL).toBe("http://test.com/bug-1.jpg");
+            expect(parsedJson.annotations[0].imageEntries).toEqual([
+                expect.objectContaining({
+                    imageURL: "http://test.com/bug-1.jpg",
+                    createdAt: expect.any(Number)
+                }),
+                expect.objectContaining({
+                    imageURL: "http://test.com/bug-2.jpg",
+                    createdAt: expect.any(Number)
+                })
+            ]);
         });
 
         it('should export session with no annotations', function () {
@@ -65,6 +75,16 @@ describe('JSonSessionService', function () {
             expect(restoredAnnotations[0].getImageURLs()).toEqual([
                 "http://test.com/bug-1.jpg",
                 "http://test.com/bug-2.jpg"
+            ]);
+            expect(restoredAnnotations[0].getImageEntries()).toEqual([
+                expect.objectContaining({
+                    imageURL: "http://test.com/bug-1.jpg",
+                    createdAt: expect.any(Number)
+                }),
+                expect.objectContaining({
+                    imageURL: "http://test.com/bug-2.jpg",
+                    createdAt: expect.any(Number)
+                })
             ]);
             expect(restoredAnnotations[0].getId()).toEqual(expect.any(String));
         });

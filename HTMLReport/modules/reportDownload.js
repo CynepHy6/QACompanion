@@ -6,9 +6,10 @@ import { serializeSession } from './reportData.js';
 export async function downloadAllImages(session) {
     const annotations = session.getAnnotations();
     const screenshots = annotations.flatMap((annotation) => {
-        return annotation.getImageURLs().map((imageURL, imageIndex) => ({
+        return annotation.getImageEntries().map((imageEntry, imageIndex) => ({
             annotation,
-            imageURL,
+            imageURL: imageEntry.imageURL,
+            createdAt: imageEntry.createdAt,
             imageIndex
         }));
     });
@@ -39,8 +40,8 @@ This ZIP file is safe and contains screenshots captured during your testing sess
     for (let screenshotIndex = 0; screenshotIndex < screenshots.length; screenshotIndex++) {
         const screenshot = screenshots[screenshotIndex];
         const type = screenshot.annotation.constructor.name;
-        const timestamp = screenshot.annotation.timestamp
-            ? new Date(screenshot.annotation.timestamp).toISOString().replace(/[:.]/g, '-')
+        const timestamp = screenshot.createdAt
+            ? new Date(screenshot.createdAt).toISOString().replace(/[:.]/g, '-')
             : `annotation-${screenshotIndex}`;
         const fileName = `${screenshotIndex + 1}_${type}_${timestamp}_${screenshot.imageIndex + 1}.png`;
 
@@ -227,6 +228,7 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
     </div>
     <script>
         const sessionData = ${sessionJSON};
+        let hoverPreviewAnchorElement = null;
 
         function showImagePreview(src) {
             const preview = document.getElementById('imagePreview');
@@ -240,33 +242,70 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
             previewImg.addEventListener('click', e => e.stopPropagation());
         }
 
+        function positionHoverPreview(previewImage) {
+            const preview = document.getElementById('imageHoverPreview');
+            if (!preview || !preview.classList.contains('active') || !previewImage || !previewImage.isConnected) {
+                return;
+            }
+
+            const anchorRect = previewImage.getBoundingClientRect();
+            const previewRect = preview.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const gapSize = 10;
+            const edgePadding = 8;
+            let previewLeft = anchorRect.left + ((anchorRect.width - previewRect.width) / 2);
+            let previewTop = anchorRect.top - previewRect.height - gapSize;
+
+            if (previewTop < edgePadding) {
+                previewTop = anchorRect.bottom + gapSize;
+            }
+
+            if (previewTop + previewRect.height > viewportHeight - edgePadding) {
+                previewTop = Math.max(edgePadding, viewportHeight - previewRect.height - edgePadding);
+            }
+
+            if (previewLeft < edgePadding) {
+                previewLeft = edgePadding;
+            }
+
+            if (previewLeft + previewRect.width > viewportWidth - edgePadding) {
+                previewLeft = viewportWidth - previewRect.width - edgePadding;
+            }
+
+            preview.style.left = previewLeft + 'px';
+            preview.style.top = previewTop + 'px';
+        }
+
         function setupImageHover() {
             document.querySelectorAll('.preview-image').forEach(img => {
                 img.addEventListener('click', e => { e.preventDefault(); showImagePreview(img.src); });
-                img.addEventListener('mouseenter', e => {
+                img.addEventListener('mouseenter', () => {
                     const p = document.getElementById('imageHoverPreview');
                     if (!p) return;
                     p.querySelector('img').src = img.src;
                     p.classList.add('active');
-                    updatePos(e);
+                    hoverPreviewAnchorElement = img;
+                    positionHoverPreview(img);
                 });
-                img.addEventListener('mousemove', updatePos);
+                img.addEventListener('mousemove', () => positionHoverPreview(img));
                 img.addEventListener('mouseleave', () => {
                     const p = document.getElementById('imageHoverPreview');
-                    if (p) p.classList.remove('active');
+                    if (p) {
+                        p.classList.remove('active');
+                        p.querySelector('img').src = '';
+                    }
+                    hoverPreviewAnchorElement = null;
                 });
             });
-        }
 
-        function updatePos(e) {
-            const p = document.getElementById('imageHoverPreview');
-            if (!p || !p.classList.contains('active')) return;
-            const o = 15;
-            let l = e.clientX + o, t = e.clientY + o;
-            if (l + p.offsetWidth > window.innerWidth) l = e.clientX - p.offsetWidth - o;
-            if (t + p.offsetHeight > window.innerHeight) t = e.clientY - p.offsetHeight - o;
-            p.style.left = l + 'px';
-            p.style.top = t + 'px';
+            window.addEventListener('resize', () => {
+                if (!hoverPreviewAnchorElement) {
+                    return;
+                }
+
+                positionHoverPreview(hoverPreviewAnchorElement);
+            });
         }
 
         // Filter functionality for downloaded report

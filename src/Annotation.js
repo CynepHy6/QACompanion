@@ -14,11 +14,7 @@ export function createAnnotationId() {
 }
 
 export function normalizeImageURLs(imageSource) {
-    const rawImages = Array.isArray(imageSource) ? imageSource : [imageSource];
-
-    return rawImages
-        .filter((imageEntry) => typeof imageEntry === "string" && imageEntry.length > 0)
-        .filter((imageEntry) => imageEntry !== REMOVED_IMAGE_PLACEHOLDER);
+    return normalizeImageEntries(imageSource).map((imageEntry) => imageEntry.imageURL);
 }
 
 function normalizeAnnotationTimestamp(timestampValue) {
@@ -40,6 +36,61 @@ function normalizeAnnotationTimestamp(timestampValue) {
     return Date.now();
 }
 
+function normalizeImageCreatedAt(createdAtValue, fallbackTimestamp = Date.now()) {
+    if (typeof createdAtValue === "number" && Number.isFinite(createdAtValue)) {
+        return createdAtValue;
+    }
+
+    if (typeof createdAtValue === "string" && createdAtValue.length > 0) {
+        const parsedTimestamp = new Date(createdAtValue).getTime();
+        if (!Number.isNaN(parsedTimestamp)) {
+            return parsedTimestamp;
+        }
+    }
+
+    return fallbackTimestamp;
+}
+
+function normalizeImageEntry(rawEntry, fallbackTimestamp = Date.now()) {
+    if (typeof rawEntry === "string") {
+        if (rawEntry.length === 0 || rawEntry === REMOVED_IMAGE_PLACEHOLDER) {
+            return null;
+        }
+
+        return {
+            imageURL: rawEntry,
+            createdAt: fallbackTimestamp
+        };
+    }
+
+    if (!rawEntry || typeof rawEntry !== "object") {
+        return null;
+    }
+
+    const imageURL = typeof rawEntry.imageURL === "string"
+        ? rawEntry.imageURL
+        : typeof rawEntry.url === "string"
+            ? rawEntry.url
+            : "";
+
+    if (imageURL.length === 0 || imageURL === REMOVED_IMAGE_PLACEHOLDER) {
+        return null;
+    }
+
+    return {
+        imageURL,
+        createdAt: normalizeImageCreatedAt(rawEntry.createdAt, fallbackTimestamp)
+    };
+}
+
+export function normalizeImageEntries(imageSource, fallbackTimestamp = Date.now()) {
+    const rawImages = Array.isArray(imageSource) ? imageSource : [imageSource];
+
+    return rawImages
+        .map((imageEntry) => normalizeImageEntry(imageEntry, fallbackTimestamp))
+        .filter((imageEntry) => imageEntry !== null);
+}
+
 export class Annotation {
     constructor(typeName, name, url, timestamp, imageSource = [], annotationId = null) {
         if (arguments.length <= 4) {
@@ -56,11 +107,12 @@ export class Annotation {
         this.name = name || "";
         this.url = url || "";
         this.timestamp = normalizeAnnotationTimestamp(timestamp);
-        this.imageURLs = normalizeImageURLs(imageSource);
-        this.imageURL = this.imageURLs[0] || "";
+        this.imageEntries = normalizeImageEntries(imageSource, this.timestamp);
+        this.syncLegacyImageData();
     }
 
-    syncLegacyImageURL() {
+    syncLegacyImageData() {
+        this.imageURLs = this.imageEntries.map((imageEntry) => imageEntry.imageURL);
         this.imageURL = this.imageURLs[0] || "";
     }
 
@@ -89,42 +141,47 @@ export class Annotation {
     }
 
     setImageURL(imageURL) {
-        this.imageURLs = normalizeImageURLs(imageURL);
-        this.syncLegacyImageURL();
+        this.imageEntries = normalizeImageEntries(imageURL);
+        this.syncLegacyImageData();
     }
 
     setImageURLs(imageURLs) {
-        this.imageURLs = normalizeImageURLs(imageURLs);
-        this.syncLegacyImageURL();
+        this.imageEntries = normalizeImageEntries(imageURLs);
+        this.syncLegacyImageData();
+    }
+
+    setImageEntries(imageEntries) {
+        this.imageEntries = normalizeImageEntries(imageEntries, this.timestamp);
+        this.syncLegacyImageData();
     }
 
     addImage(imageURL) {
-        const normalizedImages = normalizeImageURLs(imageURL);
+        const normalizedImages = normalizeImageEntries(imageURL);
         if (normalizedImages.length === 0) {
             return;
         }
 
-        this.imageURLs.push(...normalizedImages);
-        this.syncLegacyImageURL();
+        this.imageEntries.push(...normalizedImages);
+        this.syncLegacyImageData();
     }
 
     addImages(imageURLs) {
-        const normalizedImages = normalizeImageURLs(imageURLs);
+        const normalizedImages = normalizeImageEntries(imageURLs);
         if (normalizedImages.length === 0) {
             return;
         }
 
-        this.imageURLs.push(...normalizedImages);
-        this.syncLegacyImageURL();
+        this.imageEntries.push(...normalizedImages);
+        this.syncLegacyImageData();
     }
 
     removeImageAt(imageIndex) {
-        if (imageIndex < 0 || imageIndex >= this.imageURLs.length) {
+        if (imageIndex < 0 || imageIndex >= this.imageEntries.length) {
             return;
         }
 
-        this.imageURLs.splice(imageIndex, 1);
-        this.syncLegacyImageURL();
+        this.imageEntries.splice(imageIndex, 1);
+        this.syncLegacyImageData();
     }
 
     getImageURL() {
@@ -135,6 +192,10 @@ export class Annotation {
         return [...this.imageURLs];
     }
 
+    getImageEntries() {
+        return this.imageEntries.map((imageEntry) => ({ ...imageEntry }));
+    }
+
     toSerializableObject() {
         return {
             id: this.id,
@@ -143,7 +204,8 @@ export class Annotation {
             url: this.url,
             timestamp: this.timestamp,
             imageURL: this.imageURL,
-            imageURLs: [...this.imageURLs]
+            imageURLs: [...this.imageURLs],
+            imageEntries: this.getImageEntries()
         };
     }
 }

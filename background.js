@@ -1,5 +1,5 @@
 import { Session } from './src/Session.js';
-import { Bug, Note, normalizeImageURLs } from './src/Annotation.js';
+import { Bug, Note, normalizeImageEntries } from './src/Annotation.js';
 import { createEmptyRecording, normalizeRecording } from './src/Recording.js';
 import { ExportSessionCSV } from './src/ExportSessionCSV.js';
 import { JSonSessionService } from './src/JSonSessionService.js';
@@ -28,16 +28,19 @@ function createEmptyDraft(type = 'Bug') {
     return {
         type,
         description: '',
+        imageEntries: [],
         imageURLs: []
     };
 }
 
 function normalizeDraft(rawDraft = {}) {
     const draftType = VALID_ANNOTATION_TYPES.includes(rawDraft.type) ? rawDraft.type : 'Bug';
+    const imageEntries = normalizeImageEntries(rawDraft.imageEntries || rawDraft.imageURLs || rawDraft.imageURL || []);
     return {
         type: draftType,
         description: typeof rawDraft.description === 'string' ? rawDraft.description : '',
-        imageURLs: normalizeImageURLs(rawDraft.imageURLs || rawDraft.imageURL || [])
+        imageEntries,
+        imageURLs: imageEntries.map((imageEntry) => imageEntry.imageURL)
     };
 }
 
@@ -51,7 +54,7 @@ function createAnnotationFromStoredData(annotationData) {
         annotationData.name,
         annotationData.url,
         annotationData.timestamp,
-        annotationData.imageURLs || annotationData.imageURL || [],
+        annotationData.imageEntries || annotationData.imageURLs || annotationData.imageURL || [],
         annotationData.id || null
     );
 }
@@ -207,6 +210,7 @@ async function saveDraft() {
         [STORAGE_KEYS.draft]: {
             type: draft.type,
             description: draft.description,
+            imageEntries: draft.imageEntries.map((imageEntry) => ({ ...imageEntry })),
             imageURLs: [...draft.imageURLs]
         }
     });
@@ -305,14 +309,17 @@ async function updateDraftState(nextDraft) {
 }
 
 async function appendImagesToDraft(imageURLs) {
-    draft.imageURLs.push(...normalizeImageURLs(imageURLs));
+    const nextImageEntries = normalizeImageEntries(imageURLs);
+    draft.imageEntries.push(...nextImageEntries);
+    draft.imageURLs = draft.imageEntries.map((imageEntry) => imageEntry.imageURL);
     await saveDraft();
     return getDraftPayload();
 }
 
 async function removeDraftImage(imageIndex) {
-    if (imageIndex >= 0 && imageIndex < draft.imageURLs.length) {
-        draft.imageURLs.splice(imageIndex, 1);
+    if (imageIndex >= 0 && imageIndex < draft.imageEntries.length) {
+        draft.imageEntries.splice(imageIndex, 1);
+        draft.imageURLs = draft.imageEntries.map((imageEntry) => imageEntry.imageURL);
         await saveDraft();
     }
 
@@ -323,6 +330,7 @@ function getDraftPayload() {
     return {
         type: draft.type,
         description: draft.description,
+        imageEntries: draft.imageEntries.map((imageEntry) => ({ ...imageEntry })),
         imageURLs: [...draft.imageURLs]
     };
 }
@@ -352,13 +360,13 @@ function formatExportTimestamp(dateValue) {
         ('0' + exportDate.getMinutes()).slice(-2);
 }
 
-function createAnnotationFromDraftData(type, description, currentUrl, imageURLs) {
+function createAnnotationFromDraftData(type, description, currentUrl, imageEntries) {
     const AnnotationConstructor = ANNOTATION_CONSTRUCTORS[type];
     if (!AnnotationConstructor) {
         throw new Error(`Unknown annotation type: ${type}`);
     }
 
-    return new AnnotationConstructor(description, currentUrl, Date.now(), imageURLs);
+    return new AnnotationConstructor(description, currentUrl, Date.now(), imageEntries);
 }
 
 async function getActiveTab() {
@@ -736,7 +744,7 @@ async function createAnnotationFromDraft() {
         draft.type,
         description,
         currentUrl,
-        draft.imageURLs
+        draft.imageEntries
     );
 
     session.addAnnotation(annotation);

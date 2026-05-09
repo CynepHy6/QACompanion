@@ -121,56 +121,57 @@ export function displayAnnotationsTable(session, currentFilter) {
         return;
     }
 
-    tableBody.innerHTML = filtered.map((annotation, index) => {
+    tableBody.innerHTML = filtered.map((annotation) => {
         const type = annotation.constructor.name;
-        const imageURLs = annotation.getImageURLs();
+        const imageEntries = annotation.getImageEntries();
         return `
         <tr class="annotation-row annotation-row--${type.toLowerCase()}">
-            <td>
-                <span class="type-badge type-badge--${type.toLowerCase()}">
+            <td class="annotation-type-cell">
+                <span class="type-icon-chip type-icon-chip--${type.toLowerCase()}" title="${type}" aria-label="${type}">
                     <img src="${ANNOTATION_ICONS[type] || ''}" alt="${type}" class="annotation-icon">
-                    ${type}
                 </span>
             </td>
             <td class="annotation-description">
                 <textarea
                     class="description-editor"
                     data-annotation-id="${annotation.id}"
+                    data-saved-value="${escapeHtml(annotation.name)}"
                     rows="4">${escapeHtml(annotation.name)}</textarea>
             </td>
             <td class="annotation-url">
                 ${annotation.url ? `<a href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener">${truncateUrl(annotation.url)}</a>` : '<span class="text-muted">N/A</span>'}
             </td>
-            <td class="annotation-time">${annotation.timestamp ? new Date(annotation.timestamp).toLocaleString() : 'N/A'}</td>
+            <td class="annotation-time">${annotation.timestamp ? formatDate(annotation.timestamp) : 'N/A'}</td>
             <td class="screenshot-cell">
-                ${imageURLs.length > 0
+                ${imageEntries.length > 0
                 ? `<div class="screenshot-gallery">
-                    ${imageURLs.map((imageURL, imageIndex) => `
+                    ${imageEntries.map((imageEntry, imageIndex) => `
                         <div class="screenshot-thumb">
-                            <img src="${imageURL}"
-                                 class="preview-image"
-                                 data-annotation-id="${annotation.id}"
-                                 data-image-index="${imageIndex}"
-                                 data-preview="${imageURL}"
-                                 alt="Screenshot ${imageIndex + 1}">
-                            <button
-                                class="delete-image-btn"
-                                data-annotation-id="${annotation.id}"
-                                data-image-index="${imageIndex}"
-                                title="Remove screenshot">
-                                Remove
-                            </button>
+                            <div class="screenshot-thumb__image-shell">
+                                <img src="${imageEntry.imageURL}"
+                                     class="preview-image"
+                                     data-annotation-id="${annotation.id}"
+                                     data-image-index="${imageIndex}"
+                                     data-preview="${imageEntry.imageURL}"
+                                     alt="Screenshot ${imageIndex + 1}">
+                                <button
+                                    class="delete-image-btn"
+                                    data-annotation-id="${annotation.id}"
+                                    data-image-index="${imageIndex}"
+                                    title="Remove screenshot"
+                                    aria-label="Remove screenshot">
+                                    <span class="visually-hidden">Remove screenshot</span>
+                                </button>
+                            </div>
+                            <span class="screenshot-time">${formatTime(imageEntry.createdAt)}</span>
                         </div>
                     `).join('')}
                 </div>`
                 : '<span class="text-muted">--</span>'}
             </td>
-            <td>
+            <td class="annotation-actions-cell">
                 <div class="row-actions">
-                    <button class="save-description-btn" data-annotation-id="${annotation.id}" title="Save description">
-                        Save
-                    </button>
-                    <button class="delete-btn" data-annotation-id="${annotation.id}" title="Delete annotation">
+                    <button class="delete-btn" data-annotation-id="${annotation.id}" title="Delete annotation" aria-label="Delete annotation">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M5.5 5.5v6m5-6v6M2 3.5h12m-1.5 0l-.533 8.528A1.5 1.5 0 0110.477 13.5H5.523a1.5 1.5 0 01-1.49-1.472L3.5 3.5m3-1.5h3a1 1 0 011 1v.5h-5V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -195,4 +196,16 @@ function truncateUrl(url) {
     } catch {
         return url.length > 50 ? url.substring(0, 47) + '...' : url;
     }
+}
+
+function formatDate(timestampValue) {
+    return new Date(timestampValue).toLocaleDateString('ru-RU');
+}
+
+function formatTime(timestampValue) {
+    return new Date(timestampValue).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
 }

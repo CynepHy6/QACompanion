@@ -2,8 +2,10 @@ import { deleteAnnotation, deleteAnnotationImage, updateAnnotationName } from '.
 import { displayAnnotationsTable } from './reportUI.js';
 import { downloadCompleteReport, downloadAllImages } from './reportDownload.js';
 
-let annotationToDelete = null;
 let currentFilter = 'all';
+let hoverPreviewAnchorElement = null;
+let armedDeleteImageKey = '';
+let armedDeleteAnnotationId = '';
 
 /**
  * Returns the current active filter type.
@@ -17,7 +19,6 @@ export function getCurrentFilter() {
  */
 export function setupAllListeners(session) {
     setupFilterListeners(session);
-    setupDeleteListeners();
     setupDownloadListener(session);
     setupTableActionListeners();
 }
@@ -29,31 +30,50 @@ export function rebindTableListeners() {
     return;
 }
 
+function getDeleteImageKey(annotationId, imageIndex) {
+    return `${annotationId}:${imageIndex}`;
+}
+
+function renderDeleteImageButtonState() {
+    document.querySelectorAll('.delete-image-btn').forEach((button) => {
+        const buttonKey = getDeleteImageKey(
+            button.dataset.annotationId || '',
+            Number(button.dataset.imageIndex)
+        );
+        const isArmed = armedDeleteImageKey !== '' && armedDeleteImageKey === buttonKey;
+        button.classList.toggle('is-armed', isArmed);
+        button.title = isArmed ? 'Confirm remove screenshot' : 'Remove screenshot';
+        button.setAttribute('aria-label', isArmed ? 'Confirm remove screenshot' : 'Remove screenshot');
+        const hiddenLabel = button.querySelector('.visually-hidden');
+        if (hiddenLabel) {
+            hiddenLabel.textContent = isArmed ? 'Confirm remove screenshot' : 'Remove screenshot';
+        }
+    });
+}
+
+function renderDeleteAnnotationButtonState() {
+    document.querySelectorAll('.delete-btn').forEach((button) => {
+        const annotationId = button.dataset.annotationId || '';
+        const isArmed = armedDeleteAnnotationId !== '' && armedDeleteAnnotationId === annotationId;
+        button.classList.toggle('is-armed', isArmed);
+        button.title = isArmed ? 'Confirm delete annotation' : 'Delete annotation';
+        button.setAttribute('aria-label', isArmed ? 'Confirm delete annotation' : 'Delete annotation');
+    });
+}
+
 function setupFilterListeners(session) {
     document.querySelectorAll('.filter-pill').forEach(button => {
         button.addEventListener('click', function () {
             document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             currentFilter = this.dataset.type;
+            armedDeleteImageKey = '';
+            armedDeleteAnnotationId = '';
             displayAnnotationsTable(session, currentFilter);
+            renderDeleteImageButtonState();
+            renderDeleteAnnotationButtonState();
             rebindTableListeners();
         });
-    });
-}
-
-function setupDeleteListeners() {
-    document.getElementById('cancelDelete').addEventListener('click', () => {
-        document.getElementById('divOverlay').style.display = 'none';
-        annotationToDelete = null;
-    });
-
-    document.getElementById('deleteYes').addEventListener('click', async () => {
-        if (annotationToDelete === null) return;
-        const response = await deleteAnnotation(annotationToDelete);
-        document.getElementById('divOverlay').style.display = 'none';
-        annotationToDelete = null;
-        // Reload to resync regardless of response
-        location.reload();
     });
 }
 
@@ -71,25 +91,37 @@ function setupTableActionListeners() {
     document.getElementById('annotationsTableBody').addEventListener('click', async (event) => {
         const deleteButton = event.target.closest('.delete-btn');
         if (deleteButton) {
-            annotationToDelete = deleteButton.dataset.annotationId;
-            document.getElementById('divOverlay').style.display = 'block';
-            return;
-        }
+            const annotationId = deleteButton.dataset.annotationId || '';
+            if (armedDeleteAnnotationId !== annotationId) {
+                armedDeleteAnnotationId = annotationId;
+                armedDeleteImageKey = '';
+                renderDeleteAnnotationButtonState();
+                renderDeleteImageButtonState();
+                return;
+            }
 
-        const saveButton = event.target.closest('.save-description-btn');
-        if (saveButton) {
-            const rowElement = saveButton.closest('tr');
-            const descriptionField = rowElement.querySelector('.description-editor');
-            await updateAnnotationName(saveButton.dataset.annotationId, descriptionField.value);
+            armedDeleteAnnotationId = '';
+            await deleteAnnotation(annotationId);
             location.reload();
             return;
         }
 
         const deleteImageButton = event.target.closest('.delete-image-btn');
         if (deleteImageButton) {
+            const imageIndex = Number(deleteImageButton.dataset.imageIndex);
+            const nextDeleteImageKey = getDeleteImageKey(deleteImageButton.dataset.annotationId, imageIndex);
+            if (armedDeleteImageKey !== nextDeleteImageKey) {
+                armedDeleteImageKey = nextDeleteImageKey;
+                armedDeleteAnnotationId = '';
+                renderDeleteImageButtonState();
+                renderDeleteAnnotationButtonState();
+                return;
+            }
+
+            armedDeleteImageKey = '';
             await deleteAnnotationImage(
                 deleteImageButton.dataset.annotationId,
-                Number(deleteImageButton.dataset.imageIndex)
+                imageIndex
             );
             location.reload();
             return;
@@ -101,13 +133,38 @@ function setupTableActionListeners() {
         }
     });
 
+    document.getElementById('annotationsTableBody').addEventListener('input', (event) => {
+        const descriptionField = event.target.closest('.description-editor');
+        if (!descriptionField) {
+            return;
+        }
+
+        updateDescriptionDirtyState(descriptionField);
+    });
+
+    document.getElementById('annotationsTableBody').addEventListener('change', async (event) => {
+        const descriptionField = event.target.closest('.description-editor');
+        if (!descriptionField) {
+            return;
+        }
+
+        try {
+            await updateAnnotationName(descriptionField.dataset.annotationId, descriptionField.value);
+            descriptionField.dataset.savedValue = descriptionField.value;
+            descriptionField.classList.remove('is-dirty');
+        } catch (error) {
+            updateDescriptionDirtyState(descriptionField);
+            alert(error.message || 'Failed to update description.');
+        }
+    });
+
     document.getElementById('annotationsTableBody').addEventListener('mouseover', (event) => {
         const previewImage = event.target.closest('.preview-image');
         if (!previewImage) {
             return;
         }
 
-        showHoverPreview(previewImage.dataset.preview, event);
+        showHoverPreview(previewImage.dataset.preview, previewImage);
     });
 
     document.getElementById('annotationsTableBody').addEventListener('mousemove', (event) => {
@@ -116,7 +173,7 @@ function setupTableActionListeners() {
             return;
         }
 
-        updateHoverPosition(event);
+        updateHoverPosition(previewImage);
     });
 
     document.getElementById('annotationsTableBody').addEventListener('mouseout', (event) => {
@@ -127,6 +184,50 @@ function setupTableActionListeners() {
 
         hideHoverPreview();
     });
+
+    window.addEventListener('resize', () => {
+        if (!hoverPreviewAnchorElement) {
+            return;
+        }
+
+        updateHoverPosition(hoverPreviewAnchorElement);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (armedDeleteImageKey === '') {
+            return;
+        }
+
+        if (event.target.closest('.delete-image-btn')) {
+            return;
+        }
+
+        armedDeleteImageKey = '';
+        renderDeleteImageButtonState();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (armedDeleteAnnotationId === '') {
+            return;
+        }
+
+        if (event.target.closest('.delete-btn')) {
+            return;
+        }
+
+        armedDeleteAnnotationId = '';
+        renderDeleteAnnotationButtonState();
+    });
+
+    renderDeleteImageButtonState();
+    renderDeleteAnnotationButtonState();
+}
+
+function updateDescriptionDirtyState(descriptionField) {
+    const savedValue = typeof descriptionField.dataset.savedValue === 'string'
+        ? descriptionField.dataset.savedValue
+        : '';
+    descriptionField.classList.toggle('is-dirty', descriptionField.value !== savedValue);
 }
 
 // --- Image Preview ---
@@ -145,30 +246,52 @@ function showImagePreview(src) {
     previewImg.addEventListener('click', (e) => e.stopPropagation());
 }
 
-function showHoverPreview(src, event) {
+function showHoverPreview(src, previewImage) {
     const preview = document.getElementById('imageHoverPreview');
     preview.querySelector('img').src = src;
     preview.classList.add('active');
-    updateHoverPosition(event);
+    hoverPreviewAnchorElement = previewImage;
+    updateHoverPosition(previewImage);
 }
 
-function updateHoverPosition(event) {
+function updateHoverPosition(previewImage) {
     const preview = document.getElementById('imageHoverPreview');
-    if (!preview.classList.contains('active')) return;
+    if (!preview.classList.contains('active') || !previewImage?.isConnected) {
+        return;
+    }
 
-    const offset = 15;
-    const pw = preview.offsetWidth;
-    const ph = preview.offsetHeight;
-    let left = event.clientX + offset;
-    let top = event.clientY + offset;
+    const anchorRect = previewImage.getBoundingClientRect();
+    const previewRect = preview.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const gapSize = 10;
+    const edgePadding = 8;
+    let previewLeft = anchorRect.left + ((anchorRect.width - previewRect.width) / 2);
+    let previewTop = anchorRect.top - previewRect.height - gapSize;
 
-    if (left + pw > window.innerWidth) left = event.clientX - pw - offset;
-    if (top + ph > window.innerHeight) top = event.clientY - ph - offset;
+    if (previewTop < edgePadding) {
+        previewTop = anchorRect.bottom + gapSize;
+    }
 
-    preview.style.left = left + 'px';
-    preview.style.top = top + 'px';
+    if (previewTop + previewRect.height > viewportHeight - edgePadding) {
+        previewTop = Math.max(edgePadding, viewportHeight - previewRect.height - edgePadding);
+    }
+
+    if (previewLeft < edgePadding) {
+        previewLeft = edgePadding;
+    }
+
+    if (previewLeft + previewRect.width > viewportWidth - edgePadding) {
+        previewLeft = viewportWidth - previewRect.width - edgePadding;
+    }
+
+    preview.style.left = previewLeft + 'px';
+    preview.style.top = previewTop + 'px';
 }
 
 function hideHoverPreview() {
-    document.getElementById('imageHoverPreview').classList.remove('active');
+    const preview = document.getElementById('imageHoverPreview');
+    preview.classList.remove('active');
+    preview.querySelector('img').src = '';
+    hoverPreviewAnchorElement = null;
 }
