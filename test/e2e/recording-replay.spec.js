@@ -8,6 +8,11 @@ const {
   waitForStorageUpdate,
 } = require('./helpers/extension-helper');
 
+const RECORD_LABEL = /Record|Запись/;
+const STOP_LABEL = /Stop|Стоп/;
+const NO_RECORDED_STEPS_LABEL = /No recorded steps yet\.|Записанных шагов пока нет\./;
+const REPLAY_TARGET_NOT_FOUND_MESSAGE = /Step 1 failed: target element not found\.|Шаг 1: целевой элемент не найден\./;
+
 async function installReplayProbe(page) {
   await page.evaluate(() => {
     localStorage.removeItem('qaReplayInput');
@@ -65,7 +70,7 @@ test.describe('Recording and Replay', () => {
   test('should record and replay a flow with navigation', async () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
-    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(/Stop/);
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(STOP_LABEL);
 
     await testPage.fill('#testInput', 'Replay target value');
     await testPage.click('button:has-text("Ir a Página 1")');
@@ -74,7 +79,7 @@ test.describe('Recording and Replay', () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'syncRecordingNavigation' });
     await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
-    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(/Record/);
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(RECORD_LABEL);
     await waitForStorageUpdate(popupPage, 700);
 
     const recordingData = await getRecordingData(popupPage);
@@ -157,19 +162,19 @@ test.describe('Recording and Replay', () => {
 
     const playbackResponse = await sendRuntimeMessage(popupPage, { type: 'playRecordingFlow' });
     expect(playbackResponse.status).toBe('error');
-    expect(playbackResponse.error).toBe('Step 1 failed: target element not found.');
+    expect(playbackResponse.error).toMatch(REPLAY_TARGET_NOT_FOUND_MESSAGE);
 
     await expect.poll(async () => {
       const latestRecordingState = await sendRuntimeMessage(popupPage, { type: 'getRecordingState' });
       return latestRecordingState.recording;
     }).toMatchObject({
       status: 'idle',
-      lastError: 'Step 1 failed: target element not found.',
+      lastError: expect.stringMatching(REPLAY_TARGET_NOT_FOUND_MESSAGE),
       failedStepId: recordedClickStep.stepId
     });
 
     await popupPage.click('#recorderTabBtn');
-    await expect(popupPage.locator('#recordingStatus')).toContainText('Step 1 failed: target element not found.', {
+    await expect(popupPage.locator('#recordingStatus')).toContainText(REPLAY_TARGET_NOT_FOUND_MESSAGE, {
       timeout: 4000
     });
     await expect(popupPage.locator('.recording-step-card.is-failed')).toHaveCount(1);
@@ -193,7 +198,7 @@ test.describe('Recording and Replay', () => {
     await clearRecordingButton.click();
 
     await expect(clearRecordingButton).toHaveClass(/is-armed/);
-    await expect(popupPage.locator('#recordingStepsList')).not.toContainText('No recorded steps yet.');
+    await expect(popupPage.locator('#recordingStepsList')).not.toContainText(NO_RECORDED_STEPS_LABEL);
 
     await popupPage.click('#recordingStatus');
     await expect(clearRecordingButton).not.toHaveClass(/is-armed/);
@@ -207,7 +212,7 @@ test.describe('Recording and Replay', () => {
     const recordingData = await sendRuntimeMessage(popupPage, { type: 'getRecordingState' });
     expect(recordingData.recording.stepCount).toBe(0);
     expect(recordingData.recording.screenshotCount).toBe(0);
-    await expect(popupPage.locator('#recordingStepsList')).toContainText('No recorded steps yet.');
+    await expect(popupPage.locator('#recordingStepsList')).toContainText(NO_RECORDED_STEPS_LABEL);
   });
 
   test('should capture environment info when recording starts without actions', async () => {

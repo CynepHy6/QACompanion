@@ -1,6 +1,7 @@
 import { deleteAnnotation, deleteAnnotationImage, updateAnnotationName } from './reportData.js';
 import { displayAnnotationsTable } from './reportUI.js';
 import { downloadCompleteReport, downloadAllImages } from './reportDownload.js';
+import { getMessage } from '../../src/i18n.js';
 
 let currentFilter = 'all';
 let hoverPreviewAnchorElement = null;
@@ -44,11 +45,14 @@ function renderDeleteImageButtonState() {
         );
         const isArmed = armedDeleteImageKey !== '' && armedDeleteImageKey === buttonKey;
         button.classList.toggle('is-armed', isArmed);
-        button.title = isArmed ? 'Confirm remove screenshot' : 'Remove screenshot';
-        button.setAttribute('aria-label', isArmed ? 'Confirm remove screenshot' : 'Remove screenshot');
+        const nextLabel = isArmed
+            ? getMessage('reportConfirmRemoveScreenshot', undefined, 'Confirm remove screenshot')
+            : getMessage('reportRemoveScreenshot', undefined, 'Remove screenshot');
+        button.title = nextLabel;
+        button.setAttribute('aria-label', nextLabel);
         const hiddenLabel = button.querySelector('.visually-hidden');
         if (hiddenLabel) {
-            hiddenLabel.textContent = isArmed ? 'Confirm remove screenshot' : 'Remove screenshot';
+            hiddenLabel.textContent = nextLabel;
         }
     });
 }
@@ -58,8 +62,11 @@ function renderDeleteAnnotationButtonState() {
         const annotationId = button.dataset.annotationId || '';
         const isArmed = armedDeleteAnnotationId !== '' && armedDeleteAnnotationId === annotationId;
         button.classList.toggle('is-armed', isArmed);
-        button.title = isArmed ? 'Confirm delete annotation' : 'Delete annotation';
-        button.setAttribute('aria-label', isArmed ? 'Confirm delete annotation' : 'Delete annotation');
+        const nextLabel = isArmed
+            ? getMessage('reportConfirmDeleteAnnotation', undefined, 'Confirm delete annotation')
+            : getMessage('reportDeleteAnnotation', undefined, 'Delete annotation');
+        button.title = nextLabel;
+        button.setAttribute('aria-label', nextLabel);
     });
 }
 
@@ -267,7 +274,7 @@ async function persistDescriptionField(session, descriptionField, options = {}) 
         descriptionField.value = previousSavedValue;
         updateDescriptionDirtyState(descriptionField);
         if (!silent) {
-            alert('Description cannot be empty.');
+            alert(getMessage('reportDescriptionCannotBeEmpty', undefined, 'Description cannot be empty.'));
         }
         return false;
     }
@@ -287,7 +294,7 @@ async function persistDescriptionField(session, descriptionField, options = {}) 
             descriptionField.dataset.savedValue = previousSavedValue;
             updateDescriptionDirtyState(descriptionField);
             if (!silent) {
-                alert(error.message || 'Failed to update description.');
+                alert(error.message || getMessage('reportDescriptionUpdateFailed', undefined, 'Failed to update description.'));
             }
             return false;
         })

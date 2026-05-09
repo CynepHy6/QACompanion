@@ -1,3 +1,13 @@
+import {
+    formatDateLocalized,
+    formatDateTimeLocalized,
+    formatTimeLocalized,
+    getAnnotationTypeLabel,
+    getMessage,
+    getPluralMessage,
+    getRecorderStepTypeLabel
+} from '../../src/i18n.js';
+
 const ANNOTATION_ICONS = {
     Bug: '../images/bug.svg',
     Note: '../images/note.svg'
@@ -17,49 +27,49 @@ export function displaySessionInfo(session) {
     const startDateTime = session.getStartDateTime();
     const environmentItems = [
         {
-            label: 'Start Date',
-            value: startDateTime.toLocaleString(),
-            hint: 'The moment when this testing session started.'
+            label: getMessage('reportEnvironmentStartDate', undefined, 'Start date'),
+            value: formatDateTime(startDateTime),
+            hint: getMessage('reportEnvironmentStartDateHint', undefined, 'The moment when this testing session started.')
         },
         {
-            label: 'Browser',
+            label: getMessage('reportEnvironmentBrowser', undefined, 'Browser'),
             value: formatBrowserInfo(browserInfo),
-            hint: 'Detected browser name and version used during the session.'
+            hint: getMessage('reportEnvironmentBrowserHint', undefined, 'Detected browser name and version used during the session.')
         },
         {
-            label: 'Operating System',
-            value: browserInfo.osDisplay || browserInfo.os || 'N/A',
-            hint: 'Detected operating system and CPU architecture.'
+            label: getMessage('reportEnvironmentOs', undefined, 'Operating system'),
+            value: browserInfo.osDisplay || browserInfo.os || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentOsHint', undefined, 'Detected operating system and CPU architecture.')
         },
         {
-            label: 'Locale',
-            value: browserInfo.pageLanguage || browserInfo.language || 'N/A',
-            hint: 'Language used by the page or browser for translations, formats, and content.'
+            label: getMessage('reportEnvironmentLocale', undefined, 'Locale'),
+            value: browserInfo.pageLanguage || browserInfo.language || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentLocaleHint', undefined, 'Language used by the page or browser for translations, formats, and content.')
         },
         {
-            label: 'Timezone',
-            value: browserInfo.timezone || 'N/A',
-            hint: 'Browser timezone used to format dates and times.'
+            label: getMessage('reportEnvironmentTimezone', undefined, 'Timezone'),
+            value: browserInfo.timezone || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentTimezoneHint', undefined, 'Browser timezone used to format dates and times.')
         },
         {
-            label: 'Viewport',
-            value: browserInfo.viewport || 'N/A',
-            hint: 'Visible page area size in CSS pixels.'
+            label: getMessage('reportEnvironmentViewport', undefined, 'Viewport'),
+            value: browserInfo.viewport || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentViewportHint', undefined, 'Visible page area size in CSS pixels.')
         },
         {
-            label: 'Screen',
-            value: browserInfo.screenResolution || 'N/A',
-            hint: 'Reported screen resolution in physical pixels.'
+            label: getMessage('reportEnvironmentScreen', undefined, 'Screen'),
+            value: browserInfo.screenResolution || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentScreenHint', undefined, 'Reported screen resolution in physical pixels.')
         },
         {
-            label: 'DPR',
-            value: browserInfo.devicePixelRatio || 'N/A',
-            hint: 'Device Pixel Ratio. Shows how many physical pixels are used for one CSS pixel. Useful for zoom, screenshots, and sharpness issues.'
+            label: getMessage('reportEnvironmentDpr', undefined, 'DPR'),
+            value: browserInfo.devicePixelRatio || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentDprHint', undefined, 'Device Pixel Ratio. Shows how many physical pixels are used for one CSS pixel. Useful for zoom, screenshots, and sharpness issues.')
         },
         {
-            label: 'Page Title',
-            value: browserInfo.pageTitle || 'N/A',
-            hint: 'Current document title of the tested page.'
+            label: getMessage('reportEnvironmentPageTitle', undefined, 'Page title'),
+            value: browserInfo.pageTitle || getMessage('reportNotAvailable', undefined, 'N/A'),
+            hint: getMessage('reportEnvironmentPageTitleHint', undefined, 'Current document title of the tested page.')
         }
     ];
 
@@ -79,9 +89,9 @@ export function displaySessionInfo(session) {
  */
 export function displayStats(reportState) {
     const stats = [
-        { type: 'Bug', label: 'Bugs', count: reportState.session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
-        { type: 'Note', label: 'Notes', count: reportState.session.getNotes().length, icon: ANNOTATION_ICONS.Note },
-        { type: 'Recording', label: 'Recorded Steps', count: reportState.recording.steps.length, icon: '' }
+        { type: 'Bug', label: getMessage('reportStatsBugs', undefined, 'Bugs'), count: reportState.session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
+        { type: 'Note', label: getMessage('reportStatsNotes', undefined, 'Notes'), count: reportState.session.getNotes().length, icon: ANNOTATION_ICONS.Note },
+        { type: 'Recording', label: getMessage('reportStatsRecordedSteps', undefined, 'Recorded steps'), count: reportState.recording.steps.length, icon: '' }
     ];
 
     const statsContainer = document.getElementById('statsCards');
@@ -89,8 +99,8 @@ export function displayStats(reportState) {
         <div class="stat-card stat-card--${stat.type.toLowerCase()}">
             <div class="stat-card__icon">
                 ${stat.icon
-            ? `<img src="${stat.icon}" alt="${stat.type}" class="annotation-icon">`
-            : `<span class="stat-card__glyph">${escapeHtml(stat.type.slice(0, 1))}</span>`}
+            ? `<img src="${stat.icon}" alt="${escapeHtml(getAnnotationTypeLabel(stat.type))}" class="annotation-icon">`
+            : `<span class="stat-card__glyph">${escapeHtml(stat.label.slice(0, 1))}</span>`}
             </div>
             <div class="stat-card__content">
                 <span class="stat-card__count">${stat.count}</span>
@@ -108,34 +118,36 @@ export function displayRecordingCard(recordingState) {
 
     const hasReplayFailure = recordingState.failedStepId && recordingState.lastError;
     const titleText = hasReplayFailure
-        ? 'Replay Stopped'
-        : (recordingState.steps.length > 0 ? 'Flow Captured' : 'No Recorded Flow');
+        ? getMessage('reportRecordingStateStopped', undefined, 'Replay stopped')
+        : (recordingState.steps.length > 0
+            ? getMessage('reportRecordingStateCaptured', undefined, 'Flow captured')
+            : getMessage('reportRecordingStateEmpty', undefined, 'No recorded flow'));
     const bodyText = hasReplayFailure
         ? recordingState.lastError
         : (recordingState.steps.length > 0
-            ? 'Recorded actions are included below and restored on import.'
-            : 'No recorder steps were available in the exported state.');
+            ? getMessage('reportRecordingStateCapturedBody', undefined, 'Recorded actions are shown below and restored on import.')
+            : getMessage('reportRecordingStateEmptyBody', undefined, 'No recorder steps were available in the exported state.'));
 
     recordingStateCard.innerHTML = `
         <div class="state-card__header">
             <div>
-                <p class="state-card__eyebrow">Recorder Snapshot</p>
+                <p class="state-card__eyebrow">${escapeHtml(getMessage('reportRecordingStateEyebrow', undefined, 'Recorder snapshot'))}</p>
                 <h3 class="state-card__title">${titleText}</h3>
             </div>
-            <span class="state-card__badge${recordingState.steps.length > 0 ? '' : ' is-muted'}">${recordingState.steps.length} steps</span>
+            <span class="state-card__badge${recordingState.steps.length > 0 ? '' : ' is-muted'}">${escapeHtml(getPluralMessage('countStep', recordingState.steps.length, `${recordingState.steps.length} steps`))}</span>
         </div>
         <div class="state-metrics">
             <div class="state-metric">
-                <span class="state-metric__label">Screenshots</span>
+                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricScreenshots', undefined, 'Screenshots'))}</span>
                 <span class="state-metric__value">${recordingState.screenshots.length}</span>
             </div>
             <div class="state-metric">
-                <span class="state-metric__label">Started</span>
-                <span class="state-metric__value">${recordingState.startedAt ? formatDateTime(recordingState.startedAt) : 'N/A'}</span>
+                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricStarted', undefined, 'Started'))}</span>
+                <span class="state-metric__value">${recordingState.startedAt ? formatDateTime(recordingState.startedAt) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>
             </div>
             <div class="state-metric">
-                <span class="state-metric__label">Stopped</span>
-                <span class="state-metric__value">${recordingState.stoppedAt ? formatDateTime(recordingState.stoppedAt) : 'N/A'}</span>
+                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricStopped', undefined, 'Stopped'))}</span>
+                <span class="state-metric__value">${recordingState.stoppedAt ? formatDateTime(recordingState.stoppedAt) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>
             </div>
         </div>
         <p class="state-card__body">${escapeHtml(bodyText)}</p>
@@ -149,7 +161,7 @@ export function displayRecordingTimeline(recordingState) {
     }
 
     if (recordingState.steps.length === 0) {
-        recordingTimeline.innerHTML = '<div class="recording-empty-state">No recording steps available.</div>';
+        recordingTimeline.innerHTML = `<div class="recording-empty-state">${escapeHtml(getMessage('reportRecordingEmpty', undefined, 'No recording steps available.'))}</div>`;
         return;
     }
 
@@ -163,15 +175,15 @@ export function displayRecordingTimeline(recordingState) {
         return `
             <article class="recording-step${isFailedStep ? ' is-failed' : ''}">
                 <div class="recording-step__header">
-                    <span class="recording-step__index">Step ${stepIndex + 1}</span>
-                    <span class="recording-step__type">${escapeHtml(stepItem.type)}</span>
+                    <span class="recording-step__index">${escapeHtml(getMessage('popupStepLabel', [String(stepIndex + 1)], `Step ${stepIndex + 1}`))}</span>
+                    <span class="recording-step__type">${escapeHtml(getRecorderStepTypeLabel(stepItem.type))}</span>
                     <span class="recording-step__time">${formatDateTime(stepItem.timestamp)}</span>
                 </div>
                 <div class="recording-step__body">
                     <div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
                         ${linkedScreenshot
-                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="Recording screenshot for step ${stepIndex + 1}">`
-                : '<div class="recording-step__shot-placeholder">No screenshot</div>'}
+                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
+                : `<div class="recording-step__shot-placeholder">${escapeHtml(getMessage('reportRecordingNoScreenshot', undefined, 'No screenshot'))}</div>`}
                     </div>
                     <div class="recording-step__content">
                         <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
@@ -204,7 +216,10 @@ export function createAnnotationsChart(session) {
     new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Bugs', 'Notes'],
+            labels: [
+                getMessage('reportChartLabelBugs', undefined, 'Bugs'),
+                getMessage('reportChartLabelNotes', undefined, 'Notes')
+            ],
             datasets: [{
                 data,
                 backgroundColor: [
@@ -241,7 +256,7 @@ export function displayAnnotationsTable(session, currentFilter) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="6" class="empty-state">
-                    No annotations found for this filter.
+                    ${escapeHtml(getMessage('reportNoAnnotationsForFilter', undefined, 'No annotations found for this filter.'))}
                 </td>
             </tr>`;
         return;
@@ -253,8 +268,8 @@ export function displayAnnotationsTable(session, currentFilter) {
         return `
         <tr class="annotation-row annotation-row--${type.toLowerCase()}">
             <td class="annotation-type-cell">
-                <span class="type-icon-chip type-icon-chip--${type.toLowerCase()}" title="${type}" aria-label="${type}">
-                    <img src="${ANNOTATION_ICONS[type] || ''}" alt="${type}" class="annotation-icon">
+                <span class="type-icon-chip type-icon-chip--${type.toLowerCase()}" title="${escapeHtml(getAnnotationTypeLabel(type))}" aria-label="${escapeHtml(getAnnotationTypeLabel(type))}">
+                    <img src="${ANNOTATION_ICONS[type] || ''}" alt="${escapeHtml(getAnnotationTypeLabel(type))}" class="annotation-icon">
                 </span>
             </td>
             <td class="annotation-description">
@@ -265,9 +280,9 @@ export function displayAnnotationsTable(session, currentFilter) {
                     rows="4">${escapeHtml(annotation.name)}</textarea>
             </td>
             <td class="annotation-url">
-                ${annotation.url ? `<a href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener">${truncateUrl(annotation.url)}</a>` : '<span class="text-muted">N/A</span>'}
+                ${annotation.url ? `<a href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener">${truncateUrl(annotation.url)}</a>` : `<span class="text-muted">${escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>`}
             </td>
-            <td class="annotation-time">${annotation.timestamp ? formatDate(annotation.timestamp) : 'N/A'}</td>
+            <td class="annotation-time">${annotation.timestamp ? formatDate(annotation.timestamp) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</td>
             <td class="screenshot-cell">
                 ${imageEntries.length > 0
                 ? `<div class="screenshot-gallery">
@@ -279,14 +294,14 @@ export function displayAnnotationsTable(session, currentFilter) {
                                      data-annotation-id="${annotation.id}"
                                      data-image-index="${imageIndex}"
                                      data-preview="${imageEntry.imageURL}"
-                                     alt="Screenshot ${imageIndex + 1}">
+                                     alt="${escapeHtml(getMessage('reportScreenshotAlt', [String(imageIndex + 1)], `Screenshot ${imageIndex + 1}`))}">
                                 <button
                                     class="delete-image-btn"
                                     data-annotation-id="${annotation.id}"
                                     data-image-index="${imageIndex}"
-                                    title="Remove screenshot"
-                                    aria-label="Remove screenshot">
-                                    <span class="visually-hidden">Remove screenshot</span>
+                                    title="${escapeHtml(getMessage('reportRemoveScreenshot', undefined, 'Remove screenshot'))}"
+                                    aria-label="${escapeHtml(getMessage('reportRemoveScreenshot', undefined, 'Remove screenshot'))}">
+                                    <span class="visually-hidden">${escapeHtml(getMessage('reportRemoveScreenshot', undefined, 'Remove screenshot'))}</span>
                                 </button>
                             </div>
                             <span class="screenshot-time">${formatTime(imageEntry.createdAt)}</span>
@@ -297,7 +312,7 @@ export function displayAnnotationsTable(session, currentFilter) {
             </td>
             <td class="annotation-actions-cell">
                 <div class="row-actions">
-                    <button class="delete-btn" data-annotation-id="${annotation.id}" title="Delete annotation" aria-label="Delete annotation">
+                    <button class="delete-btn" data-annotation-id="${annotation.id}" title="${escapeHtml(getMessage('reportDeleteAnnotation', undefined, 'Delete annotation'))}" aria-label="${escapeHtml(getMessage('reportDeleteAnnotation', undefined, 'Delete annotation'))}">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M5.5 5.5v6m5-6v6M2 3.5h12m-1.5 0l-.533 8.528A1.5 1.5 0 0110.477 13.5H5.523a1.5 1.5 0 01-1.49-1.472L3.5 3.5m3-1.5h3a1 1 0 011 1v.5h-5V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
@@ -326,7 +341,7 @@ function truncateUrl(url) {
 
 function formatBrowserInfo(browserInfo) {
     if (!browserInfo) {
-        return 'N/A';
+        return getMessage('reportNotAvailable', undefined, 'N/A');
     }
 
     if (browserInfo.browserDisplayName) {
@@ -335,15 +350,15 @@ function formatBrowserInfo(browserInfo) {
 
     const browserName = typeof browserInfo.browser === 'string' ? browserInfo.browser : '';
     const browserVersion = typeof browserInfo.browserVersion === 'string' ? browserInfo.browserVersion : '';
-    return [browserName, browserVersion].filter(Boolean).join(' ') || 'N/A';
+    return [browserName, browserVersion].filter(Boolean).join(' ') || getMessage('reportNotAvailable', undefined, 'N/A');
 }
 
 function formatDate(timestampValue) {
-    return new Date(timestampValue).toLocaleDateString('ru-RU');
+    return formatDateLocalized(timestampValue);
 }
 
 function formatTime(timestampValue) {
-    return new Date(timestampValue).toLocaleTimeString('ru-RU', {
+    return formatTimeLocalized(timestampValue, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
@@ -351,7 +366,7 @@ function formatTime(timestampValue) {
 }
 
 function formatDateTime(timestampValue) {
-    return new Date(timestampValue).toLocaleString('ru-RU');
+    return formatDateTimeLocalized(timestampValue);
 }
 
 function formatLocator(locator) {
@@ -365,16 +380,20 @@ function formatLocator(locator) {
 
 function getRecordingStepSummary(stepItem) {
     if (stepItem.type === 'input' || stepItem.type === 'change') {
-        return `Value changed to "${stepItem.value || ''}"`;
+        return getMessage('reportRecordingValueChanged', [stepItem.value || ''], `Value changed to "${stepItem.value || ''}"`);
     }
 
     if (stepItem.type === 'click' || stepItem.type === 'submit') {
-        return stepItem.text ? `Target text: ${stepItem.text}` : 'Interaction with target element';
+        return stepItem.text
+            ? getMessage('reportRecordingTargetText', [stepItem.text], `Target text: ${stepItem.text}`)
+            : getMessage('reportRecordingInteraction', undefined, 'Interaction with target element');
     }
 
     if (stepItem.type === 'navigation') {
-        return stepItem.url ? `Navigated to ${stepItem.url}` : 'Navigation event';
+        return stepItem.url
+            ? getMessage('reportRecordingNavigatedTo', [stepItem.url], `Navigated to ${stepItem.url}`)
+            : getMessage('reportRecordingNavigationEvent', undefined, 'Navigation event');
     }
 
-    return stepItem.text || stepItem.value || 'Recorded action';
+    return stepItem.text || stepItem.value || getMessage('reportRecordingFallbackAction', undefined, 'Recorded action');
 }

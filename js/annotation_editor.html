@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Annotation Editor</title>
+    <title>__MSG_annotationEditorTitle__</title>
+    <script src="localize-html.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -342,44 +343,44 @@
 <body>
     <div id="editor-overlay">
         <div id="instructions">
-            <div>Click and drag to draw annotations on your screenshot</div>
+            <div>__MSG_annotationEditorInstruction__</div>
             <div class="shortcuts">
-                <span><span class="shortcut-key">A</span> Arrow</span>
-                <span><span class="shortcut-key">R</span> Rectangle</span>
-                <span><span class="shortcut-key">T</span> Text</span>
-                <span><span class="shortcut-key">B</span> Blur</span>
-                <span><span class="shortcut-key">Ctrl+Z</span> Undo</span>
-                <span><span class="shortcut-key">Esc</span> Cancel</span>
-                <span><span class="shortcut-key">Ctrl+Enter</span> Save</span>
+                <span><span class="shortcut-key">A</span> __MSG_annotationEditorShortcutArrow__</span>
+                <span><span class="shortcut-key">R</span> __MSG_annotationEditorShortcutRectangle__</span>
+                <span><span class="shortcut-key">T</span> __MSG_annotationEditorShortcutText__</span>
+                <span><span class="shortcut-key">B</span> __MSG_annotationEditorShortcutBlur__</span>
+                <span><span class="shortcut-key">Ctrl+Z</span> __MSG_annotationEditorShortcutUndo__</span>
+                <span><span class="shortcut-key">Esc</span> __MSG_annotationEditorShortcutCancel__</span>
+                <span><span class="shortcut-key">Ctrl+Enter</span> __MSG_annotationEditorShortcutSave__</span>
             </div>
         </div>
 
         <div id="canvas-container">
             <canvas id="annotation-canvas"></canvas>
-            <input type="text" id="text-input" placeholder="Type text..." />
+            <input type="text" id="text-input" placeholder="__MSG_annotationEditorTextPlaceholder__" />
         </div>
 
         <div id="toolbar">
             <div class="toolbar-section">
-                <button class="tool-button active" id="arrow-tool" data-tooltip="Arrow">
+                <button class="tool-button active" id="arrow-tool" data-tooltip="__MSG_annotationEditorToolArrow__">
                     <svg class="icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="7" y1="17" x2="17" y2="7"></line>
                         <polyline points="7 7 17 7 17 17"></polyline>
                     </svg>
                 </button>
-                <button class="tool-button" id="rectangle-tool" data-tooltip="Rectangle">
+                <button class="tool-button" id="rectangle-tool" data-tooltip="__MSG_annotationEditorToolRectangle__">
                     <svg class="icon-rectangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     </svg>
                 </button>
-                <button class="tool-button" id="text-tool" data-tooltip="Text">
+                <button class="tool-button" id="text-tool" data-tooltip="__MSG_annotationEditorToolText__">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="4 7 4 4 20 4 20 7"></polyline>
                         <line x1="9.5" y1="20" x2="14.5" y2="20"></line>
                         <line x1="12" y1="4" x2="12" y2="20"></line>
                     </svg>
                 </button>
-                <button class="tool-button" id="blur-tool" data-tooltip="Blur (B)">
+                <button class="tool-button" id="blur-tool" data-tooltip="__MSG_annotationEditorToolBlur__">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/>
                         <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.6"/>
@@ -389,7 +390,7 @@
                         <line x1="22" y1="16" x2="20" y2="16"/>
                     </svg>
                 </button>
-                <button class="tool-button" id="undo-button" data-tooltip="Undo (Ctrl+Z)" disabled>
+                <button class="tool-button" id="undo-button" data-tooltip="__MSG_annotationEditorToolUndo__" disabled>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="1 4 1 10 7 10"></polyline>
                         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
@@ -398,8 +399,8 @@
             </div>
 
             <div class="toolbar-section">
-                <button class="action-button" id="save-button">Save</button>
-                <button class="action-button" id="cancel-button">Cancel</button>
+                <button class="action-button" id="save-button">__MSG_annotationEditorSave__</button>
+                <button class="action-button" id="cancel-button">__MSG_annotationEditorCancel__</button>
             </div>
         </div>
     </div>

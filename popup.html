@@ -2,10 +2,11 @@
 <html>
 
 <head>
-    <title>Exploratory Testing Chrome Extension</title>
+    <title>__MSG_popupTitle__</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/popUp.css">
     <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+    <script src="js/localize-html.js"></script>
     <script src="js/bootstrap.bundle.min.js"></script>
     <script src="js/popup.js"></script>
 </head>
@@ -14,42 +15,42 @@
     <div class="card popup-card">
         <div class="card-header">
             <div class="popup-toolbar">
-                <div class="btn-group btn-group-sm session-group session-group--left" role="group" aria-label="Session Options">
-                    <button id="previewBtn" class="btn btn-secondary" title="View Session report" data-toggle="tooltip"
+                <div class="btn-group btn-group-sm session-group session-group--left" role="group" aria-label="__MSG_popupSessionOptionsAria__">
+                    <button id="previewBtn" class="btn btn-secondary" title="__MSG_popupViewReportTitle__" data-toggle="tooltip"
                         data-placement="top"></button>
-                    <button id="exportCSVBtn" class="btn btn-secondary" title="Export session to CSV" data-toggle="tooltip"
+                    <button id="exportCSVBtn" class="btn btn-secondary" title="__MSG_popupExportCsvTitle__" data-toggle="tooltip"
                         data-placement="top"></button>
-                    <button id="exportJsonBtn" class="btn btn-secondary" title="Export session to JSON"
+                    <button id="exportJsonBtn" class="btn btn-secondary" title="__MSG_popupExportJsonTitle__"
                         data-toggle="tooltip" data-placement="top"></button>
-                    <button id="importJsonBtn" class="btn btn-secondary" title="Import session from JSON"
+                    <button id="importJsonBtn" class="btn btn-secondary" title="__MSG_popupImportJsonTitle__"
                         data-toggle="tooltip" data-placement="top">
                     </button>
                 </div>
-                <div class="btn-group btn-group-sm session-group session-group--right" role="group" aria-label="Session reset">
-                    <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="Reset all session data" aria-label="Reset all session data">
-                        <span class="visually-hidden">Reset all session data</span>
+                <div class="btn-group btn-group-sm session-group session-group--right" role="group" aria-label="__MSG_popupSessionResetAria__">
+                    <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="__MSG_popupResetAllTitle__" aria-label="__MSG_popupResetAllTitle__">
+                        <span class="visually-hidden">__MSG_popupResetAllHidden__</span>
                     </button>
                 </div>
             </div>
-            <p class="draft-subtitle">Collect notes and screenshots first, then save the step explicitly.</p>
+            <p class="draft-subtitle">__MSG_popupDraftSubtitle__</p>
         </div>
 
         <div class="card-body">
-            <div class="mode-tabs" role="tablist" aria-label="Popup modes">
-                <button id="actionTabBtn" class="mode-tab is-active" type="button" role="tab" aria-selected="true">Action</button>
-                <button id="recorderTabBtn" class="mode-tab" type="button" role="tab" aria-selected="false">Recorder</button>
+            <div class="mode-tabs" role="tablist" aria-label="__MSG_popupModesAria__">
+                <button id="actionTabBtn" class="mode-tab is-active" type="button" role="tab" aria-selected="true">__MSG_popupActionTab__</button>
+                <button id="recorderTabBtn" class="mode-tab" type="button" role="tab" aria-selected="false">__MSG_popupRecorderTab__</button>
             </div>
 
-            <section id="actionPanel" class="mode-panel" aria-label="Action mode">
-                <p class="mode-description">Capture bugs and notes with screenshots, then save the step explicitly.</p>
+            <section id="actionPanel" class="mode-panel" aria-label="__MSG_popupActionModeAria__">
+                <p class="mode-description">__MSG_popupActionDescription__</p>
 
-                <div class="type-grid" role="group" aria-label="Annotation type">
+                <div class="type-grid" role="group" aria-label="__MSG_popupAnnotationTypeAria__">
                     <button id="BugBtn" class="type-button type-button--bug" data-type="Bug">
-                        <span id="bugButtonLabel">Bug</span>
+                        <span id="bugButtonLabel">__MSG_annotationBug__</span>
                         <span id="bugCounter" class="badge badge-light"></span>
                     </button>
                     <button id="NoteBtn" class="type-button type-button--note" data-type="Note">
-                        <span id="noteButtonLabel">Note</span>
+                        <span id="noteButtonLabel">__MSG_annotationNote__</span>
                         <span id="noteCounter" class="badge badge-light"></span>
                     </button>
                 </div>
@@ -57,88 +58,87 @@
                 <section class="draft-panel">
                     <div class="draft-panel__header">
                         <div>
-                            <h6 id="draftTitle" class="draft-title">New Bug</h6>
-                            <p class="draft-caption">Description remains editable until you add the step.</p>
+                            <h6 id="draftTitle" class="draft-title">__MSG_annotationNewBug__</h6>
+                            <p class="draft-caption">__MSG_popupDraftCaption__</p>
                         </div>
-                        <span id="draftImageCount" class="draft-counter">0 screenshots</span>
+                        <span id="draftImageCount" class="draft-counter">0</span>
                     </div>
 
                     <div class="form-group">
                         <textarea
                             id="draftDescription"
                             rows="4"
-                            placeholder="Describe what you found..."
-                            title="Ctrl + Enter to save the step"
+                            placeholder="__MSG_annotationDescribeBugPlaceholder__"
+                            title="__MSG_popupDraftSaveHint__"
                             class="form-control-sm draft-textarea"></textarea>
                     </div>
 
-                    <div class="draft-toolbar" aria-label="Draft actions">
-                        <div class="draft-toolbar__group draft-toolbar__group--left" role="group" aria-label="Draft capture actions">
+                    <div class="draft-toolbar" aria-label="__MSG_popupDraftActionsAria__">
+                        <div class="draft-toolbar__group draft-toolbar__group--left" role="group" aria-label="__MSG_popupDraftCaptureActionsAria__">
                             <button
                                 id="addScreenshotBtn"
                                 class="btn toolbar-button toolbar-button--icon toolbar-button--screenshot"
-                                title="Add screenshot"
-                                aria-label="Add screenshot">
-                                <span class="visually-hidden">Add screenshot</span>
+                                title="__MSG_popupAddScreenshotTitle__"
+                                aria-label="__MSG_popupAddScreenshotLabel__">
+                                <span class="visually-hidden">__MSG_popupAddScreenshotLabel__</span>
                             </button>
                             <button
                                 id="addCropScreenshotBtn"
                                 class="btn toolbar-button toolbar-button--icon toolbar-button--crop"
-                                title="Crop screenshot"
-                                aria-label="Crop screenshot">
-                                <span class="visually-hidden">Crop screenshot</span>
+                                title="__MSG_popupCropScreenshotTitle__"
+                                aria-label="__MSG_popupCropScreenshotLabel__">
+                                <span class="visually-hidden">__MSG_popupCropScreenshotLabel__</span>
                             </button>
                         </div>
-                        <div class="draft-toolbar__group draft-toolbar__group--right" role="group" aria-label="Draft clear action">
+                        <div class="draft-toolbar__group draft-toolbar__group--right" role="group" aria-label="__MSG_popupDraftClearActionAria__">
                             <button
                                 id="clearDraftBtn"
                                 class="btn toolbar-button toolbar-button--icon toolbar-button--clear"
-                                title="Clear draft"
-                                aria-label="Clear draft">
-                                <span class="visually-hidden">Clear draft</span>
+                                title="__MSG_popupClearDraftTitle__"
+                                aria-label="__MSG_popupClearDraftLabel__">
+                                <span class="visually-hidden">__MSG_popupClearDraftLabel__</span>
                             </button>
                         </div>
                     </div>
 
                     <div id="draftImages" class="draft-images draft-images--empty">
-                        <p class="draft-images__empty">No screenshots yet.</p>
+                        <p class="draft-images__empty">__MSG_popupNoScreenshotsYet__</p>
                     </div>
                 </section>
             </section>
 
-            <section id="recorderPanel" class="mode-panel" aria-label="Recorder mode" hidden>
-                <section class="recording-panel" aria-label="Record and replay actions">
+            <section id="recorderPanel" class="mode-panel" aria-label="__MSG_popupRecorderModeAria__" hidden>
+                <section class="recording-panel" aria-label="__MSG_popupRecordReplayAria__">
                     <div class="recording-panel__header">
                         <div>
-                            <h6 class="recording-title">Recorder</h6>
-                            <p id="recordingStatus" class="recording-caption">Recorder idle</p>
+                            <h6 id="recordingStatus" class="recording-title">__MSG_popupRecorderIdle__</h6>
                         </div>
-                        <span id="recordingStepCount" class="draft-counter">0 steps</span>
+                        <span id="recordingStepCount" class="draft-counter">0</span>
                     </div>
-                    <p class="mode-description mode-description--compact">Record user actions on the current page and replay the last captured flow.</p>
-                    <div class="recording-toolbar" role="group" aria-label="Recording controls">
-                        <button id="recordingToggleBtn" class="btn recording-button recording-button--record" type="button"><span class="recording-button__icon" aria-hidden="true">●</span><span class="recording-button__label">Record</span></button>
-                        <button id="playRecordingBtn" class="btn recording-button recording-button--play" type="button"><span class="recording-button__icon" aria-hidden="true">▶</span><span class="recording-button__label">Play</span></button>
+                    <p class="mode-description mode-description--compact">__MSG_popupRecorderDescription__</p>
+                    <div class="recording-toolbar" role="group" aria-label="__MSG_popupRecordingControlsAria__">
+                        <button id="recordingToggleBtn" class="btn recording-button recording-button--record" type="button"><span class="recording-button__icon" aria-hidden="true">●</span><span class="recording-button__label">__MSG_popupRecordButton__</span></button>
+                        <button id="playRecordingBtn" class="btn recording-button recording-button--play" type="button"><span class="recording-button__icon" aria-hidden="true">▶</span><span class="recording-button__label">__MSG_popupPlayButton__</span></button>
                     </div>
                 </section>
 
-                <section class="recording-steps-panel" aria-label="Recorded steps">
+                <section class="recording-steps-panel" aria-label="__MSG_popupRecordedStepsAria__">
                     <div class="recording-steps-panel__header">
-                        <h6 class="recording-title">Recorded Steps</h6>
+                        <h6 class="recording-title">__MSG_popupRecordedStepsTitle__</h6>
                         <div class="recording-steps-panel__actions">
-                            <span id="recordingScreenshotCount" class="draft-counter">0 screenshots</span>
+                            <span id="recordingScreenshotCount" class="draft-counter">0</span>
                             <button
                                 id="clearRecordingBtn"
                                 class="btn toolbar-button toolbar-button--icon toolbar-button--clear"
-                                title="Clear recording"
-                                aria-label="Clear recording"
+                                title="__MSG_popupClearRecordingTitle__"
+                                aria-label="__MSG_popupClearRecordingLabel__"
                                 type="button">
-                                <span class="visually-hidden">Clear recording</span>
+                                <span class="visually-hidden">__MSG_popupClearRecordingLabel__</span>
                             </button>
                         </div>
                     </div>
                     <div id="recordingStepsList" class="recording-steps-list recording-steps-list--empty">
-                        <p class="recording-steps-list__empty">No recorded steps yet.</p>
+                        <p class="recording-steps-list__empty">__MSG_popupNoRecordedStepsYet__</p>
                     </div>
                 </section>
             </section>
@@ -146,7 +146,7 @@
     </div>
 
     <div id="popupImageHoverPreview" class="popup-image-hover-preview" aria-hidden="true">
-        <img src="" alt="Screenshot preview">
+        <img src="" alt="__MSG_popupScreenshotPreviewAlt__">
     </div>
 </body>
 

@@ -13,6 +13,19 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
     let currentAnnotationType = null;
     let currentDescription = null;
 
+    function getMessage(messageKey, substitutions, fallbackValue = '') {
+        try {
+            const localizedMessage = chrome?.i18n?.getMessage(messageKey, substitutions);
+            if (localizedMessage) {
+                return localizedMessage;
+            }
+        } catch {
+            // Ignore lookup errors and use fallback below.
+        }
+
+        return fallbackValue;
+    }
+
     // Helper function to check if extension context is valid
     function isExtensionContextValid() {
         try {
@@ -171,7 +184,9 @@ if (typeof window.exploratoryTestingCropperInitialized === 'undefined') {
 
         cleanUpAllSelectionListeners();
         removeSelectionNotification();
-        showSelectionNotification("Click and drag to select an area. Press Esc to cancel.");
+        showSelectionNotification(
+            getMessage('selectionInstruction', undefined, 'Click and drag to select an area. Press Esc to cancel.')
+        );
 
         document.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('keydown', handleKeyDown);
@@ -791,7 +806,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return {
                 success: false,
                 reason: 'target-not-found',
-                error: 'Target element not found.'
+                error: getMessage('errorReplayTargetNotFound', ['?'], 'Target element not found.')
             };
         }
 
@@ -820,7 +835,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
 
         return {
             success: false,
-            error: `Unsupported replay step type: ${stepData.type}.`
+            error: `${getMessage('stepTypeUnknown', undefined, 'Action')}: ${stepData.type}.`
         };
     }
 
@@ -864,7 +879,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
                 .catch((error) => {
                     sendResponse({
                         success: false,
-                        error: error.message || 'Replay failed.'
+                        error: error.message || getMessage('errorReplayActionFailed', ['?'], 'Replay failed.')
                     });
                 });
             return true;

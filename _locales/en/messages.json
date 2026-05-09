@@ -1,0 +1,370 @@
+{
+    "extensionDescription": {
+        "message": "Capture bugs and notes during exploratory testing."
+    },
+
+    "annotationBug": { "message": "Bug" },
+    "annotationNote": { "message": "Note" },
+    "annotationRecording": { "message": "Recording" },
+    "annotationBugAction": { "message": "Add bug" },
+    "annotationNoteAction": { "message": "Add note" },
+    "annotationNewBug": { "message": "New bug" },
+    "annotationNewNote": { "message": "New note" },
+    "annotationDescribeBugPlaceholder": { "message": "Describe the bug..." },
+    "annotationDescribeNotePlaceholder": { "message": "Describe the note..." },
+
+    "popupTitle": { "message": "Exploratory Testing Chrome Extension" },
+    "popupSessionOptionsAria": { "message": "Session options" },
+    "popupViewReportTitle": { "message": "Open session report" },
+    "popupExportCsvTitle": { "message": "Export session to CSV" },
+    "popupExportJsonTitle": { "message": "Export session to JSON" },
+    "popupImportJsonTitle": { "message": "Import session from JSON" },
+    "popupSessionResetAria": { "message": "Reset session" },
+    "popupResetAllTitle": { "message": "Reset all session data" },
+    "popupResetAllHidden": { "message": "Reset all session data" },
+    "popupDraftSubtitle": {
+        "message": "Collect notes and screenshots first, then save the step explicitly."
+    },
+    "popupModesAria": { "message": "Popup modes" },
+    "popupActionTab": { "message": "Action" },
+    "popupRecorderTab": { "message": "Recorder" },
+    "popupActionModeAria": { "message": "Action mode" },
+    "popupActionDescription": {
+        "message": "Capture bugs and notes with screenshots, then save the step explicitly."
+    },
+    "popupAnnotationTypeAria": { "message": "Annotation type" },
+    "popupDraftCaption": {
+        "message": "Description stays editable until you add the step."
+    },
+    "popupDraftSaveHint": { "message": "Ctrl + Enter to save the step" },
+    "popupDraftActionsAria": { "message": "Draft actions" },
+    "popupDraftCaptureActionsAria": { "message": "Draft capture actions" },
+    "popupAddScreenshotTitle": { "message": "Add screenshot" },
+    "popupAddScreenshotLabel": { "message": "Add screenshot" },
+    "popupCropScreenshotTitle": { "message": "Crop screenshot" },
+    "popupCropScreenshotLabel": { "message": "Crop screenshot" },
+    "popupDraftClearActionAria": { "message": "Draft clear action" },
+    "popupClearDraftTitle": { "message": "Clear draft" },
+    "popupClearDraftLabel": { "message": "Clear draft" },
+    "popupNoScreenshotsYet": { "message": "No screenshots yet." },
+    "popupRecorderModeAria": { "message": "Recorder mode" },
+    "popupRecordReplayAria": { "message": "Record and replay actions" },
+    "popupRecorderTitle": { "message": "Recorder" },
+    "popupRecorderIdle": { "message": "Recorder idle" },
+    "popupRecorderDescription": {
+        "message": "Record user actions on the current page and replay the last captured flow."
+    },
+    "popupRecordingControlsAria": { "message": "Recording controls" },
+    "popupRecordButton": { "message": "Record" },
+    "popupStopButton": { "message": "Stop" },
+    "popupPlayButton": { "message": "Play" },
+    "popupRecordedStepsAria": { "message": "Recorded steps" },
+    "popupRecordedStepsTitle": { "message": "Recorded steps" },
+    "popupClearRecordingTitle": { "message": "Clear recording" },
+    "popupClearRecordingLabel": { "message": "Clear recording" },
+    "popupNoRecordedStepsYet": { "message": "No recorded steps yet." },
+    "popupScreenshotPreviewAlt": { "message": "Screenshot preview" },
+    "popupConfirmClearDraftTitle": { "message": "Confirm clear draft" },
+    "popupConfirmClearRecordingTitle": { "message": "Confirm clear recording" },
+    "popupConfirmResetAllTitle": {
+        "message": "Confirm reset all session data"
+    },
+    "popupRemoveScreenshotTitle": { "message": "Remove screenshot" },
+    "popupConfirmRemoveScreenshotTitle": {
+        "message": "Confirm remove screenshot"
+    },
+    "popupStepLabel": { "message": "Step $1" },
+    "popupStepScreenshotAlt": { "message": "Screenshot for step $1" },
+    "popupRecorderStatusRecording": {
+        "message": "Recording actions on the current tab"
+    },
+    "popupRecorderStatusReplaying": {
+        "message": "Replaying the last recorded flow"
+    },
+    "popupRecorderStatusReady": { "message": "Recording is ready to replay" },
+    "popupRecorderStatusIdle": { "message": "Recorder idle" },
+    "popupRecorderNavigateTo": { "message": "Go to $1" },
+    "popupRecorderClickText": { "message": "Click $1" },
+    "popupRecorderClickElement": { "message": "Click element" },
+    "popupRecorderSubmitForm": { "message": "Submit form" },
+    "popupRecorderTypeValue": { "message": "Type $1" },
+    "popupRecorderUpdateField": { "message": "Update field" },
+    "popupUnknownError": { "message": "Unknown error" },
+
+    "countScreenshot_one": { "message": "$1 screenshot" },
+    "countScreenshot_few": { "message": "$1 screenshots" },
+    "countScreenshot_many": { "message": "$1 screenshots" },
+    "countStep_one": { "message": "$1 step" },
+    "countStep_few": { "message": "$1 steps" },
+    "countStep_many": { "message": "$1 steps" },
+    "countSecond_one": { "message": "$1 second" },
+    "countSecond_few": { "message": "$1 seconds" },
+    "countSecond_many": { "message": "$1 seconds" },
+
+    "stepTypeClick": { "message": "Click" },
+    "stepTypeInput": { "message": "Input" },
+    "stepTypeChange": { "message": "Change" },
+    "stepTypeSubmit": { "message": "Submit" },
+    "stepTypeNavigation": { "message": "Navigation" },
+    "stepTypeUnknown": { "message": "Action" },
+
+    "reportHtmlTitle": { "message": "Exploratory Testing Report" },
+    "reportHeaderTitle": { "message": "Exploratory Testing Report" },
+    "reportHeaderSubtitle": { "message": "Session Summary" },
+    "reportChartTitle": { "message": "Distribution" },
+    "reportSectionsAria": { "message": "Report sections" },
+    "reportTabActions": { "message": "Actions" },
+    "reportTabRecordFlow": { "message": "Record flow" },
+    "reportFilterByType": { "message": "Filter by type" },
+    "reportFilterAll": { "message": "All" },
+    "reportFilterBugs": { "message": "Bugs" },
+    "reportFilterNotes": { "message": "Notes" },
+    "reportDownloadImages": { "message": "Download images" },
+    "reportDownloadImagesTitle": { "message": "Download all screenshots" },
+    "reportDownloadReport": { "message": "Download report" },
+    "reportDownloadReportTitle": { "message": "Download complete report" },
+    "reportTableType": { "message": "Type" },
+    "reportTableDescription": { "message": "Description" },
+    "reportTableUrl": { "message": "URL" },
+    "reportTableDate": { "message": "Date" },
+    "reportTableScreenshots": { "message": "Screenshots" },
+    "reportRecordedFlowTitle": { "message": "Recorded flow" },
+    "reportRecordedFlowSubtitle": {
+        "message": "Steps and screenshots captured by the recorder are included in the exported state."
+    },
+    "reportImagePreviewAlt": { "message": "Preview" },
+    "reportImageHoverPreviewAlt": { "message": "Hover preview" },
+    "reportNoExportedStateTitle": { "message": "No exported state available" },
+    "reportNoExportedStateBody": {
+        "message": "Add annotations, keep a draft, or record a flow to generate a report."
+    },
+    "reportErrorLoadingTitle": { "message": "Error loading data" },
+
+    "reportEnvironmentStartDate": { "message": "Start date" },
+    "reportEnvironmentStartDateHint": {
+        "message": "The moment when this testing session started."
+    },
+    "reportEnvironmentBrowser": { "message": "Browser" },
+    "reportEnvironmentBrowserHint": {
+        "message": "Detected browser name and version used during the session."
+    },
+    "reportEnvironmentOs": { "message": "Operating system" },
+    "reportEnvironmentOsHint": {
+        "message": "Detected operating system and CPU architecture."
+    },
+    "reportEnvironmentLocale": { "message": "Locale" },
+    "reportEnvironmentLocaleHint": {
+        "message": "Language used by the page or browser for translations, formats, and content."
+    },
+    "reportEnvironmentTimezone": { "message": "Timezone" },
+    "reportEnvironmentTimezoneHint": {
+        "message": "Browser timezone used to format dates and times."
+    },
+    "reportEnvironmentViewport": { "message": "Viewport" },
+    "reportEnvironmentViewportHint": {
+        "message": "Visible page area size in CSS pixels."
+    },
+    "reportEnvironmentScreen": { "message": "Screen" },
+    "reportEnvironmentScreenHint": {
+        "message": "Reported screen resolution in physical pixels."
+    },
+    "reportEnvironmentDpr": { "message": "DPR" },
+    "reportEnvironmentDprHint": {
+        "message": "Device Pixel Ratio. Shows how many physical pixels are used for one CSS pixel. Useful for zoom, screenshots, and sharpness issues."
+    },
+    "reportEnvironmentPageTitle": { "message": "Page title" },
+    "reportEnvironmentPageTitleHint": {
+        "message": "Current document title of the tested page."
+    },
+    "reportNotAvailable": { "message": "N/A" },
+
+    "reportStatsBugs": { "message": "Bugs" },
+    "reportStatsNotes": { "message": "Notes" },
+    "reportStatsRecordedSteps": { "message": "Recorded steps" },
+    "reportRecordingStateEyebrow": { "message": "Recorder snapshot" },
+    "reportRecordingStateStopped": { "message": "Replay stopped" },
+    "reportRecordingStateCaptured": { "message": "Flow captured" },
+    "reportRecordingStateEmpty": { "message": "No recorded flow" },
+    "reportRecordingStateCapturedBody": {
+        "message": "Recorded actions are shown below and restored on import."
+    },
+    "reportRecordingStateEmptyBody": {
+        "message": "No recorder steps were available in the exported state."
+    },
+    "reportRecordingMetricScreenshots": { "message": "Screenshots" },
+    "reportRecordingMetricStarted": { "message": "Started" },
+    "reportRecordingMetricStopped": { "message": "Stopped" },
+    "reportRecordingEmpty": { "message": "No recording steps available." },
+    "reportRecordingNoScreenshot": { "message": "No screenshot" },
+    "reportRecordingScreenshotAlt": {
+        "message": "Recording screenshot for step $1"
+    },
+    "reportRecordingValueChanged": { "message": "Value changed to \"$1\"" },
+    "reportRecordingTargetText": { "message": "Target text: $1" },
+    "reportRecordingInteraction": {
+        "message": "Interaction with target element"
+    },
+    "reportRecordingNavigatedTo": { "message": "Navigated to $1" },
+    "reportRecordingNavigationEvent": { "message": "Navigation event" },
+    "reportRecordingFallbackAction": { "message": "Recorded action" },
+    "reportNoAnnotationsForFilter": {
+        "message": "No annotations found for this filter."
+    },
+    "reportRemoveScreenshot": { "message": "Remove screenshot" },
+    "reportDeleteAnnotation": { "message": "Delete annotation" },
+    "reportScreenshotAlt": { "message": "Screenshot $1" },
+    "reportConfirmRemoveScreenshot": { "message": "Confirm remove screenshot" },
+    "reportConfirmDeleteAnnotation": { "message": "Confirm delete annotation" },
+    "reportDescriptionCannotBeEmpty": {
+        "message": "Description cannot be empty."
+    },
+    "reportDescriptionUpdateFailed": {
+        "message": "Failed to update description."
+    },
+    "reportChartLabelBugs": { "message": "Bugs" },
+    "reportChartLabelNotes": { "message": "Notes" },
+
+    "reportDownloadNoScreenshots": {
+        "message": "No screenshots available to download."
+    },
+    "reportDownloadJsZipMissing": {
+        "message": "JSZip is not loaded. Can't create the ZIP archive."
+    },
+    "reportDownloadZipFailed": {
+        "message": "Couldn't create the ZIP archive. Please try again."
+    },
+    "reportDownloadReadmeTitle": {
+        "message": "Exploratory Testing Screenshots"
+    },
+    "reportDownloadReadmeGenerated": { "message": "Generated" },
+    "reportDownloadReadmeSource": { "message": "Source" },
+    "reportDownloadReadmeTotal": { "message": "Total screenshots" },
+    "reportDownloadReadmeBody": {
+        "message": "This ZIP file contains screenshots captured during your testing session."
+    },
+    "reportDownloadSourceName": { "message": "QA Companion Chrome Extension" },
+    "reportDownloadChartAlt": { "message": "Annotation distribution chart" },
+
+    "importHtmlTitle": { "message": "Import session JSON" },
+    "importEyebrow": { "message": "QA Companion" },
+    "importTitle": { "message": "Import session JSON" },
+    "importSubtitle": {
+        "message": "Large imports run in this separate page so the process stays alive while the file picker is open. You can reopen the popup after the import finishes."
+    },
+    "importChooseJsonFile": { "message": "Choose JSON file" },
+    "importNoFileSelected": { "message": "No file selected." },
+    "importReady": { "message": "Ready to import." },
+    "importRestoresHint": {
+        "message": "The import restores saved actions, recorder state, and screenshots."
+    },
+    "importReadingFile": { "message": "Reading file..." },
+    "importPreparingChunks": { "message": "Preparing $1 chunk(s)..." },
+    "importImportingStorage": {
+        "message": "Importing into extension storage..."
+    },
+    "importCompleted": {
+        "message": "Import completed. Reopen the extension popup to review the restored session."
+    },
+    "importAutoCloseNotice": {
+        "message": "You can close this page now. It will close automatically in $1."
+    },
+    "importFailed": { "message": "Failed to import session JSON." },
+    "importSelectedFileWithSize": { "message": "$1 ($2 KB)" },
+
+    "annotationEditorTitle": { "message": "Annotation Editor" },
+    "annotationEditorInstruction": {
+        "message": "Click and drag to draw annotations on your screenshot"
+    },
+    "annotationEditorShortcutArrow": { "message": "Arrow" },
+    "annotationEditorShortcutRectangle": { "message": "Rectangle" },
+    "annotationEditorShortcutText": { "message": "Text" },
+    "annotationEditorShortcutBlur": { "message": "Blur" },
+    "annotationEditorShortcutUndo": { "message": "Undo" },
+    "annotationEditorShortcutCancel": { "message": "Cancel" },
+    "annotationEditorShortcutSave": { "message": "Save" },
+    "annotationEditorTextPlaceholder": { "message": "Type text..." },
+    "annotationEditorToolArrow": { "message": "Arrow" },
+    "annotationEditorToolRectangle": { "message": "Rectangle" },
+    "annotationEditorToolText": { "message": "Text" },
+    "annotationEditorToolBlur": { "message": "Blur (B)" },
+    "annotationEditorToolUndo": { "message": "Undo (Ctrl+Z)" },
+    "annotationEditorSave": { "message": "Save" },
+    "annotationEditorCancel": { "message": "Cancel" },
+
+    "selectionInstruction": {
+        "message": "Click and drag to select an area. Press Esc to cancel."
+    },
+
+    "errorUnknown": { "message": "Unknown error" },
+    "errorNavigationTimeout": {
+        "message": "Timed out while waiting for the page to finish loading."
+    },
+    "errorReplayActionFailed": {
+        "message": "Step $1 failed: couldn't replay the recorded action."
+    },
+    "errorReplayTargetNotFound": {
+        "message": "Step $1 failed: target element not found."
+    },
+    "errorReplayCancelled": { "message": "Replay cancelled." },
+    "errorReplayAlreadyRunning": { "message": "Replay is already running." },
+    "errorStopRecordingBeforeReplay": {
+        "message": "Stop recording before starting replay."
+    },
+    "errorNoRecordingToReplay": {
+        "message": "There is no recording to replay."
+    },
+    "errorNoActiveTabForRecording": {
+        "message": "No active tab found for recording."
+    },
+    "errorNoActiveTabForReplay": {
+        "message": "No active tab found for replay."
+    },
+    "errorRecordingUnavailablePage": {
+        "message": "Recording is not available on this type of page."
+    },
+    "errorReplayUnavailablePage": {
+        "message": "Replay is not available on this type of page."
+    },
+    "errorDescriptionRequired": {
+        "message": "Add a description before saving the step."
+    },
+    "errorDescriptionCannotBeEmpty": {
+        "message": "Description cannot be empty."
+    },
+    "errorNoActiveTabForCrop": {
+        "message": "No active tab found for crop selection."
+    },
+    "errorCaptureScreenshotFailed": {
+        "message": "Failed to capture screenshot."
+    },
+    "errorAnnotationNotFound": { "message": "Annotation not found." },
+    "errorAnnotationImageNotFound": {
+        "message": "Annotation screenshot not found."
+    },
+    "errorImportSessionFailed": { "message": "Failed to import session JSON." },
+    "errorUpdateDescriptionFailed": {
+        "message": "Failed to update description."
+    },
+    "errorNoTitleAvailable": { "message": "Untitled page" },
+
+    "notificationSessionSaveFailedTitle": { "message": "Session save failed" },
+    "notificationSessionSaveFailedBody": {
+        "message": "Storage is full and there are no screenshots left to remove."
+    },
+    "notificationSessionAdjustedTitle": {
+        "message": "Session saved with adjustment"
+    },
+    "notificationSessionAdjustedBody": {
+        "message": "The oldest screenshot was removed so the session could be saved."
+    },
+    "notificationActionSavedTitle": { "message": "Step saved" },
+    "notificationActionSavedBody": {
+        "message": "\"$1\" was saved successfully."
+    },
+    "notificationSelectionUnavailableTitle": {
+        "message": "Selection unavailable"
+    },
+    "notificationSelectionUnavailableBody": {
+        "message": "Screen selection can't be used on this kind of page. Try a regular website instead."
+    }
+}

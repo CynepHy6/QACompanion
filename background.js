@@ -5,6 +5,7 @@ import { createEmptyRecording, normalizeRecording } from './src/Recording.js';
 import { ExportSessionCSV } from './src/ExportSessionCSV.js';
 import { createBase64DataUrl } from './src/dataUrlEncoding.js';
 import { getSystemInfo } from './src/browserInfo.js';
+import { getMessage } from './src/i18n.js';
 
 const STORAGE_KEYS = {
     session: 'session',
@@ -192,7 +193,7 @@ async function waitForTabComplete(tabId, expectedUrl = null, timeoutMilliseconds
         await new Promise((resolve) => setTimeout(resolve, 150));
     }
 
-    throw new Error('Timed out waiting for tab navigation to complete.');
+    throw new Error(getMessage('errorNavigationTimeout', undefined, 'Timed out while waiting for the page to finish loading.'));
 }
 
 function getNextStepForPlayback(stepIndex) {
@@ -235,16 +236,22 @@ async function setActiveReplayStep(stepId) {
 
 function createReplayStepError(stepItem, stepIndex, playbackResponse = null) {
     const stepNumber = stepIndex + 1;
-    const replayError = new Error(`Step ${stepNumber} failed: unable to replay the recorded action.`);
+    const replayError = new Error(
+        getMessage('errorReplayActionFailed', [String(stepNumber)], `Step ${stepNumber} failed: couldn't replay the recorded action.`)
+    );
     replayError.failedStepId = stepItem?.stepId || '';
 
     if (playbackResponse?.reason === 'target-not-found') {
-        replayError.message = `Step ${stepNumber} failed: target element not found.`;
+        replayError.message = getMessage(
+            'errorReplayTargetNotFound',
+            [String(stepNumber)],
+            `Step ${stepNumber} failed: target element not found.`
+        );
         return replayError;
     }
 
     if (typeof playbackResponse?.error === 'string' && playbackResponse.error.trim() !== '') {
-        replayError.message = `Step ${stepNumber} failed: ${playbackResponse.error}`;
+        replayError.message = `${getMessage('popupStepLabel', [String(stepNumber)], `Step ${stepNumber}`)}: ${playbackResponse.error}`;
     }
 
     return replayError;
@@ -256,13 +263,16 @@ function normalizeReplayStepError(stepItem, stepIndex, originalError) {
     }
 
     const stepNumber = stepIndex + 1;
-    const replayError = new Error(`Step ${stepNumber} failed: unable to replay the recorded action.`);
+    const replayError = new Error(
+        getMessage('errorReplayActionFailed', [String(stepNumber)], `Step ${stepNumber} failed: couldn't replay the recorded action.`)
+    );
     replayError.failedStepId = stepItem?.stepId || '';
 
     if (typeof originalError?.message === 'string' && originalError.message.trim() !== '') {
-        replayError.message = originalError.message.startsWith(`Step ${stepNumber} failed:`)
+        const stepPrefix = `${getMessage('popupStepLabel', [String(stepNumber)], `Step ${stepNumber}`)}:`;
+        replayError.message = originalError.message.startsWith(stepPrefix)
             ? originalError.message
-            : `Step ${stepNumber} failed: ${originalError.message}`;
+            : `${stepPrefix} ${originalError.message}`;
     }
 
     return replayError;
@@ -432,16 +442,16 @@ async function saveSession() {
             const removedScreenshot = removeOldestScreenshotFromSession();
             if (!removedScreenshot) {
                 showNotification(
-                    'Session Save Failed',
-                    'Failed to save session. Storage limit reached and no screenshots can be removed.',
+                    getMessage('notificationSessionSaveFailedTitle', undefined, 'Session save failed'),
+                    getMessage('notificationSessionSaveFailedBody', undefined, 'Storage is full and there are no screenshots left to remove.'),
                     7000
                 );
                 throw error;
             }
 
             showNotification(
-                'Session Saved with Adjustment',
-                'The oldest screenshot was removed to save the session due to storage limits.',
+                getMessage('notificationSessionAdjustedTitle', undefined, 'Session saved with adjustment'),
+                getMessage('notificationSessionAdjustedBody', undefined, 'The oldest screenshot was removed so the session could be saved.'),
                 7000
             );
         }
@@ -584,16 +594,16 @@ async function startRecordingFlow() {
     }
 
     if (recording.status === 'replaying') {
-        throw new Error('Replay is already running.');
+        throw new Error(getMessage('errorReplayAlreadyRunning', undefined, 'Replay is already running.'));
     }
 
     const activeTab = await getActiveTab();
     if (!activeTab || activeTab.id == null) {
-        throw new Error('No active tab found for recording.');
+        throw new Error(getMessage('errorNoActiveTabForRecording', undefined, 'No active tab found for recording.'));
     }
 
     if (isRestrictedPage(activeTab.url)) {
-        throw new Error('Recording is not available on this type of page.');
+        throw new Error(getMessage('errorRecordingUnavailablePage', undefined, 'Recording is not available on this type of page.'));
     }
 
     if (session.getAnnotations().length === 0) {
@@ -780,24 +790,24 @@ async function playRecordingFlow() {
     await ensureStateReady();
 
     if (recording.status === 'recording') {
-        throw new Error('Stop recording before starting replay.');
+        throw new Error(getMessage('errorStopRecordingBeforeReplay', undefined, 'Stop recording before starting replay.'));
     }
 
     if (recording.status === 'replaying') {
-        throw new Error('Replay is already running.');
+        throw new Error(getMessage('errorReplayAlreadyRunning', undefined, 'Replay is already running.'));
     }
 
     if (recording.steps.length === 0) {
-        throw new Error('There is no recording to replay.');
+        throw new Error(getMessage('errorNoRecordingToReplay', undefined, 'There is no recording to replay.'));
     }
 
     const activeTab = await getActiveTab();
     if (!activeTab || activeTab.id == null) {
-        throw new Error('No active tab found for replay.');
+        throw new Error(getMessage('errorNoActiveTabForReplay', undefined, 'No active tab found for replay.'));
     }
 
     if (isRestrictedPage(activeTab.url)) {
-        throw new Error('Replay is not available on this type of page.');
+        throw new Error(getMessage('errorReplayUnavailablePage', undefined, 'Replay is not available on this type of page.'));
     }
 
     const playbackId = createRuntimeId('playback');
@@ -818,7 +828,7 @@ async function playRecordingFlow() {
 
         for (let stepIndex = 0; stepIndex < recording.steps.length; stepIndex += 1) {
             if (playbackToken !== playbackId) {
-                throw new Error('Replay cancelled.');
+                throw new Error(getMessage('errorReplayCancelled', undefined, 'Replay cancelled.'));
             }
 
             const stepItem = recording.steps[stepIndex];
@@ -857,7 +867,7 @@ async function playRecordingFlow() {
         return createRecordingPayload();
     } catch (error) {
         recording.failedStepId = typeof error?.failedStepId === 'string' ? error.failedStepId : '';
-        updateRecordingStatus('idle', error.message || 'Replay failed.');
+        updateRecordingStatus('idle', error.message || getMessage('errorReplayActionFailed', ['?'], 'Replay failed.'));
         markRecordingStopped();
         await saveRecording();
         clearPlaybackToken();
@@ -869,7 +879,7 @@ async function cancelPlayback() {
     playbackToken = null;
     if (recording.status === 'replaying') {
         clearReplayFailureState();
-        updateRecordingStatus('idle', 'Replay cancelled.');
+        updateRecordingStatus('idle', getMessage('errorReplayCancelled', undefined, 'Replay cancelled.'));
         markRecordingStopped();
         await saveRecording();
     }
@@ -928,7 +938,7 @@ async function createAnnotationFromDraft() {
 
     const description = draft.description.trim();
     if (!description) {
-        throw new Error('Description is required before saving the annotation.');
+        throw new Error(getMessage('errorDescriptionRequired', undefined, 'Add a description before saving the step.'));
     }
 
     const activeTab = await getActiveTab();
@@ -953,8 +963,8 @@ async function createAnnotationFromDraft() {
     await saveDraft();
 
     showNotification(
-        `${savedType} Saved`,
-        `Your ${savedType.toLowerCase()} "${savedDescription}" has been successfully saved.`
+        getMessage('notificationActionSavedTitle', undefined, 'Step saved'),
+        getMessage('notificationActionSavedBody', [savedDescription], `"${savedDescription}" was saved successfully.`)
     );
 
     return {
@@ -969,12 +979,12 @@ async function updateAnnotationName(annotationId, newName) {
 
     const trimmedName = typeof newName === 'string' ? newName.trim() : '';
     if (!trimmedName) {
-        throw new Error('Description cannot be empty.');
+        throw new Error(getMessage('errorDescriptionCannotBeEmpty', undefined, 'Description cannot be empty.'));
     }
 
     const updated = session.updateAnnotationName(annotationId, trimmedName);
     if (!updated) {
-        throw new Error('Annotation not found.');
+        throw new Error(getMessage('errorAnnotationNotFound', undefined, 'Annotation not found.'));
     }
 
     await saveSession();
@@ -985,7 +995,7 @@ async function appendAnnotationImages(annotationId, imageURLs) {
 
     const updated = session.appendAnnotationImages(annotationId, imageURLs);
     if (!updated) {
-        throw new Error('Annotation not found.');
+        throw new Error(getMessage('errorAnnotationNotFound', undefined, 'Annotation not found.'));
     }
 
     await saveSession();
@@ -996,7 +1006,7 @@ async function deleteAnnotationImage(annotationId, imageIndex) {
 
     const updated = session.removeAnnotationImage(annotationId, imageIndex);
     if (!updated) {
-        throw new Error('Annotation image not found.');
+        throw new Error(getMessage('errorAnnotationImageNotFound', undefined, 'Annotation screenshot not found.'));
     }
 
     await saveSession();
@@ -1007,7 +1017,7 @@ async function deleteAnnotation(annotationId) {
 
     const deleted = session.deleteAnnotation(annotationId);
     if (!deleted) {
-        throw new Error('Annotation not found.');
+        throw new Error(getMessage('errorAnnotationNotFound', undefined, 'Annotation not found.'));
     }
 
     await saveSession();
@@ -1137,13 +1147,13 @@ async function initiateCropSelection() {
 
     const activeTab = await getActiveTab();
     if (!activeTab || activeTab.id == null) {
-        throw new Error('No active tab found for crop selection.');
+        throw new Error(getMessage('errorNoActiveTabForCrop', undefined, 'No active tab found for crop selection.'));
     }
 
     if (isRestrictedPage(activeTab.url)) {
         showNotification(
-            'Selection Not Available',
-            'Screen selection cannot be used on this type of page. Please try on a regular webpage.'
+            getMessage('notificationSelectionUnavailableTitle', undefined, 'Selection unavailable'),
+            getMessage('notificationSelectionUnavailableBody', undefined, 'Screen selection can\'t be used on this kind of page. Try a regular website instead.')
         );
         return;
     }
@@ -1163,7 +1173,7 @@ async function initiateCropSelection() {
 async function handleCropScreenshotRequest(request) {
     const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
     if (!dataUrl) {
-        throw new Error('Failed to capture screenshot.');
+        throw new Error(getMessage('errorCaptureScreenshotFailed', undefined, 'Failed to capture screenshot.'));
     }
 
     const response = await fetch(dataUrl);
@@ -1293,7 +1303,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.error('Background request failed:', request.type, error);
             sendResponse({
                 status: 'error',
-                error: error.message || 'Unknown error'
+                error: error.message || getMessage('errorUnknown', undefined, 'Unknown error')
             });
         });
 

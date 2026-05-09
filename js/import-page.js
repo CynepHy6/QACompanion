@@ -1,3 +1,5 @@
+import { getMessage, getPluralMessage } from '../src/i18n.js';
+
 function sendRuntimeMessage(message) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response) => {
@@ -7,7 +9,7 @@ function sendRuntimeMessage(message) {
       }
 
       if (response && response.status === 'error') {
-        reject(new Error(response.error || 'Unknown error'));
+        reject(new Error(response.error || getMessage('errorUnknown', undefined, 'Unknown error')));
         return;
       }
 
@@ -40,7 +42,7 @@ function updateStatus(message, state = 'idle') {
 }
 
 function setSelectedFileName(fileName) {
-  document.getElementById('selectedFileName').textContent = fileName || 'No file selected.';
+  document.getElementById('selectedFileName').textContent = fileName || getMessage('importNoFileSelected', undefined, 'No file selected.');
 }
 
 function setAutoCloseNotice(message, state = 'idle', isHidden = false) {
@@ -53,7 +55,11 @@ function setAutoCloseNotice(message, state = 'idle', isHidden = false) {
 function startAutoCloseCountdown(secondsLeft) {
   const safeSeconds = Math.max(0, secondsLeft);
   setAutoCloseNotice(
-    `You can close this page now. It will close automatically in ${safeSeconds} second${safeSeconds === 1 ? '' : 's'}.`,
+    getMessage(
+      'importAutoCloseNotice',
+      [getPluralMessage('countSecond', safeSeconds, `${safeSeconds} seconds`)],
+      `You can close this page now. It will close automatically in ${safeSeconds} seconds.`
+    ),
     'success',
     false
   );
@@ -75,14 +81,21 @@ async function importSessionFile(selectedFile) {
 
   try {
     selectButton.disabled = true;
-    setSelectedFileName(`${selectedFile.name} (${Math.round(selectedFile.size / 1024)} KB)`);
-    updateStatus('Reading file...', 'idle');
+    setSelectedFileName(getMessage(
+      'importSelectedFileWithSize',
+      [selectedFile.name, String(Math.round(selectedFile.size / 1024))],
+      `${selectedFile.name} (${Math.round(selectedFile.size / 1024)} KB)`
+    ));
+    updateStatus(getMessage('importReadingFile', undefined, 'Reading file...'), 'idle');
     setAutoCloseNotice('', 'idle', true);
 
     const fileText = await selectedFile.text();
     const totalChunks = Math.ceil(fileText.length / chunkSize);
 
-    updateStatus(`Preparing ${totalChunks} chunk(s)...`, 'idle');
+    updateStatus(
+      getMessage('importPreparingChunks', [String(totalChunks)], `Preparing ${totalChunks} chunk(s)...`),
+      'idle'
+    );
 
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
       const chunkValue = fileText.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize);
@@ -90,7 +103,7 @@ async function importSessionFile(selectedFile) {
       await writeImportChunkToStorage(storageKey, chunkValue);
     }
 
-    updateStatus('Importing into extension storage...', 'idle');
+    updateStatus(getMessage('importImportingStorage', undefined, 'Importing into extension storage...'), 'idle');
 
     const response = await sendRuntimeMessage({
       type: 'importSessionJSonStoredChunks',
@@ -99,13 +112,13 @@ async function importSessionFile(selectedFile) {
     });
 
     if (response?.status !== 'ok') {
-      throw new Error(response?.error || 'Failed to import session JSON.');
+      throw new Error(response?.error || getMessage('importFailed', undefined, 'Failed to import session JSON.'));
     }
 
-    updateStatus('Import completed. Reopen the extension popup to review the restored session.', 'success');
+    updateStatus(getMessage('importCompleted', undefined, 'Import completed. Reopen the extension popup to review the restored session.'), 'success');
     startAutoCloseCountdown(5);
   } catch (error) {
-    updateStatus(error.message || 'Failed to import session JSON.', 'error');
+    updateStatus(error.message || getMessage('importFailed', undefined, 'Failed to import session JSON.'), 'error');
     setAutoCloseNotice('', 'idle', true);
   } finally {
     selectButton.disabled = false;

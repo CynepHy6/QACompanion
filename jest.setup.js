@@ -4,6 +4,10 @@ global.chrome = {
     getManifest: () => ({ version: '1.0.0' }), // Basic mock
     // Add other chrome.runtime APIs if needed by tests
   },
+  i18n: {
+    getMessage: jest.fn(() => ''),
+    getUILanguage: jest.fn(() => 'ru'),
+  },
   // Mock other chrome.* APIs as necessary
   storage: {
     local: {

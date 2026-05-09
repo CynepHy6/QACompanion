@@ -1,0 +1,378 @@
+{
+    "extensionDescription": {
+        "message": "Сохраняет баги и заметки во время исследования"
+    },
+
+    "annotationBug": { "message": "Баг" },
+    "annotationNote": { "message": "Заметка" },
+    "annotationRecording": { "message": "Запись" },
+    "annotationBugAction": { "message": "+ Баг" },
+    "annotationNoteAction": { "message": "+ Заметка" },
+    "annotationNewBug": { "message": "Новый баг" },
+    "annotationNewNote": { "message": "Новая заметка" },
+    "annotationDescribeBugPlaceholder": { "message": "Опиши баг..." },
+    "annotationDescribeNotePlaceholder": { "message": "Опиши заметку..." },
+
+    "popupTitle": {
+        "message": "Расширение для исследовательского тестирования"
+    },
+    "popupSessionOptionsAria": { "message": "Действия с сессией" },
+    "popupViewReportTitle": { "message": "Открыть отчет по сессии" },
+    "popupExportCsvTitle": { "message": "Экспортировать сессию в CSV" },
+    "popupExportJsonTitle": { "message": "Экспортировать сессию в JSON" },
+    "popupImportJsonTitle": { "message": "Импортировать сессию из JSON" },
+    "popupSessionResetAria": { "message": "Сброс сессии" },
+    "popupResetAllTitle": { "message": "Сбросить все данные сессии" },
+    "popupResetAllHidden": { "message": "Сбросить все данные сессии" },
+    "popupDraftSubtitle": {
+        "message": "Сначала собирай заметки и скриншоты, потом явно сохраняй шаг."
+    },
+    "popupModesAria": { "message": "Режимы popup" },
+    "popupActionTab": { "message": "Шаги" },
+    "popupRecorderTab": { "message": "Запись" },
+    "popupActionModeAria": { "message": "Режим шагов" },
+    "popupActionDescription": {
+        "message": "Сохраняй баги и заметки со скриншотами, а потом явно добавляй шаг."
+    },
+    "popupAnnotationTypeAria": { "message": "Тип записи" },
+    "popupDraftCaption": {
+        "message": "Описание можно менять, пока шаг не сохранен."
+    },
+    "popupDraftSaveHint": { "message": "Ctrl + Enter — сохранить шаг" },
+    "popupDraftActionsAria": { "message": "Действия с черновиком" },
+    "popupDraftCaptureActionsAria": { "message": "Захват для черновика" },
+    "popupAddScreenshotTitle": { "message": "Добавить скриншот" },
+    "popupAddScreenshotLabel": { "message": "Добавить скриншот" },
+    "popupCropScreenshotTitle": { "message": "Обрезать скриншот" },
+    "popupCropScreenshotLabel": { "message": "Обрезать скриншот" },
+    "popupDraftClearActionAria": { "message": "Очистка черновика" },
+    "popupClearDraftTitle": { "message": "Очистить черновик" },
+    "popupClearDraftLabel": { "message": "Очистить черновик" },
+    "popupNoScreenshotsYet": { "message": "Скриншотов пока нет." },
+    "popupRecorderModeAria": { "message": "Режим записи" },
+    "popupRecordReplayAria": { "message": "Запись и воспроизведение действий" },
+    "popupRecorderTitle": { "message": "Запись" },
+    "popupRecorderIdle": { "message": "Запись в ожидании" },
+    "popupRecorderDescription": {
+        "message": "Записывай действия на текущей странице и потом воспроизводи последний сценарий."
+    },
+    "popupRecordingControlsAria": { "message": "Управление записью" },
+    "popupRecordButton": { "message": "Запись" },
+    "popupStopButton": { "message": "Стоп" },
+    "popupPlayButton": { "message": "Повтор" },
+    "popupRecordedStepsAria": { "message": "Записанные шаги" },
+    "popupRecordedStepsTitle": { "message": "Записанные шаги" },
+    "popupClearRecordingTitle": { "message": "Очистить запись" },
+    "popupClearRecordingLabel": { "message": "Очистить запись" },
+    "popupNoRecordedStepsYet": { "message": "Записанных шагов пока нет." },
+    "popupScreenshotPreviewAlt": { "message": "Предпросмотр скриншота" },
+    "popupConfirmClearDraftTitle": { "message": "Подтверди очистку черновика" },
+    "popupConfirmClearRecordingTitle": {
+        "message": "Подтверди очистку записи"
+    },
+    "popupConfirmResetAllTitle": {
+        "message": "Подтверди сброс всех данных сессии"
+    },
+    "popupRemoveScreenshotTitle": { "message": "Удалить скриншот" },
+    "popupConfirmRemoveScreenshotTitle": {
+        "message": "Подтверди удаление скриншота"
+    },
+    "popupStepLabel": { "message": "Шаг $1" },
+    "popupStepScreenshotAlt": { "message": "Скриншот шага $1" },
+    "popupRecorderStatusRecording": {
+        "message": "Записываю действия на текущей вкладке"
+    },
+    "popupRecorderStatusReplaying": {
+        "message": "Повторяю последний записанный сценарий"
+    },
+    "popupRecorderStatusReady": { "message": "Запись готова к повтору" },
+    "popupRecorderStatusIdle": { "message": "Запись в ожидании" },
+    "popupRecorderNavigateTo": { "message": "Перейти на $1" },
+    "popupRecorderClickText": { "message": "Клик по $1" },
+    "popupRecorderClickElement": { "message": "Клик по элементу" },
+    "popupRecorderSubmitForm": { "message": "Отправить форму" },
+    "popupRecorderTypeValue": { "message": "Ввести $1" },
+    "popupRecorderUpdateField": { "message": "Изменить поле" },
+    "popupUnknownError": { "message": "Неизвестная ошибка" },
+
+    "countScreenshot_one": { "message": "$1 скриншот" },
+    "countScreenshot_few": { "message": "$1 скриншота" },
+    "countScreenshot_many": { "message": "$1 скриншотов" },
+    "countStep_one": { "message": "$1 шаг" },
+    "countStep_few": { "message": "$1 шага" },
+    "countStep_many": { "message": "$1 шагов" },
+    "countSecond_one": { "message": "$1 секунду" },
+    "countSecond_few": { "message": "$1 секунды" },
+    "countSecond_many": { "message": "$1 секунд" },
+
+    "stepTypeClick": { "message": "Клик" },
+    "stepTypeInput": { "message": "Ввод" },
+    "stepTypeChange": { "message": "Изменение" },
+    "stepTypeSubmit": { "message": "Отправка" },
+    "stepTypeNavigation": { "message": "Переход" },
+    "stepTypeUnknown": { "message": "Действие" },
+
+    "reportHtmlTitle": {
+        "message": "Отчет по исследовательскому тестированию"
+    },
+    "reportHeaderTitle": {
+        "message": "Отчет по исследовательскому тестированию"
+    },
+    "reportHeaderSubtitle": { "message": "Сводка по сессии" },
+    "reportChartTitle": { "message": "Распределение" },
+    "reportSectionsAria": { "message": "Разделы отчета" },
+    "reportTabActions": { "message": "Шаги" },
+    "reportTabRecordFlow": { "message": "Запись" },
+    "reportFilterByType": { "message": "Фильтр по типу" },
+    "reportFilterAll": { "message": "Все" },
+    "reportFilterBugs": { "message": "Баги" },
+    "reportFilterNotes": { "message": "Заметки" },
+    "reportDownloadImages": { "message": "Скачать скриншоты" },
+    "reportDownloadImagesTitle": { "message": "Скачать все скриншоты" },
+    "reportDownloadReport": { "message": "Скачать отчет" },
+    "reportDownloadReportTitle": { "message": "Скачать полный отчет" },
+    "reportTableType": { "message": "Тип" },
+    "reportTableDescription": { "message": "Описание" },
+    "reportTableUrl": { "message": "URL" },
+    "reportTableDate": { "message": "Дата" },
+    "reportTableScreenshots": { "message": "Скриншоты" },
+    "reportRecordedFlowTitle": { "message": "Записанный сценарий" },
+    "reportRecordedFlowSubtitle": {
+        "message": "Шаги и скриншоты, собранные Recorder, входят в экспортируемое состояние."
+    },
+    "reportImagePreviewAlt": { "message": "Предпросмотр" },
+    "reportImageHoverPreviewAlt": { "message": "Быстрый предпросмотр" },
+    "reportNoExportedStateTitle": { "message": "Нет данных для отчета" },
+    "reportNoExportedStateBody": {
+        "message": "Добавь записи, оставь черновик или запиши сценарий, чтобы сформировать отчет."
+    },
+    "reportErrorLoadingTitle": { "message": "Не удалось загрузить данные" },
+
+    "reportEnvironmentStartDate": { "message": "Дата старта" },
+    "reportEnvironmentStartDateHint": {
+        "message": "Момент, когда началась эта тестовая сессия."
+    },
+    "reportEnvironmentBrowser": { "message": "Браузер" },
+    "reportEnvironmentBrowserHint": {
+        "message": "Определенный браузер и его версия для этой сессии."
+    },
+    "reportEnvironmentOs": { "message": "Операционная система" },
+    "reportEnvironmentOsHint": {
+        "message": "Определенная ОС и архитектура процессора."
+    },
+    "reportEnvironmentLocale": { "message": "Локаль" },
+    "reportEnvironmentLocaleHint": {
+        "message": "Язык страницы или браузера, который влияет на переводы и форматы."
+    },
+    "reportEnvironmentTimezone": { "message": "Часовой пояс" },
+    "reportEnvironmentTimezoneHint": {
+        "message": "Часовой пояс браузера для дат и времени."
+    },
+    "reportEnvironmentViewport": { "message": "Viewport" },
+    "reportEnvironmentViewportHint": {
+        "message": "Размер видимой области страницы в CSS-пикселях."
+    },
+    "reportEnvironmentScreen": { "message": "Экран" },
+    "reportEnvironmentScreenHint": {
+        "message": "Размер экрана в физических пикселях, который сообщает браузер."
+    },
+    "reportEnvironmentDpr": { "message": "DPR" },
+    "reportEnvironmentDprHint": {
+        "message": "Device Pixel Ratio. Показывает, сколько физических пикселей приходится на один CSS-пиксель. Полезно для зума, скриншотов и проблем с четкостью."
+    },
+    "reportEnvironmentPageTitle": { "message": "Заголовок страницы" },
+    "reportEnvironmentPageTitleHint": {
+        "message": "Текущий заголовок тестируемой страницы."
+    },
+    "reportNotAvailable": { "message": "N/A" },
+
+    "reportStatsBugs": { "message": "Баги" },
+    "reportStatsNotes": { "message": "Заметки" },
+    "reportStatsRecordedSteps": { "message": "Шаги записи" },
+    "reportRecordingStateEyebrow": { "message": "Снимок состояния Recorder" },
+    "reportRecordingStateStopped": { "message": "Повтор остановлен" },
+    "reportRecordingStateCaptured": { "message": "Сценарий записан" },
+    "reportRecordingStateEmpty": { "message": "Записанного сценария нет" },
+    "reportRecordingStateCapturedBody": {
+        "message": "Записанные действия показаны ниже и будут восстановлены при импорте."
+    },
+    "reportRecordingStateEmptyBody": {
+        "message": "В экспортированном состоянии не было шагов Recorder."
+    },
+    "reportRecordingMetricScreenshots": { "message": "Скриншоты" },
+    "reportRecordingMetricStarted": { "message": "Старт" },
+    "reportRecordingMetricStopped": { "message": "Стоп" },
+    "reportRecordingEmpty": { "message": "Шагов записи нет." },
+    "reportRecordingNoScreenshot": { "message": "Без скриншота" },
+    "reportRecordingScreenshotAlt": {
+        "message": "Скриншот записи для шага $1"
+    },
+    "reportRecordingValueChanged": { "message": "Значение изменено на \"$1\"" },
+    "reportRecordingTargetText": { "message": "Текст цели: $1" },
+    "reportRecordingInteraction": { "message": "Взаимодействие с элементом" },
+    "reportRecordingNavigatedTo": { "message": "Переход на $1" },
+    "reportRecordingNavigationEvent": { "message": "Событие перехода" },
+    "reportRecordingFallbackAction": { "message": "Записанное действие" },
+    "reportNoAnnotationsForFilter": {
+        "message": "Для этого фильтра ничего не найдено."
+    },
+    "reportRemoveScreenshot": { "message": "Удалить скриншот" },
+    "reportDeleteAnnotation": { "message": "Удалить запись" },
+    "reportScreenshotAlt": { "message": "Скриншот $1" },
+    "reportConfirmRemoveScreenshot": {
+        "message": "Подтверди удаление скриншота"
+    },
+    "reportConfirmDeleteAnnotation": { "message": "Подтверди удаление записи" },
+    "reportDescriptionCannotBeEmpty": {
+        "message": "Описание не может быть пустым."
+    },
+    "reportDescriptionUpdateFailed": {
+        "message": "Не удалось обновить описание."
+    },
+    "reportChartLabelBugs": { "message": "Баги" },
+    "reportChartLabelNotes": { "message": "Заметки" },
+
+    "reportDownloadNoScreenshots": {
+        "message": "Скриншотов для скачивания нет."
+    },
+    "reportDownloadJsZipMissing": {
+        "message": "JSZip не загружен. Не могу собрать ZIP-архив."
+    },
+    "reportDownloadZipFailed": {
+        "message": "Не удалось собрать ZIP-архив. Попробуй еще раз."
+    },
+    "reportDownloadReadmeTitle": {
+        "message": "Скриншоты исследовательского тестирования"
+    },
+    "reportDownloadReadmeGenerated": { "message": "Сформировано" },
+    "reportDownloadReadmeSource": { "message": "Источник" },
+    "reportDownloadReadmeTotal": { "message": "Всего скриншотов" },
+    "reportDownloadReadmeBody": {
+        "message": "В этом ZIP-архиве лежат скриншоты, сделанные во время тестовой сессии."
+    },
+    "reportDownloadSourceName": { "message": "Расширение QA Companion" },
+    "reportDownloadChartAlt": { "message": "Диаграмма распределения записей" },
+
+    "importHtmlTitle": { "message": "Импорт JSON-сессии" },
+    "importEyebrow": { "message": "QA Companion" },
+    "importTitle": { "message": "Импорт JSON-сессии" },
+    "importSubtitle": {
+        "message": "Крупные импорты выполняются на этой отдельной странице, чтобы процесс не прерывался, пока открыт выбор файла. После завершения можно снова открыть popup."
+    },
+    "importChooseJsonFile": { "message": "Выбрать JSON-файл" },
+    "importNoFileSelected": { "message": "Файл не выбран." },
+    "importReady": { "message": "Готово к импорту." },
+    "importRestoresHint": {
+        "message": "Импорт восстанавливает сохраненные действия, состояние Recorder и скриншоты."
+    },
+    "importReadingFile": { "message": "Читаю файл..." },
+    "importPreparingChunks": { "message": "Готовлю чанки: $1..." },
+    "importImportingStorage": {
+        "message": "Импортирую в хранилище расширения..."
+    },
+    "importCompleted": {
+        "message": "Импорт завершен. Открой popup расширения, чтобы посмотреть восстановленную сессию."
+    },
+    "importAutoCloseNotice": {
+        "message": "Эту страницу уже можно закрыть. Она закроется автоматически через $1."
+    },
+    "importFailed": { "message": "Не удалось импортировать JSON-сессию." },
+    "importSelectedFileWithSize": { "message": "$1 ($2 КБ)" },
+
+    "annotationEditorTitle": { "message": "Редактор аннотаций" },
+    "annotationEditorInstruction": {
+        "message": "Зажми кнопку мыши и протяни, чтобы рисовать пометки на скриншоте"
+    },
+    "annotationEditorShortcutArrow": { "message": "Стрелка" },
+    "annotationEditorShortcutRectangle": { "message": "Прямоугольник" },
+    "annotationEditorShortcutText": { "message": "Текст" },
+    "annotationEditorShortcutBlur": { "message": "Блюр" },
+    "annotationEditorShortcutUndo": { "message": "Отменить" },
+    "annotationEditorShortcutCancel": { "message": "Отмена" },
+    "annotationEditorShortcutSave": { "message": "Сохранить" },
+    "annotationEditorTextPlaceholder": { "message": "Введи текст..." },
+    "annotationEditorToolArrow": { "message": "Стрелка" },
+    "annotationEditorToolRectangle": { "message": "Прямоугольник" },
+    "annotationEditorToolText": { "message": "Текст" },
+    "annotationEditorToolBlur": { "message": "Блюр (B)" },
+    "annotationEditorToolUndo": { "message": "Отменить (Ctrl+Z)" },
+    "annotationEditorSave": { "message": "Сохранить" },
+    "annotationEditorCancel": { "message": "Отмена" },
+
+    "selectionInstruction": {
+        "message": "Зажми кнопку мыши и выдели область. Esc — отмена."
+    },
+
+    "errorUnknown": { "message": "Неизвестная ошибка" },
+    "errorNavigationTimeout": {
+        "message": "Время ожидания загрузки страницы истекло."
+    },
+    "errorReplayActionFailed": {
+        "message": "Шаг $1: не удалось воспроизвести действие."
+    },
+    "errorReplayTargetNotFound": {
+        "message": "Шаг $1: целевой элемент не найден."
+    },
+    "errorReplayCancelled": { "message": "Повтор отменен." },
+    "errorReplayAlreadyRunning": { "message": "Повтор уже идет." },
+    "errorStopRecordingBeforeReplay": {
+        "message": "Сначала останови запись, потом запускай повтор."
+    },
+    "errorNoRecordingToReplay": { "message": "Нечего воспроизводить." },
+    "errorNoActiveTabForRecording": {
+        "message": "Не нашел активную вкладку для записи."
+    },
+    "errorNoActiveTabForReplay": {
+        "message": "Не нашел активную вкладку для повтора."
+    },
+    "errorRecordingUnavailablePage": {
+        "message": "На такой странице запись недоступна."
+    },
+    "errorReplayUnavailablePage": {
+        "message": "На такой странице повтор недоступен."
+    },
+    "errorDescriptionRequired": {
+        "message": "Добавь описание перед сохранением шага."
+    },
+    "errorDescriptionCannotBeEmpty": {
+        "message": "Описание не может быть пустым."
+    },
+    "errorNoActiveTabForCrop": {
+        "message": "Не нашел активную вкладку для выделения области."
+    },
+    "errorCaptureScreenshotFailed": {
+        "message": "Не удалось сделать скриншот."
+    },
+    "errorAnnotationNotFound": { "message": "Запись не найдена." },
+    "errorAnnotationImageNotFound": { "message": "Скриншот записи не найден." },
+    "errorImportSessionFailed": {
+        "message": "Не удалось импортировать JSON-сессию."
+    },
+    "errorUpdateDescriptionFailed": {
+        "message": "Не удалось обновить описание."
+    },
+    "errorNoTitleAvailable": { "message": "Страница без заголовка" },
+
+    "notificationSessionSaveFailedTitle": {
+        "message": "Не удалось сохранить сессию"
+    },
+    "notificationSessionSaveFailedBody": {
+        "message": "Хранилище заполнено, а скриншоты для удаления закончились."
+    },
+    "notificationSessionAdjustedTitle": {
+        "message": "Сессия сохранена с корректировкой"
+    },
+    "notificationSessionAdjustedBody": {
+        "message": "Чтобы сохранить сессию, пришлось удалить самый старый скриншот."
+    },
+    "notificationActionSavedTitle": { "message": "Шаг сохранен" },
+    "notificationActionSavedBody": {
+        "message": "Запись \"$1\" успешно сохранена."
+    },
+    "notificationSelectionUnavailableTitle": {
+        "message": "Выделение недоступно"
+    },
+    "notificationSelectionUnavailableBody": {
+        "message": "На такой странице нельзя использовать выделение области. Попробуй обычный сайт."
+    }
+}

@@ -7,6 +7,10 @@ const {
   waitForStorageUpdate,
 } = require('./helpers/extension-helper');
 
+const ADD_BUG_LABEL = /Add bug|\+ Bug|Добавить баг|\+ Баг/;
+const ADD_NOTE_LABEL = /Add note|\+ Note|Добавить заметку|\+ Заметка/;
+const NOTE_LABEL = /Note|Заметка/;
+
 async function sendRuntimeMessage(popupPage, message) {
   return popupPage.evaluate((payload) => {
     return new Promise((resolve) => {
@@ -51,8 +55,8 @@ test.describe('Basic Extension Functionality', () => {
     await expect(popupPage.locator('#BugBtn')).toBeVisible();
     await expect(popupPage.locator('#NoteBtn')).toBeVisible();
     await expect(popupPage.locator('#draftDescription')).toBeVisible();
-    await expect(popupPage.locator('#bugButtonLabel')).toHaveText('Add bug');
-    await expect(popupPage.locator('#NoteBtn')).toContainText('Note');
+    await expect(popupPage.locator('#bugButtonLabel')).toHaveText(ADD_BUG_LABEL);
+    await expect(popupPage.locator('#NoteBtn')).toContainText(NOTE_LABEL);
   });
 
   test('should show initial counters as zero', async () => {
@@ -81,7 +85,7 @@ test.describe('Basic Extension Functionality', () => {
   test('should add a note and update counter', async () => {
     await popupPage.click('#NoteBtn');
     await popupPage.fill('#draftDescription', 'Test Note');
-    await expect(popupPage.locator('#noteButtonLabel')).toHaveText('Add note');
+    await expect(popupPage.locator('#noteButtonLabel')).toHaveText(ADD_NOTE_LABEL);
     await popupPage.click('#NoteBtn');
     await waitForStorageUpdate(popupPage, 500);
     await popupPage.reload();
@@ -105,7 +109,7 @@ test.describe('Basic Extension Functionality', () => {
     await popupPage.waitForLoadState('domcontentloaded');
 
     await expect(popupPage.locator('#draftDescription')).toHaveValue('Unsaved note draft');
-    await expect(popupPage.locator('#noteButtonLabel')).toHaveText('Add note');
+    await expect(popupPage.locator('#noteButtonLabel')).toHaveText(ADD_NOTE_LABEL);
 
     const sessionData = await getSessionData(popupPage);
     expect(sessionData).toBeNull();

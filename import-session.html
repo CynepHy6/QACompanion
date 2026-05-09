@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Import Session JSON</title>
+    <title>__MSG_importHtmlTitle__</title>
+    <script src="js/localize-html.js"></script>
     <style>
         :root {
             color-scheme: dark;
@@ -163,23 +164,22 @@
 <body>
     <main class="import-shell">
         <header class="import-header">
-            <p class="import-eyebrow">QA Companion</p>
-            <h1 class="import-title">Import session JSON</h1>
+            <p class="import-eyebrow">__MSG_importEyebrow__</p>
+            <h1 class="import-title">__MSG_importTitle__</h1>
             <p class="import-subtitle">
-                Large imports run in this dedicated page so the operation stays alive while the file picker is open.
-                Your popup can be reopened after the import completes.
+                __MSG_importSubtitle__
             </p>
         </header>
         <section class="import-body">
             <div class="import-panel">
                 <div class="import-actions">
-                    <button id="selectImportFileBtn" class="import-button" type="button">Choose JSON file</button>
+                    <button id="selectImportFileBtn" class="import-button" type="button">__MSG_importChooseJsonFile__</button>
                     <input id="importJsonInput" type="file" accept=".json,application/json" hidden>
                 </div>
-                <p id="selectedFileName" class="import-file">No file selected.</p>
-                <p id="importStatus" class="import-status" data-state="idle">Ready to import.</p>
+                <p id="selectedFileName" class="import-file">__MSG_importNoFileSelected__</p>
+                <p id="importStatus" class="import-status" data-state="idle">__MSG_importReady__</p>
                 <p id="autoCloseNotice" class="import-hint" data-state="idle" hidden></p>
-                <p class="import-hint">The import restores saved session annotations, recorder state, and screenshots.</p>
+                <p class="import-hint">__MSG_importRestoresHint__</p>
             </div>
         </section>
     </main>

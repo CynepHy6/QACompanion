@@ -1,13 +1,73 @@
+function getMessage(messageKey, substitutions, fallbackValue = '') {
+  try {
+    const localizedMessage = chrome?.i18n?.getMessage(messageKey, substitutions);
+    if (localizedMessage) {
+      return localizedMessage;
+    }
+  } catch {
+    // Ignore localization lookup issues and fall back below.
+  }
+
+  return fallbackValue;
+}
+
+function isRussianLocale() {
+  try {
+    return (chrome?.i18n?.getUILanguage?.() || navigator.language || 'en').toLowerCase().startsWith('ru');
+  } catch {
+    return (navigator.language || 'en').toLowerCase().startsWith('ru');
+  }
+}
+
+function getPluralCategory(countValue) {
+  const absoluteCount = Math.abs(Number(countValue) || 0);
+  if (!isRussianLocale()) {
+    return absoluteCount === 1 ? 'one' : 'many';
+  }
+
+  const lastTwoDigits = absoluteCount % 100;
+  const lastDigit = absoluteCount % 10;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return 'many';
+  }
+  if (lastDigit === 1) {
+    return 'one';
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'few';
+  }
+  return 'many';
+}
+
+function getPluralMessage(messageKeyBase, countValue, fallbackValue = '') {
+  const pluralCategory = getPluralCategory(countValue);
+  return getMessage(`${messageKeyBase}_${pluralCategory}`, [String(countValue)], fallbackValue);
+}
+
+function getAnnotationTypeLabel(typeName) {
+  if (typeName === 'Bug') {
+    return getMessage('annotationBug', undefined, 'Bug');
+  }
+
+  if (typeName === 'Note') {
+    return getMessage('annotationNote', undefined, 'Note');
+  }
+
+  return typeName;
+}
+
 const TYPE_META = {
   Bug: {
-    title: 'Bug',
-    placeholder: 'Describe the bug...',
-    actionLabel: 'Add bug'
+    title: getMessage('annotationBug', undefined, 'Bug'),
+    draftTitle: getMessage('annotationNewBug', undefined, 'New bug'),
+    placeholder: getMessage('annotationDescribeBugPlaceholder', undefined, 'Describe the bug...'),
+    actionLabel: getMessage('annotationBugAction', undefined, 'Add bug')
   },
   Note: {
-    title: 'Note',
-    placeholder: 'Describe the note...',
-    actionLabel: 'Add note'
+    title: getMessage('annotationNote', undefined, 'Note'),
+    draftTitle: getMessage('annotationNewNote', undefined, 'New note'),
+    placeholder: getMessage('annotationDescribeNotePlaceholder', undefined, 'Describe the note...'),
+    actionLabel: getMessage('annotationNoteAction', undefined, 'Add note')
   }
 };
 
@@ -15,15 +75,15 @@ const DEFAULT_TYPE = 'Bug';
 const RECORDING_BUTTON_LABELS = {
   record: {
     icon: '●',
-    label: 'Record'
+    label: getMessage('popupRecordButton', undefined, 'Record')
   },
   stop: {
     icon: '■',
-    label: 'Stop'
+    label: getMessage('popupStopButton', undefined, 'Stop')
   },
   play: {
     icon: '▶',
-    label: 'Play'
+    label: getMessage('popupPlayButton', undefined, 'Play')
   }
 };
 
@@ -95,7 +155,7 @@ function sendRuntimeMessage(message) {
       }
 
       if (response && response.status === 'error') {
-        reject(new Error(response.error || 'Unknown error'));
+        reject(new Error(response.error || getMessage('errorUnknown', undefined, 'Unknown error')));
         return;
       }
 
@@ -178,8 +238,11 @@ function renderClearDraftButtonState() {
   }
 
   clearDraftButton.classList.toggle('is-armed', clearDraftArmed);
-  clearDraftButton.title = clearDraftArmed ? 'Confirm clear draft' : 'Clear draft';
-  clearDraftButton.setAttribute('aria-label', clearDraftArmed ? 'Confirm clear draft' : 'Clear draft');
+  const nextTitle = clearDraftArmed
+    ? getMessage('popupConfirmClearDraftTitle', undefined, 'Confirm clear draft')
+    : getMessage('popupClearDraftTitle', undefined, 'Clear draft');
+  clearDraftButton.title = nextTitle;
+  clearDraftButton.setAttribute('aria-label', nextTitle);
 }
 
 function setClearRecordingArmed(isArmed) {
@@ -194,8 +257,11 @@ function renderClearRecordingButtonState() {
   }
 
   clearRecordingButton.classList.toggle('is-armed', clearRecordingArmed);
-  clearRecordingButton.title = clearRecordingArmed ? 'Confirm clear recording' : 'Clear recording';
-  clearRecordingButton.setAttribute('aria-label', clearRecordingArmed ? 'Confirm clear recording' : 'Clear recording');
+  const nextTitle = clearRecordingArmed
+    ? getMessage('popupConfirmClearRecordingTitle', undefined, 'Confirm clear recording')
+    : getMessage('popupClearRecordingTitle', undefined, 'Clear recording');
+  clearRecordingButton.title = nextTitle;
+  clearRecordingButton.setAttribute('aria-label', nextTitle);
 }
 
 function setClearSessionArmed(isArmed) {
@@ -210,8 +276,11 @@ function renderClearSessionButtonState() {
   }
 
   resetButton.classList.toggle('is-armed', clearSessionArmed);
-  resetButton.title = clearSessionArmed ? 'Confirm reset all session data' : 'Reset all session data';
-  resetButton.setAttribute('aria-label', clearSessionArmed ? 'Confirm reset all session data' : 'Reset all session data');
+  const nextTitle = clearSessionArmed
+    ? getMessage('popupConfirmResetAllTitle', undefined, 'Confirm reset all session data')
+    : getMessage('popupResetAllTitle', undefined, 'Reset all session data');
+  resetButton.title = nextTitle;
+  resetButton.setAttribute('aria-label', nextTitle);
 }
 
 function setScreenshotButtonCooldown() {
@@ -233,11 +302,11 @@ function setScreenshotButtonCooldown() {
 }
 
 function formatScreenshotCount(imageCount) {
-  return `${imageCount} screenshot${imageCount === 1 ? '' : 's'}`;
+  return getPluralMessage('countScreenshot', imageCount, `${imageCount} screenshots`);
 }
 
 function formatStepCount(stepCount) {
-  return `${stepCount} step${stepCount === 1 ? '' : 's'}`;
+  return getPluralMessage('countStep', stepCount, `${stepCount} steps`);
 }
 
 function setPopupMode(nextMode) {
@@ -264,22 +333,26 @@ function renderModeTabs() {
 
 function getRecordingStepSummary(stepItem) {
   if (stepItem.type === 'navigation') {
-    return `Navigate to ${stepItem.url}`;
+    return getMessage('popupRecorderNavigateTo', [stepItem.url || ''], `Go to ${stepItem.url || ''}`);
   }
 
   if (stepItem.type === 'click') {
-    return stepItem.text ? `Click ${stepItem.text}` : 'Click element';
+    return stepItem.text
+      ? getMessage('popupRecorderClickText', [stepItem.text], `Click ${stepItem.text}`)
+      : getMessage('popupRecorderClickElement', undefined, 'Click element');
   }
 
   if (stepItem.type === 'submit') {
-    return 'Submit form';
+    return getMessage('popupRecorderSubmitForm', undefined, 'Submit form');
   }
 
   if (stepItem.type === 'input' || stepItem.type === 'change') {
-    return stepItem.value ? `Type ${stepItem.value}` : 'Update field';
+    return stepItem.value
+      ? getMessage('popupRecorderTypeValue', [stepItem.value], `Type ${stepItem.value}`)
+      : getMessage('popupRecorderUpdateField', undefined, 'Update field');
   }
 
-  return stepItem.type;
+  return getAnnotationTypeLabel(stepItem.type);
 }
 
 function getHighlightedRecordingStepId() {
@@ -319,7 +392,7 @@ function renderRecordingSteps() {
       clearRecordingArmed = false;
     }
     recordingStepsList.className = 'recording-steps-list recording-steps-list--empty';
-    recordingStepsList.innerHTML = '<p class="recording-steps-list__empty">No recorded steps yet.</p>';
+    recordingStepsList.innerHTML = `<p class="recording-steps-list__empty">${escapeHtml(getMessage('popupNoRecordedStepsYet', undefined, 'No recorded steps yet.'))}</p>`;
     renderClearRecordingButtonState();
     return;
   }
@@ -337,10 +410,10 @@ function renderRecordingSteps() {
     return `
       <article class="recording-step-card${stepStateClassName}" data-step-id="${escapeHtml(stepItem.stepId)}">
         <div class="recording-step-card__meta">
-          <span class="recording-step-card__index">Step ${stepIndex + 1}</span>
-          <span class="recording-step-card__type">${escapeHtml(stepItem.type)}</span>
+          <span class="recording-step-card__index">${escapeHtml(getMessage('popupStepLabel', [String(stepIndex + 1)], `Step ${stepIndex + 1}`))}</span>
+          <span class="recording-step-card__type">${escapeHtml(getMessage(`stepType${stepItem.type.charAt(0).toUpperCase()}${stepItem.type.slice(1)}`, undefined, stepItem.type))}</span>
         </div>
-        ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="Step ${stepIndex + 1} screenshot" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
+        ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('popupStepScreenshotAlt', [String(stepIndex + 1)], `Screenshot for step ${stepIndex + 1}`))}" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
         <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
         ${failureDetailsMarkup}
       </article>
@@ -372,11 +445,11 @@ function renderRecordingSteps() {
 
 function getRecordingStatusText() {
   if (currentRecording.status === 'recording') {
-    return 'Recording actions on the current tab';
+    return getMessage('popupRecorderStatusRecording', undefined, 'Recording actions on the current tab');
   }
 
   if (currentRecording.status === 'replaying') {
-    return 'Replaying the last recorded flow';
+    return getMessage('popupRecorderStatusReplaying', undefined, 'Replaying the last recorded flow');
   }
 
   if (currentRecording.lastError) {
@@ -384,10 +457,10 @@ function getRecordingStatusText() {
   }
 
   if (currentRecording.hasRecording) {
-    return 'Recording ready to replay';
+    return getMessage('popupRecorderStatusReady', undefined, 'Recording is ready to replay');
   }
 
-  return 'Recorder idle';
+  return getMessage('popupRecorderStatusIdle', undefined, 'Recorder idle');
 }
 
 function renderRecordingControls() {
@@ -447,7 +520,7 @@ function renderDraft() {
   const isEditingDescription = document.activeElement === elements.descriptionField;
 
   document.body.dataset.type = currentDraft.type.toLowerCase();
-  elements.titleLabel.textContent = `New ${typeMeta.title}`;
+  elements.titleLabel.textContent = typeMeta.draftTitle;
   elements.descriptionField.placeholder = typeMeta.placeholder;
   if (!isEditingDescription) {
     elements.descriptionField.value = currentDraft.description;
@@ -475,20 +548,20 @@ function renderDraftImages() {
 
   if (currentDraft.imageURLs.length === 0) {
     imagesContainer.className = 'draft-images draft-images--empty';
-    imagesContainer.innerHTML = '<p class="draft-images__empty">No screenshots yet.</p>';
+    imagesContainer.innerHTML = `<p class="draft-images__empty">${escapeHtml(getMessage('popupNoScreenshotsYet', undefined, 'No screenshots yet.'))}</p>`;
     return;
   }
 
   imagesContainer.className = 'draft-images';
   imagesContainer.innerHTML = currentDraft.imageURLs.map((imageURL, imageIndex) => `
     <div class="draft-image-card__preview-shell">
-      <img src="${imageURL}" alt="Draft screenshot ${imageIndex + 1}" class="draft-image-card__preview popup-preview-image" data-preview="${imageURL}">
+      <img src="${imageURL}" alt="${escapeHtml(getMessage('reportScreenshotAlt', [String(imageIndex + 1)], `Screenshot ${imageIndex + 1}`))}" class="draft-image-card__preview popup-preview-image" data-preview="${imageURL}">
       <button
         class="draft-image-card__remove${armedDraftImageIndex === imageIndex ? ' is-armed' : ''}"
         data-image-index="${imageIndex}"
-        title="${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}"
-        aria-label="${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}">
-        <span class="visually-hidden">${armedDraftImageIndex === imageIndex ? 'Confirm remove screenshot' : 'Remove screenshot'}</span>
+        title="${escapeHtml(armedDraftImageIndex === imageIndex ? getMessage('popupConfirmRemoveScreenshotTitle', undefined, 'Confirm remove screenshot') : getMessage('popupRemoveScreenshotTitle', undefined, 'Remove screenshot'))}"
+        aria-label="${escapeHtml(armedDraftImageIndex === imageIndex ? getMessage('popupConfirmRemoveScreenshotTitle', undefined, 'Confirm remove screenshot') : getMessage('popupRemoveScreenshotTitle', undefined, 'Remove screenshot'))}">
+        <span class="visually-hidden">${escapeHtml(armedDraftImageIndex === imageIndex ? getMessage('popupConfirmRemoveScreenshotTitle', undefined, 'Confirm remove screenshot') : getMessage('popupRemoveScreenshotTitle', undefined, 'Remove screenshot'))}</span>
       </button>
     </div>
   `).join('');

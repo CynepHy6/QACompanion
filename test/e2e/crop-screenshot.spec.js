@@ -7,6 +7,9 @@ const {
   injectContentScript,
 } = require('./helpers/extension-helper');
 
+const ADD_BUG_LABEL = /Add bug|\+ Bug|Добавить баг|\+ Баг/;
+const ADD_NOTE_LABEL = /Add note|\+ Note|Добавить заметку|\+ Заметка/;
+
 test.describe('Crop Screenshot Functionality', () => {
   let context;
   let extensionId;
@@ -46,10 +49,10 @@ test.describe('Crop Screenshot Functionality', () => {
     await expect(popupPage.locator('#addCropScreenshotBtn')).toBeVisible();
 
     await popupPage.click('#BugBtn');
-    await expect(popupPage.locator('#bugButtonLabel')).toHaveText('Add bug');
+    await expect(popupPage.locator('#bugButtonLabel')).toHaveText(ADD_BUG_LABEL);
 
     await popupPage.click('#NoteBtn');
-    await expect(popupPage.locator('#noteButtonLabel')).toHaveText('Add note');
+    await expect(popupPage.locator('#noteButtonLabel')).toHaveText(ADD_NOTE_LABEL);
   });
 
   test('should close popup after starting crop selection', async () => {

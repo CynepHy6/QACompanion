@@ -19,7 +19,8 @@
             "run_at": "document_idle"
         }
     ],
-    "description": "Capture bugs and notes during exploratory testing.",
+    "default_locale": "en",
+    "description": "__MSG_extensionDescription__",
     "icons": {
         "128": "/icons/iconbig.png",
         "16": "/icons/iconsmall.png",

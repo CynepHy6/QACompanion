@@ -1,6 +1,7 @@
 import { loadReportState } from './modules/reportData.js';
 import { displaySessionInfo, displayStats, createAnnotationsChart, displayAnnotationsTable, displayRecordingCard, displayRecordingTimeline } from './modules/reportUI.js';
 import { setupAllListeners, getCurrentFilter, rebindTableListeners } from './modules/reportEvents.js';
+import { getMessage } from '../src/i18n.js';
 
 function setupReportTabs() {
     const tabButtons = Array.from(document.querySelectorAll('[data-report-tab]'));
@@ -41,8 +42,8 @@ async function initReport() {
         if (!reportState) {
             document.getElementById('report').innerHTML = `
                 <div class="empty-report">
-                    <h2>No exported state available</h2>
-                    <p>Add annotations, keep a draft, or record a flow to generate a report.</p>
+                    <h2>${getMessage('reportNoExportedStateTitle', undefined, 'No exported state available')}</h2>
+                    <p>${getMessage('reportNoExportedStateBody', undefined, 'Add annotations, keep a draft, or record a flow to generate a report.')}</p>
                 </div>`;
             return;
         }
@@ -60,7 +61,7 @@ async function initReport() {
         console.error('Error loading report:', error);
         document.getElementById('report').innerHTML = `
             <div class="empty-report">
-                <h2>Error loading data</h2>
+                <h2>${getMessage('reportErrorLoadingTitle', undefined, 'Error loading data')}</h2>
                 <p>${error.message}</p>
             </div>`;
     }

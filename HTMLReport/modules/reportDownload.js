@@ -1,4 +1,5 @@
 import { serializeReportState } from './reportData.js';
+import { formatDateTimeLocalized, getMessage, getUiLocale } from '../../src/i18n.js';
 
 /**
  * Downloads all screenshots as a ZIP file.
@@ -30,12 +31,12 @@ export async function downloadAllImages(reportState) {
     ];
 
     if (screenshots.length === 0) {
-        alert('No screenshots available to download.');
+        alert(getMessage('reportDownloadNoScreenshots', undefined, 'No screenshots available to download.'));
         return;
     }
 
     if (typeof JSZip === 'undefined') {
-        alert('JSZip library is not loaded. Cannot create ZIP file.');
+        alert(getMessage('reportDownloadJsZipMissing', undefined, 'JSZip is not loaded. Can\'t create the ZIP archive.'));
         return;
     }
 
@@ -43,12 +44,12 @@ export async function downloadAllImages(reportState) {
     const imgFolder = zip.folder('screenshots');
 
     // Add README file
-    const readmeContent = `Exploratory Testing Screenshots
-Generated: ${new Date().toLocaleString()}
-Source: Exploratory Testing Chrome Extension
-Total screenshots: ${screenshots.length}
+    const readmeContent = `${getMessage('reportDownloadReadmeTitle', undefined, 'Exploratory Testing Screenshots')}
+${getMessage('reportDownloadReadmeGenerated', undefined, 'Generated')}: ${formatDateTimeLocalized(Date.now())}
+${getMessage('reportDownloadReadmeSource', undefined, 'Source')}: ${getMessage('reportDownloadSourceName', undefined, 'QA Companion Chrome Extension')}
+${getMessage('reportDownloadReadmeTotal', undefined, 'Total screenshots')}: ${screenshots.length}
 
-This ZIP file is safe and contains screenshots captured during your testing session.`;
+${getMessage('reportDownloadReadmeBody', undefined, 'This ZIP file contains screenshots captured during your testing session.')}`;
     zip.file('README.txt', readmeContent);
 
     // Add all images to the ZIP
@@ -78,7 +79,7 @@ This ZIP file is safe and contains screenshots captured during your testing sess
         URL.revokeObjectURL(url);
     } catch (error) {
         console.error('Error creating ZIP:', error);
-        alert('Error creating ZIP file. Please try again.');
+        alert(getMessage('reportDownloadZipFailed', undefined, 'Couldn\'t create the ZIP archive. Please try again.'));
     }
 }
 
@@ -123,7 +124,7 @@ function removeInteractiveElements(container) {
             if (canvas) {
                 const img = document.createElement('img');
                 img.src = chartImageData;
-                img.alt = 'Annotations Distribution Chart';
+                img.alt = getMessage('reportDownloadChartAlt', undefined, 'Annotation distribution chart');
                 img.style.maxWidth = '100%';
                 img.style.height = 'auto';
                 canvas.replaceWith(img);
@@ -227,19 +228,19 @@ function extractStyles() {
 
 function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getUiLocale()}">
 <head>
     <meta charset="utf-8">
-    <title>Exploratory Testing Session Report</title>
+    <title>${getMessage('reportHtmlTitle', undefined, 'Exploratory Testing Report')}</title>
     <style>${styles}</style>
 </head>
 <body>
     ${reportHtml}
     <div id="imagePreview" class="image-preview">
-        <img src="" alt="Preview">
+        <img src="" alt="${getMessage('reportImagePreviewAlt', undefined, 'Preview')}">
     </div>
     <div id="imageHoverPreview" class="image-hover-preview">
-        <img src="" alt="Hover Preview">
+        <img src="" alt="${getMessage('reportImageHoverPreviewAlt', undefined, 'Hover preview')}">
     </div>
     <script>
         const sessionData = ${sessionJSON};

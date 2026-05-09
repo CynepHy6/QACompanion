@@ -141,5 +141,4 @@
 - This section is a temporary reminder list of planned improvements.
 - Remove or update items from this list as soon as they are implemented in code, so `AGENTS.md` does not drift away from reality.
 - Pending ideas:
-  - перейти на yarn
-  - локализация
+  - публикация в chrome web store
