@@ -113,6 +113,23 @@
   - `npm run test:e2e`
   - `npm run test:e2e:all`
   - `npx playwright test test/e2e/recording-replay.spec.js`
+## Icons
+- PNG-icons
+```
+    "icons": {
+        "128": "/icons/iconbig.png",
+        "16": "/icons/iconsmall.png",
+        "32": "/icons/icon.png",
+        "48": "/icons/iconmed.png"
+    },
+```
+- Extension PNG icons MUST be generated from `icons/icon.svg` with `svgexport`.
+- If `svgexport` is not installed globally, use `npx --yes svgexport` instead of switching to `inkscape`, `convert`, or another rasterizer.
+- When regenerating icons, overwrite all manifest sizes: `16`, `32`, `48`, and `128`.
+- After generation, verify the actual output dimensions.
+- Reference command:
+  `npx --yes svgexport "icons/icon.svg" "icons/iconsmall.png" 16:16 && npx --yes svgexport "icons/icon.svg" "icons/icon.png" 32:32 && npx --yes svgexport "icons/icon.svg" "icons/iconmed.png" 48:48 && npx --yes svgexport "icons/icon.svg" "icons/iconbig.png" 128:128`
+
 
 ## Important Validation Areas
 - Action flow must remain intact while Recorder evolves.
