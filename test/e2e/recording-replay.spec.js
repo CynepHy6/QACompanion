@@ -99,6 +99,38 @@ test.describe('Recording and Replay', () => {
     expect(replayedInputValue).toBe('Replay target value');
   });
 
+  test('should record and replay clicks on custom clickable elements', async () => {
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+
+    await testPage.click('#customChip');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 500);
+
+    const recordingData = await getRecordingData(popupPage);
+    const recordedClickStep = recordingData.steps.find((stepItem) => stepItem.type === 'click');
+
+    expect(recordedClickStep).toBeTruthy();
+    expect(recordedClickStep.tagName).toBe('DIV');
+    expect(recordedClickStep.text).toContain('Chip interactivo');
+
+    await testPage.evaluate(() => {
+      const chipElement = document.getElementById('customChip');
+      const chipStateElement = document.getElementById('customChipState');
+      chipElement.dataset.selected = 'false';
+      chipElement.classList.remove('is-selected');
+      chipStateElement.textContent = 'OFF';
+    });
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'playRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 700);
+
+    await expect(testPage.locator('#customChip')).toHaveAttribute('data-selected', 'true');
+    await expect(testPage.locator('#customChipState')).toHaveText('ON');
+  });
+
   test('should require confirmation before clearing recorded steps', async () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });

@@ -505,12 +505,14 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
 
     function postRecordedStep(stepType, targetElement) {
         try {
-            chrome.runtime.sendMessage({
+            safeSendMessage({
                 type: 'appendRecordedStep',
                 step: createRecordedStep(stepType, targetElement)
             });
         } catch (error) {
-            console.error('Recorder: failed to send step.', error);
+            if (!error.message || !error.message.includes('Extension context invalidated')) {
+                console.error('Recorder: failed to send step.', error);
+            }
         }
     }
 
@@ -534,12 +536,40 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         }
     }
 
+    function getRecordedClickTarget(event) {
+        const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
+        const originalTarget = event.target instanceof HTMLElement
+            ? event.target
+            : eventPath.find((pathItem) => pathItem instanceof HTMLElement) || null;
+        if (!originalTarget) {
+            return null;
+        }
+
+        const explicitInteractiveTarget = originalTarget.closest(
+            'button, a, input, textarea, select, label, summary, option, [role="button"], [contenteditable="true"], [tabindex], [onclick]'
+        );
+        if (explicitInteractiveTarget) {
+            return explicitInteractiveTarget;
+        }
+
+        let currentElement = originalTarget;
+        while (currentElement && currentElement !== document.body && currentElement !== document.documentElement) {
+            if (currentElement instanceof HTMLElement) {
+                return currentElement;
+            }
+
+            currentElement = currentElement.parentElement;
+        }
+
+        return null;
+    }
+
     function handleRecordedClick(event) {
         if (!recorderEnabled) {
             return;
         }
 
-        const targetElement = event.target.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"]');
+        const targetElement = getRecordedClickTarget(event);
         if (!targetElement) {
             return;
         }
@@ -643,33 +673,25 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
     }
 
     function syncRecorderMode() {
-        try {
-            chrome.runtime.sendMessage({ type: 'getRecorderModeForSender' }, (response) => {
-                if (chrome.runtime.lastError) {
-                    return;
-                }
+        safeSendMessage({ type: 'getRecorderModeForSender' }, (response) => {
+            const isRecording = Boolean(response && response.isRecording);
+            setRecorderMode(isRecording);
 
-                const isRecording = Boolean(response && response.isRecording);
-                setRecorderMode(isRecording);
+            if (!isRecording) {
+                lastSyncedRecordingId = '';
+                return;
+            }
 
-                if (!isRecording) {
-                    lastSyncedRecordingId = '';
-                    return;
-                }
+            const nextRecordingId = typeof response.recordingId === 'string' ? response.recordingId : '';
+            const lastKnownUrl = typeof response.lastKnownUrl === 'string' ? response.lastKnownUrl : '';
+            if (nextRecordingId !== '' && nextRecordingId !== lastSyncedRecordingId) {
+                lastSyncedRecordingId = nextRecordingId;
+            }
 
-                const nextRecordingId = typeof response.recordingId === 'string' ? response.recordingId : '';
-                const lastKnownUrl = typeof response.lastKnownUrl === 'string' ? response.lastKnownUrl : '';
-                if (nextRecordingId !== '' && nextRecordingId !== lastSyncedRecordingId) {
-                    lastSyncedRecordingId = nextRecordingId;
-                }
-
-                if (lastKnownUrl !== '' && lastKnownUrl !== window.location.href) {
-                    postRecordedStep('navigation', document.body || document.documentElement);
-                }
-            });
-        } catch (error) {
-            console.error('Recorder: failed to sync mode.', error);
-        }
+            if (lastKnownUrl !== '' && lastKnownUrl !== window.location.href) {
+                postRecordedStep('navigation', document.body || document.documentElement);
+            }
+        });
     }
 
     function findElementByLocator(locatorData) {

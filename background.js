@@ -867,38 +867,51 @@ async function exportSessionJSON() {
     return true;
 }
 
-let importChunks = {};
+function getImportChunkStorageKey(importId, chunkIndex) {
+    return `importChunk:${importId}:${chunkIndex}`;
+}
 
-async function handleImportChunk(request) {
-    const { importId, chunk, chunkIndex, totalChunks } = request;
-    
-    if (!importChunks[importId]) {
-        importChunks[importId] = new Array(totalChunks);
+async function handleImportStoredChunks(request) {
+    const { importId, totalChunks } = request;
+    const storageKeys = [];
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        storageKeys.push(getImportChunkStorageKey(importId, chunkIndex));
     }
-    
-    importChunks[importId][chunkIndex] = chunk;
-    
-    let receivedChunks = 0;
-    for (let i = 0; i < totalChunks; i++) {
-        if (importChunks[importId][i]) receivedChunks++;
-    }
-    
-    if (receivedChunks === totalChunks) {
-        const fullJsonData = importChunks[importId].join('');
-        delete importChunks[importId];
-        
+
+    try {
+        const chunkMap = await chrome.storage.local.get(storageKeys);
+        const collectedChunks = [];
+
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const storageKey = getImportChunkStorageKey(importId, chunkIndex);
+            const chunkValue = chunkMap[storageKey];
+            if (typeof chunkValue !== 'string') {
+                return { status: 'nothing to import' };
+            }
+
+            collectedChunks.push(chunkValue);
+        }
+
+        const fullJsonData = collectedChunks.join('');
+
         const success = await processImportedJSON(fullJsonData);
         return { status: success ? 'ok' : 'nothing to import' };
+    } finally {
+        await chrome.storage.local.remove(storageKeys);
     }
-    
-    return { status: 'pending' };
 }
 
 async function processImportedJSON(sessionJsonData) {
     await ensureStateReady();
 
-    const extensionStateService = new ExtensionStateService();
-    const importedState = extensionStateService.getState(sessionJsonData);
+    let importedState = null;
+    try {
+        const extensionStateService = new ExtensionStateService();
+        importedState = extensionStateService.getState(sessionJsonData);
+    } catch (error) {
+        throw error;
+    }
+
     if (!importedState) {
         return false;
     }
@@ -906,9 +919,13 @@ async function processImportedJSON(sessionJsonData) {
     session = importedState.session;
     draft = importedState.draft;
     recording = importedState.recording;
-    await saveSession();
-    await saveDraft();
-    await saveRecording();
+    try {
+        await saveSession();
+        await saveDraft();
+        await saveRecording();
+    } catch (error) {
+        throw error;
+    }
     return true;
 }
 
@@ -1064,8 +1081,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return { status: await exportSessionCSV() ? 'ok' : 'nothing to export' };
             case 'exportSessionJSon':
                 return { status: await exportSessionJSON() ? 'ok' : 'nothing to export' };
-            case 'importSessionJSonChunk':
-                return await handleImportChunk(request);
+            case 'importSessionJSonStoredChunks':
+                return await handleImportStoredChunks(request);
             case 'clearSession':
                 await clearSession();
                 return { status: 'ok' };

@@ -12,6 +12,10 @@
     --color-bug-light: #fef2f2;
     --color-note: #22c55e;
     --color-note-light: #f0fdf4;
+    --color-draft: #f59e0b;
+    --color-draft-light: #fffbeb;
+    --color-recording: #0ea5e9;
+    --color-recording-light: #eff6ff;
 
     --color-primary: #6366f1;
     --color-primary-dark: #4f46e5;
@@ -123,6 +127,12 @@ body {
     margin-top: 0;
 }
 
+.section--state-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
 .section--row {
     display: flex;
     gap: 24px;
@@ -138,6 +148,10 @@ body {
 
 @media (max-width: 968px) {
     .section--overview {
+        grid-template-columns: 1fr;
+    }
+
+    .section--state-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -235,6 +249,8 @@ body {
 
 .stat-card--bug .stat-card__icon { background-color: var(--color-bug-light); }
 .stat-card--note .stat-card__icon { background-color: var(--color-note-light); }
+.stat-card--draft .stat-card__icon { background-color: var(--color-draft-light); }
+.stat-card--recording .stat-card__icon { background-color: var(--color-recording-light); }
 
 .stat-card__content {
     display: flex;
@@ -249,6 +265,14 @@ body {
 
 .stat-card--bug .stat-card__count { color: var(--color-bug); }
 .stat-card--note .stat-card__count { color: var(--color-note); }
+.stat-card--draft .stat-card__count { color: var(--color-draft); }
+.stat-card--recording .stat-card__count { color: var(--color-recording); }
+
+.stat-card__glyph {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
 
 .stat-card__label {
     font-size: 0.78rem;
@@ -292,6 +316,202 @@ body {
     font-weight: 600;
     color: var(--color-text);
     margin-bottom: 12px;
+}
+
+/* ============================================
+   State Cards
+   ============================================ */
+.state-card,
+.recording-panel {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border);
+}
+
+.state-card__header,
+.recording-panel__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.state-card__eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+}
+
+.state-card__title,
+.recording-panel__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-top: 4px;
+}
+
+.recording-panel__subtitle,
+.state-card__body,
+.state-card__empty {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.state-card__badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: var(--color-primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.state-card__badge.is-muted {
+    background: #f1f5f9;
+    color: var(--color-text-secondary);
+}
+
+.state-shot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.state-shot {
+    border: none;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+}
+
+.state-shot .preview-image {
+    height: 84px;
+}
+
+.state-shot__meta,
+.recording-step__shot-time {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.74rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.state-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.state-metric {
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+}
+
+.state-metric__label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+}
+
+.state-metric__value {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+/* ============================================
+   Recording Timeline
+   ============================================ */
+.recording-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.recording-step {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+}
+
+.recording-step__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.recording-step__index,
+.recording-step__type {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.recording-step__index {
+    background: #eff6ff;
+    color: var(--color-recording);
+}
+
+.recording-step__type {
+    background: #f8fafc;
+    color: var(--color-text);
+    text-transform: uppercase;
+}
+
+.recording-step__time,
+.recording-step__url,
+.recording-step__locator {
+    color: var(--color-text-secondary);
+    font-size: 0.82rem;
+}
+
+.recording-step__summary {
+    color: var(--color-text);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.recording-step__url,
+.recording-step__locator {
+    margin-top: 6px;
+    word-break: break-word;
+}
+
+.recording-step__shot {
+    margin-top: 12px;
+    max-width: 220px;
+}
+
+.recording-step__shot .preview-image {
+    height: 110px;
+}
+
+.recording-empty-state {
+    padding: 24px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-align: center;
 }
 
 /* ============================================
@@ -975,5 +1195,9 @@ body {
 
     .table-wrapper {
         overflow-x: auto;
+    }
+
+    .state-metrics {
+        grid-template-columns: 1fr;
     }
 }

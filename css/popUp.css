@@ -704,6 +704,14 @@ body[data-type="note"] .toolbar-button--crop:hover {
 	transform: translateY(-1px);
 }
 
+#resetBtn.is-armed,
+#resetBtn.is-armed:hover {
+	border-color: var(--color-bug);
+	background-color: var(--color-bug);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M13 8A5 5 0 1 1 11.54 4.46' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 3v3h-3' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	box-shadow: var(--shadow-sm);
+}
+
 #exportCSVBtn,
 #exportJsonBtn,
 #importJsonBtn,
@@ -733,51 +741,4 @@ body[data-type="note"] .toolbar-button--crop:hover {
 	background-color: var(--accent-soft);
 	box-shadow: var(--shadow-sm);
 	transform: translateY(-1px);
-}
-
-#resetConfirmation {
-	display: none;
-	margin: 0 12px 8px;
-	padding: 10px;
-	border: 1px solid #fecaca;
-	border-radius: var(--radius-md);
-	background: #fff5f5;
-}
-
-#resetConfirmation .card-header {
-	padding: 0;
-	margin-bottom: 8px;
-	background: transparent;
-	color: var(--color-bug);
-	font-weight: 700;
-}
-
-#resetConfirmation .card-body {
-	padding: 0;
-}
-
-#resetConfirmation p {
-	margin-bottom: 8px;
-	color: var(--color-text-secondary);
-	font-size: 0.8rem;
-}
-
-#resetYes,
-#resetNo {
-	padding: 7px 12px;
-	border-radius: var(--radius-sm);
-	border: 1px solid var(--color-border);
-	cursor: pointer;
-	font-size: 0.8rem;
-}
-
-#resetYes {
-	background: var(--color-bug);
-	border-color: var(--color-bug);
-	color: #ffffff;
-}
-
-#resetNo {
-	background: var(--color-surface);
-	color: var(--color-text-secondary);
 }

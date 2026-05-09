@@ -99,7 +99,6 @@ function getElements() {
     titleLabel: document.getElementById('draftTitle'),
     counterLabel: document.getElementById('draftImageCount'),
     imagesContainer: document.getElementById('draftImages'),
-    importInput: document.getElementById('importJsonInput'),
     playRecordingButton: document.getElementById('playRecordingBtn'),
     popupHoverPreview: document.getElementById('popupImageHoverPreview'),
     recorderPanel: document.getElementById('recorderPanel'),
@@ -626,67 +625,6 @@ async function exportSessionJSON() {
   await sendRuntimeMessage({ type: 'exportSessionJSon' });
 }
 
-async function importSessionJSON(event) {
-  const selectedFiles = event.target.files;
-  if (!selectedFiles || selectedFiles.length === 0) {
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = async (readerEvent) => {
-    try {
-      const data = readerEvent.target.result;
-      const chunkSize = 1024 * 1024; // 1MB chunks
-      const totalChunks = Math.ceil(data.length / chunkSize);
-      const importId = Date.now().toString();
-
-      let response;
-      for (let i = 0; i < totalChunks; i++) {
-        const chunk = data.slice(i * chunkSize, (i + 1) * chunkSize);
-        response = await sendRuntimeMessage({
-          type: 'importSessionJSonChunk',
-          importId: importId,
-          chunk: chunk,
-          chunkIndex: i,
-          totalChunks: totalChunks
-        });
-        
-        if (response?.status !== 'ok' && response?.status !== 'pending') {
-          alert('Failed to import session JSON chunk.');
-          event.target.value = '';
-          return;
-        }
-      }
-
-      if (response?.status !== 'ok') {
-        alert('Failed to import session JSON.');
-        event.target.value = '';
-        return;
-      }
-
-      await loadDraft();
-      await loadRecordingState();
-      const summary = await updateCounters();
-      if ((summary?.annotationsCount || 0) > 0) {
-        setPopupMode('action');
-      } else if (currentRecording.hasRecording) {
-        setPopupMode('recorder');
-      } else {
-        setPopupMode('action');
-      }
-      event.target.value = '';
-    } catch (error) {
-      alert(error.message || 'Failed to import session JSON.');
-      event.target.value = '';
-    }
-  };
-  reader.onerror = () => {
-    alert('Failed to read selected JSON file.');
-    event.target.value = '';
-  };
-  reader.readAsText(selectedFiles[0]);
-}
-
 async function openPreviewReport() {
   const summary = await sendRuntimeMessage({ type: 'getSessionData' });
   if (!summary?.hasExportableState) {
@@ -695,6 +633,13 @@ async function openPreviewReport() {
 
   chrome.tabs.create({
     url: chrome.runtime.getURL('HTMLReport/preview.html'),
+    active: true
+  });
+}
+
+function openImportSessionPage() {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('import-session.html'),
     active: true
   });
 }
@@ -820,11 +765,7 @@ function bindEvents() {
   });
 
   document.getElementById('importJsonBtn').addEventListener('click', () => {
-    elements.importInput.click();
-  });
-
-  elements.importInput.addEventListener('change', (event) => {
-    importSessionJSON(event).catch((error) => alert(error.message));
+    openImportSessionPage();
   });
 
   document.getElementById('previewBtn').addEventListener('click', () => {

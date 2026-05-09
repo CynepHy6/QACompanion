@@ -18,10 +18,10 @@ export function getCurrentFilter() {
 /**
  * Sets up all interactive event listeners for the report.
  */
-export function setupAllListeners(session) {
-    setupFilterListeners(session);
-    setupDownloadListener(session);
-    setupTableActionListeners(session);
+export function setupAllListeners(reportState) {
+    setupFilterListeners(reportState);
+    setupDownloadListener(reportState);
+    setupTableActionListeners(reportState.session);
 }
 
 /**
@@ -62,7 +62,7 @@ function renderDeleteAnnotationButtonState() {
     });
 }
 
-function setupFilterListeners(session) {
+function setupFilterListeners(reportState) {
     document.querySelectorAll('.filter-pill').forEach(button => {
         button.addEventListener('click', function () {
             document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
@@ -70,7 +70,7 @@ function setupFilterListeners(session) {
             currentFilter = this.dataset.type;
             armedDeleteImageKey = '';
             armedDeleteAnnotationId = '';
-            displayAnnotationsTable(session, currentFilter);
+            displayAnnotationsTable(reportState.session, currentFilter);
             renderDeleteImageButtonState();
             renderDeleteAnnotationButtonState();
             rebindTableListeners();
@@ -78,13 +78,13 @@ function setupFilterListeners(session) {
     });
 }
 
-function setupDownloadListener(session) {
+function setupDownloadListener(reportState) {
     document.getElementById('downloadReportBtn').addEventListener('click', () => {
-        downloadCompleteReport(session);
+        downloadCompleteReport(reportState);
     });
 
     document.getElementById('downloadImagesBtn').addEventListener('click', () => {
-        downloadAllImages(session);
+        downloadAllImages(reportState);
     });
 }
 

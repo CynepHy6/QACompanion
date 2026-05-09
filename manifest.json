@@ -35,7 +35,8 @@
         "activeTab",
         "downloads",
         "scripting",
-        "notifications"
+        "notifications",
+        "unlimitedStorage"
     ],
 
     "version": "1.0",

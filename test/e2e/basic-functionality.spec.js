@@ -139,21 +139,25 @@ test.describe('Basic Extension Functionality', () => {
       }
     });
 
-    const chunkSize = 1024 * 1024;
+    const chunkSize = 64 * 1024;
     const totalChunks = Math.ceil(importedStateJson.length / chunkSize);
     const importId = Date.now().toString();
 
-    let response;
     for (let i = 0; i < totalChunks; i++) {
       const chunk = importedStateJson.slice(i * chunkSize, (i + 1) * chunkSize);
-      response = await sendRuntimeMessage(popupPage, {
-        type: 'importSessionJSonChunk',
-        importId: importId,
-        chunk: chunk,
-        chunkIndex: i,
-        totalChunks: totalChunks
+      await popupPage.evaluate(({ storageKey, storageValue }) => {
+        return chrome.storage.local.set({ [storageKey]: storageValue });
+      }, {
+        storageKey: `importChunk:${importId}:${i}`,
+        storageValue: chunk
       });
     }
+
+    const response = await sendRuntimeMessage(popupPage, {
+      type: 'importSessionJSonStoredChunks',
+      importId: importId,
+      totalChunks: totalChunks
+    });
 
     expect(response.status).toBe('ok');
     await popupPage.reload();

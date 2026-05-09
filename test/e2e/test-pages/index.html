@@ -55,6 +55,27 @@
             border-radius: 5px;
             margin: 10px 0;
         }
+        .custom-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            margin-top: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .custom-chip:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.28);
+        }
+        .custom-chip.is-selected {
+            background: rgba(34, 197, 94, 0.3);
+            border-color: #86efac;
+        }
         #output {
             min-height: 100px;
             background: rgba(0, 0, 0, 0.2);
@@ -88,6 +109,10 @@
             <button onclick="addContent()">Añadir Contenido</button>
             <button onclick="showAlert()">Mostrar Alerta</button>
             <button onclick="simulateError()">Simular Error</button>
+            <div id="customChip" class="custom-chip" data-selected="false" onclick="toggleCustomChip()">
+                <span>Chip interactivo</span>
+                <strong id="customChipState">OFF</strong>
+            </div>
         </div>
 
         <div class="test-section">
@@ -163,6 +188,18 @@
         function simulateError() {
             log('⚠️ ERROR SIMULADO: Esto es un error de prueba');
             console.error('Error simulado para testing');
+        }
+
+        function toggleCustomChip() {
+            const chipElement = document.getElementById('customChip');
+            const chipStateElement = document.getElementById('customChipState');
+            const isSelected = chipElement.dataset.selected === 'true';
+            const nextSelectedState = !isSelected;
+
+            chipElement.dataset.selected = String(nextSelectedState);
+            chipElement.classList.toggle('is-selected', nextSelectedState);
+            chipStateElement.textContent = nextSelectedState ? 'ON' : 'OFF';
+            log(`Chip interactivo ${nextSelectedState ? 'activado' : 'desactivado'}`);
         }
 
         // Navigation

@@ -1,18 +1,33 @@
-import { serializeSession } from './reportData.js';
+import { serializeReportState } from './reportData.js';
 
 /**
  * Downloads all screenshots as a ZIP file.
  */
-export async function downloadAllImages(session) {
-    const annotations = session.getAnnotations();
-    const screenshots = annotations.flatMap((annotation) => {
+export async function downloadAllImages(reportState) {
+    const annotationScreenshots = reportState.session.getAnnotations().flatMap((annotation) => {
         return annotation.getImageEntries().map((imageEntry, imageIndex) => ({
-            annotation,
+            sourceType: 'annotation',
+            annotationType: annotation.getType(),
+            annotationName: annotation.getName(),
             imageURL: imageEntry.imageURL,
             createdAt: imageEntry.createdAt,
             imageIndex
         }));
     });
+
+    const recordingScreenshots = reportState.recording.screenshots.map((screenshotItem, imageIndex) => ({
+        sourceType: 'recording',
+        annotationType: 'Recording',
+        annotationName: screenshotItem.triggerStepId || `step-${imageIndex + 1}`,
+        imageURL: screenshotItem.imageURL,
+        createdAt: screenshotItem.createdAt,
+        imageIndex
+    }));
+
+    const screenshots = [
+        ...annotationScreenshots,
+        ...recordingScreenshots
+    ];
 
     if (screenshots.length === 0) {
         alert('No screenshots available to download.');
@@ -39,11 +54,11 @@ This ZIP file is safe and contains screenshots captured during your testing sess
     // Add all images to the ZIP
     for (let screenshotIndex = 0; screenshotIndex < screenshots.length; screenshotIndex++) {
         const screenshot = screenshots[screenshotIndex];
-        const type = screenshot.annotation.constructor.name;
+        const type = screenshot.annotationType;
         const timestamp = screenshot.createdAt
             ? new Date(screenshot.createdAt).toISOString().replace(/[:.]/g, '-')
             : `annotation-${screenshotIndex}`;
-        const fileName = `${screenshotIndex + 1}_${type}_${timestamp}_${screenshot.imageIndex + 1}.png`;
+        const fileName = `${screenshotIndex + 1}_${screenshot.sourceType}_${type}_${timestamp}_${screenshot.imageIndex + 1}.png`;
 
         // Convert base64 to binary
         const base64Data = screenshot.imageURL.split(',')[1];
@@ -75,7 +90,7 @@ const SVG_PATHS = {
 /**
  * Downloads a standalone HTML report with all resources embedded.
  */
-export async function downloadCompleteReport(session) {
+export async function downloadCompleteReport(reportState) {
     const reportContent = document.getElementById('report').cloneNode(true);
 
     // Remove interactive-only elements from download
@@ -87,7 +102,7 @@ export async function downloadCompleteReport(session) {
     replaceSvgIcons(reportContent, icons);
 
     const styles = extractStyles();
-    const sessionJSON = JSON.stringify(serializeSession(session));
+    const sessionJSON = JSON.stringify(serializeReportState(reportState));
 
     const html = buildStandaloneHtml(reportContent.outerHTML, styles, sessionJSON);
 

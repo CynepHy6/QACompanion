@@ -1,13 +1,51 @@
+import { buildExtensionStatePayload } from '../../src/ExtensionStateService.js';
+import { normalizeRecording } from '../../src/Recording.js';
 import { Session } from '../../src/Session.js';
 import { Bug, Note } from '../../src/Annotation.js';
 
+const ANNOTATION_CONSTRUCTORS = { Bug, Note };
+const ADD_METHODS = { Bug: 'addBug', Note: 'addNote' };
+
+function buildReportState(rawPayload) {
+    const rawSession = rawPayload?.session || {};
+    const session = new Session(rawSession.startDateTime, rawSession.browserInfo);
+    const rawAnnotations = Array.isArray(rawSession.annotations) ? rawSession.annotations : [];
+
+    rawAnnotations.forEach((annotation) => {
+        const AnnotationConstructor = ANNOTATION_CONSTRUCTORS[annotation.type];
+        if (!AnnotationConstructor) {
+            return;
+        }
+
+        const nextAnnotation = new AnnotationConstructor(
+            annotation.name,
+            annotation.url,
+            annotation.timestamp,
+            annotation.imageEntries || [],
+            annotation.id || null
+        );
+        session[ADD_METHODS[annotation.type]](nextAnnotation);
+    });
+
+    return {
+        session,
+        draft: {
+            type: 'Bug',
+            description: '',
+            imageEntries: [],
+            imageURLs: []
+        },
+        recording: normalizeRecording(rawPayload?.recording || {})
+    };
+}
+
 /**
- * Loads and reconstructs the session from the Chrome extension background.
- * @returns {Promise<Session|null>} The reconstructed session or null if no data.
+ * Loads and reconstructs the extension state from the Chrome extension background.
+ * @returns {Promise<object|null>} The reconstructed report state or null if no data.
  */
-export async function loadSessionData() {
+export async function loadReportState() {
     const response = await chrome.runtime.sendMessage({ type: "getSessionData" });
-    if (!response || response.annotationsCount === 0) {
+    if (!response || !response.hasExportableState) {
         return null;
     }
 
@@ -16,26 +54,7 @@ export async function loadSessionData() {
         throw new Error('Could not get full session data');
     }
 
-    const session = new Session(sessionData.startDateTime, sessionData.browserInfo);
-
-    const annotationConstructors = { Bug, Note };
-    const addMethods = { Bug: 'addBug', Note: 'addNote' };
-
-    sessionData.annotations.forEach(annotation => {
-        const Constructor = annotationConstructors[annotation.type];
-        if (Constructor) {
-            const newAnnotation = new Constructor(
-                annotation.name,
-                annotation.url,
-                annotation.timestamp,
-                annotation.imageEntries || annotation.imageURLs || annotation.imageURL || [],
-                annotation.id || null
-            );
-            session[addMethods[annotation.type]](newAnnotation);
-        }
-    });
-
-    return session;
+    return buildReportState(sessionData);
 }
 
 /**
@@ -71,23 +90,14 @@ export function deleteAnnotationImage(annotationId, imageIndex) {
 }
 
 /**
- * Serializes session data for embedding in the downloaded report.
- * @param {Session} session
+ * Serializes extension state for embedding in the downloaded report.
+ * @param {object} reportState
  * @returns {object}
  */
-export function serializeSession(session) {
-    return {
-        startDateTime: session.getStartDateTime(),
-        browserInfo: session.getBrowserInfo(),
-        annotations: session.getAnnotations().map(a => ({
-            id: a.id,
-            type: a.constructor.name,
-            name: a.name,
-            url: a.url,
-            timestamp: a.timestamp,
-            imageURL: a.imageURL,
-            imageURLs: a.getImageURLs(),
-            imageEntries: a.getImageEntries()
-        }))
-    };
+export function serializeReportState(reportState) {
+    return buildExtensionStatePayload(
+        reportState.session,
+        reportState.draft,
+        reportState.recording
+    );
 }

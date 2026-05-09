@@ -84,10 +84,36 @@ test.describe('Reports and Export Functionality', () => {
       const reportContent = await reportPage.content();
       expect(reportContent).toContain('Test Bug for Export');
       expect(reportContent).toContain('Test Note for Export');
+      expect(reportContent).not.toContain('Draft Snapshot');
       await expect(reportPage.locator('.filter-pill')).toHaveCount(3);
 
       await reportPage.close();
     }
+  });
+
+  test('should include unsaved draft as a regular action in HTML report', async () => {
+    await clearExtensionStorage(popupPage);
+    await popupPage.reload();
+    await popupPage.waitForLoadState('domcontentloaded');
+
+    await popupPage.click('#NoteBtn');
+    await popupPage.fill('#draftDescription', 'Draft promoted to action');
+    await waitForStorageUpdate(popupPage, 400);
+
+    await popupPage.click('#previewBtn');
+    await waitForStorageUpdate(popupPage, 2000);
+
+    const pages = context.pages();
+    const reportPage = pages.find((page) => page.url().includes('preview.html') || page.url().includes('HTMLReport'));
+
+    expect(reportPage).toBeTruthy();
+    await reportPage.waitForLoadState('domcontentloaded');
+
+    const reportContent = await reportPage.content();
+    expect(reportContent).toContain('Draft promoted to action');
+    expect(reportContent).not.toContain('Draft Snapshot');
+
+    await reportPage.close();
   });
 
   test('should maintain session data across popup closes', async () => {

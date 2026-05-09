@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Import Session JSON</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --surface: #0f172a;
+            --surface-elevated: rgba(15, 23, 42, 0.84);
+            --surface-soft: rgba(30, 41, 59, 0.84);
+            --border: rgba(148, 163, 184, 0.28);
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --success: #22c55e;
+            --danger: #f87171;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top, rgba(56, 189, 248, 0.18), transparent 28%),
+                linear-gradient(160deg, #020617 0%, #0f172a 55%, #111827 100%);
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .import-shell {
+            width: min(100%, 720px);
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+        }
+
+        .import-header {
+            padding: 28px 30px 18px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .import-eyebrow {
+            margin: 0 0 10px;
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .import-title {
+            margin: 0;
+            font-size: clamp(28px, 5vw, 40px);
+            line-height: 1.05;
+        }
+
+        .import-subtitle {
+            margin: 14px 0 0;
+            max-width: 56ch;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .import-body {
+            padding: 28px 30px 30px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .import-panel {
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: var(--surface-soft);
+            border-radius: 18px;
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .import-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .import-button {
+            appearance: none;
+            border: none;
+            border-radius: 999px;
+            padding: 13px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #04111d;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            cursor: pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+            box-shadow: 0 14px 28px rgba(14, 165, 233, 0.28);
+        }
+
+        .import-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 32px rgba(14, 165, 233, 0.32);
+        }
+
+        .import-button:disabled {
+            cursor: wait;
+            opacity: 0.72;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .import-file {
+            font-size: 14px;
+            color: var(--text-muted);
+            min-height: 20px;
+        }
+
+        .import-status {
+            margin: 0;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.72);
+            color: var(--text-muted);
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
+        .import-status[data-state="success"] {
+            color: #dcfce7;
+            border-color: rgba(34, 197, 94, 0.28);
+            background: rgba(20, 83, 45, 0.28);
+        }
+
+        .import-status[data-state="error"] {
+            color: #fee2e2;
+            border-color: rgba(248, 113, 113, 0.28);
+            background: rgba(127, 29, 29, 0.28);
+        }
+
+        .import-hint {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .import-hint[data-state="success"] {
+            color: #bbf7d0;
+        }
+    </style>
+</head>
+<body>
+    <main class="import-shell">
+        <header class="import-header">
+            <p class="import-eyebrow">QA Companion</p>
+            <h1 class="import-title">Import session JSON</h1>
+            <p class="import-subtitle">
+                Large imports run in this dedicated page so the operation stays alive while the file picker is open.
+                Your popup can be reopened after the import completes.
+            </p>
+        </header>
+        <section class="import-body">
+            <div class="import-panel">
+                <div class="import-actions">
+                    <button id="selectImportFileBtn" class="import-button" type="button">Choose JSON file</button>
+                    <input id="importJsonInput" type="file" accept=".json,application/json" hidden>
+                </div>
+                <p id="selectedFileName" class="import-file">No file selected.</p>
+                <p id="importStatus" class="import-status" data-state="idle">Ready to import.</p>
+                <p id="autoCloseNotice" class="import-hint" data-state="idle" hidden></p>
+                <p class="import-hint">The import restores saved session annotations, recorder state, and screenshots.</p>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="js/import-page.js"></script>
+</body>
+</html>

@@ -24,25 +24,14 @@
                     <button id="importJsonBtn" class="btn btn-secondary" title="Import session from JSON"
                         data-toggle="tooltip" data-placement="top">
                     </button>
-                    <input type="file" name="jsonFile" class="file-input" id="importJsonInput" hidden="true"></input>
                 </div>
                 <div class="btn-group btn-group-sm session-group session-group--right" role="group" aria-label="Session reset">
-                    <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="Reset session data" aria-label="Reset session data">
-                        <span class="visually-hidden">Reset session data</span>
+                    <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="Reset all session data" aria-label="Reset all session data">
+                        <span class="visually-hidden">Reset all session data</span>
                     </button>
                 </div>
             </div>
             <p class="draft-subtitle">Collect notes and screenshots first, then save the step explicitly.</p>
-        </div>
-
-        <div id="resetConfirmation" class="card" style="display:none">
-            <div class="card-header bg-danger text-white">This will reset the current session.</div>
-            <div class="card-body">
-                <p class="text-danger">Are you sure?</p>
-                <button id="resetYes" class="actionButton btn btn-outline-danger btn-sm"
-                    title="Reset current session">Yes</button>
-                <button id="resetNo" class="cancelButton btn btn-success btn-sm" title="Cancel reset">No</button>
-            </div>
         </div>
 
         <div class="card-body">

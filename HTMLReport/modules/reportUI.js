@@ -39,17 +39,20 @@ export function displaySessionInfo(session) {
 /**
  * Renders the summary stat cards.
  */
-export function displayStats(session) {
+export function displayStats(reportState) {
     const stats = [
-        { type: 'Bug', label: 'Bugs', count: session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
-        { type: 'Note', label: 'Notes', count: session.getNotes().length, icon: ANNOTATION_ICONS.Note }
+        { type: 'Bug', label: 'Bugs', count: reportState.session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
+        { type: 'Note', label: 'Notes', count: reportState.session.getNotes().length, icon: ANNOTATION_ICONS.Note },
+        { type: 'Recording', label: 'Recorded Steps', count: reportState.recording.steps.length, icon: '' }
     ];
 
     const statsContainer = document.getElementById('statsCards');
     statsContainer.innerHTML = stats.map(stat => `
         <div class="stat-card stat-card--${stat.type.toLowerCase()}">
             <div class="stat-card__icon">
-                <img src="${stat.icon}" alt="${stat.type}" class="annotation-icon">
+                ${stat.icon
+            ? `<img src="${stat.icon}" alt="${stat.type}" class="annotation-icon">`
+            : `<span class="stat-card__glyph">${escapeHtml(stat.type.slice(0, 1))}</span>`}
             </div>
             <div class="stat-card__content">
                 <span class="stat-card__count">${stat.count}</span>
@@ -57,6 +60,76 @@ export function displayStats(session) {
             </div>
         </div>
     `).join('');
+}
+
+export function displayRecordingCard(recordingState) {
+    const recordingStateCard = document.getElementById('recordingStateCard');
+    if (!recordingStateCard) {
+        return;
+    }
+
+    recordingStateCard.innerHTML = `
+        <div class="state-card__header">
+            <div>
+                <p class="state-card__eyebrow">Recorder Snapshot</p>
+                <h3 class="state-card__title">${recordingState.steps.length > 0 ? 'Flow Captured' : 'No Recorded Flow'}</h3>
+            </div>
+            <span class="state-card__badge${recordingState.steps.length > 0 ? '' : ' is-muted'}">${recordingState.steps.length} steps</span>
+        </div>
+        <div class="state-metrics">
+            <div class="state-metric">
+                <span class="state-metric__label">Screenshots</span>
+                <span class="state-metric__value">${recordingState.screenshots.length}</span>
+            </div>
+            <div class="state-metric">
+                <span class="state-metric__label">Started</span>
+                <span class="state-metric__value">${recordingState.startedAt ? formatDateTime(recordingState.startedAt) : 'N/A'}</span>
+            </div>
+            <div class="state-metric">
+                <span class="state-metric__label">Stopped</span>
+                <span class="state-metric__value">${recordingState.stoppedAt ? formatDateTime(recordingState.stoppedAt) : 'N/A'}</span>
+            </div>
+        </div>
+        <p class="state-card__body">${recordingState.steps.length > 0 ? 'Recorded actions are included below and restored on import.' : 'No recorder steps were available in the exported state.'}</p>
+    `;
+}
+
+export function displayRecordingTimeline(recordingState) {
+    const recordingTimeline = document.getElementById('recordingTimeline');
+    if (!recordingTimeline) {
+        return;
+    }
+
+    if (recordingState.steps.length === 0) {
+        recordingTimeline.innerHTML = '<div class="recording-empty-state">No recording steps available.</div>';
+        return;
+    }
+
+    const screenshotByStepId = new Map(
+        recordingState.screenshots.map((screenshotItem) => [screenshotItem.triggerStepId, screenshotItem])
+    );
+
+    recordingTimeline.innerHTML = recordingState.steps.map((stepItem, stepIndex) => {
+        const linkedScreenshot = screenshotByStepId.get(stepItem.stepId);
+        return `
+            <article class="recording-step">
+                <div class="recording-step__header">
+                    <span class="recording-step__index">Step ${stepIndex + 1}</span>
+                    <span class="recording-step__type">${escapeHtml(stepItem.type)}</span>
+                    <span class="recording-step__time">${formatDateTime(stepItem.timestamp)}</span>
+                </div>
+                <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
+                ${stepItem.url ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
+                ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
+                ${linkedScreenshot ? `
+                    <div class="recording-step__shot">
+                        <img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="Recording screenshot for step ${stepIndex + 1}">
+                        <span class="recording-step__shot-time">${formatTime(linkedScreenshot.createdAt)}</span>
+                    </div>
+                ` : ''}
+            </article>
+        `;
+    }).join('');
 }
 
 /**
@@ -208,4 +281,33 @@ function formatTime(timestampValue) {
         minute: '2-digit',
         second: '2-digit'
     });
+}
+
+function formatDateTime(timestampValue) {
+    return new Date(timestampValue).toLocaleString('ru-RU');
+}
+
+function formatLocator(locator) {
+    if (!locator) {
+        return '';
+    }
+
+    const locatorName = locator.name ? ` (${locator.name})` : '';
+    return `${locator.strategy}: ${locator.value}${locatorName}`;
+}
+
+function getRecordingStepSummary(stepItem) {
+    if (stepItem.type === 'input' || stepItem.type === 'change') {
+        return `Value changed to "${stepItem.value || ''}"`;
+    }
+
+    if (stepItem.type === 'click' || stepItem.type === 'submit') {
+        return stepItem.text ? `Target text: ${stepItem.text}` : 'Interaction with target element';
+    }
+
+    if (stepItem.type === 'navigation') {
+        return stepItem.url ? `Navigated to ${stepItem.url}` : 'Navigation event';
+    }
+
+    return stepItem.text || stepItem.value || 'Recorded action';
 }
