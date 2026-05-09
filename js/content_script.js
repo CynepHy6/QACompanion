@@ -834,6 +834,30 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return true;
         }
 
+        if (request.type === 'getPageEnvironmentInfo') {
+            const colorScheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'reduce'
+                : 'no-preference';
+
+            sendResponse({
+                status: 'ok',
+                pageTitle: document.title || '',
+                pageUrl: window.location.href,
+                viewportWidth: window.innerWidth || 0,
+                viewportHeight: window.innerHeight || 0,
+                screenWidth: window.screen?.width || 0,
+                screenHeight: window.screen?.height || 0,
+                devicePixelRatio: window.devicePixelRatio || 1,
+                pageLanguage: document.documentElement?.lang || navigator.language || '',
+                colorScheme,
+                reducedMotion
+            });
+            return true;
+        }
+
         if (request.type === 'playRecordingStep') {
             replayStep(request.step || {})
                 .then((result) => sendResponse(result))

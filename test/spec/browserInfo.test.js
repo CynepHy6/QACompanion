@@ -17,40 +17,49 @@ describe('getSystemInfo', () => {
   it('should contain all expected keys', () => {
     expect(systemInfo).toHaveProperty('browser');
     expect(systemInfo).toHaveProperty('browserVersion');
+    expect(systemInfo).toHaveProperty('browserDisplayName');
     expect(systemInfo).toHaveProperty('os');
+    expect(systemInfo).toHaveProperty('architecture');
+    expect(systemInfo).toHaveProperty('osDisplay');
     expect(systemInfo).toHaveProperty('osVersion');
+    expect(systemInfo).toHaveProperty('platform');
+    expect(systemInfo).toHaveProperty('userAgent');
+    expect(systemInfo).toHaveProperty('language');
+    expect(systemInfo).toHaveProperty('languages');
+    expect(systemInfo).toHaveProperty('timezone');
     expect(systemInfo).toHaveProperty('cookies');
     expect(systemInfo).toHaveProperty('flashVersion');
   });
 
-  it('should retrieve browser name correctly', () => {
-    expect(systemInfo.browser).toBe('Chrome'); // Hardcoded in function
+  it('should detect browser name correctly from userAgent', () => {
+    expect(systemInfo.browser).toBe('Chrome');
   });
 
-  it('should retrieve browser version from chrome.runtime.getManifest', () => {
-    // Assuming jest.setup.js mocks chrome.runtime.getManifest().version to '1.0.0'
-    expect(systemInfo.browserVersion).toBe('1.0.0');
+  it('should detect browser version from userAgent', () => {
+    expect(systemInfo.browserVersion).toBe('136.0.7103.93');
+    expect(systemInfo.browserDisplayName).toBe('Chrome 136.0.7103.93');
   });
 
-  it('should retrieve OS platform from navigator.platform', () => {
-    // Assuming jest.setup.js mocks navigator.platform to 'TestPlatform'
-    expect(systemInfo.os).toBe('TestPlatform');
+  it('should detect operating system and architecture', () => {
+    expect(systemInfo.os).toBe('Linux');
+    expect(systemInfo.architecture).toBe('x86_64');
+    expect(systemInfo.osDisplay).toBe('Linux x86_64');
   });
 
-  it('should retrieve OS version from navigator.userAgent', () => {
-    // Assuming jest.setup.js mocks navigator.userAgent to 'TestUserAgent/1.0'
-    // The function extracts this specifically, so the test should reflect that.
-    // If getSystemInfo is more complex, this might need adjustment.
-    // For now, assuming it directly uses navigator.userAgent for osVersion.
-    expect(systemInfo.osVersion).toBe('TestUserAgent/1.0');
+  it('should preserve raw platform and userAgent details', () => {
+    expect(systemInfo.platform).toBe('Linux x86_64');
+    expect(systemInfo.userAgent).toContain('Chrome/136.0.7103.93');
+    expect(systemInfo.osVersion).toContain('Chrome/136.0.7103.93');
   });
 
-  it('should retrieve cookie status from navigator.cookieEnabled', () => {
-    // Assuming jest.setup.js mocks navigator.cookieEnabled to true
+  it('should retrieve locale and cookie support', () => {
+    expect(systemInfo.language).toBe('ru-RU');
+    expect(systemInfo.languages).toEqual(['ru-RU', 'en-US']);
     expect(systemInfo.cookies).toBe(true);
   });
 
-  it('should report Flash version as N/A', () => {
-    expect(systemInfo.flashVersion).toBe('N/A'); // Hardcoded in function
+  it('should report timezone and Flash version', () => {
+    expect(typeof systemInfo.timezone).toBe('string');
+    expect(systemInfo.flashVersion).toBe('N/A');
   });
 });

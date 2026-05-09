@@ -326,6 +326,97 @@ function waitForDuration(timeoutMilliseconds) {
     });
 }
 
+function formatDimensionLabel(widthValue, heightValue) {
+    if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue) || widthValue <= 0 || heightValue <= 0) {
+        return '';
+    }
+
+    return `${widthValue}x${heightValue}`;
+}
+
+function formatPlatformOperatingSystem(platformName) {
+    const platformLabels = {
+        android: 'Android',
+        cros: 'ChromeOS',
+        linux: 'Linux',
+        mac: 'macOS',
+        openbsd: 'OpenBSD',
+        win: 'Windows'
+    };
+
+    return platformLabels[platformName] || '';
+}
+
+async function getPageEnvironmentInfo(activeTab) {
+    const fallbackPageInfo = {
+        pageTitle: typeof activeTab?.title === 'string' ? activeTab.title : '',
+        pageUrl: typeof activeTab?.url === 'string' ? activeTab.url : '',
+        viewport: formatDimensionLabel(activeTab?.width, activeTab?.height),
+        screenResolution: '',
+        devicePixelRatio: '',
+        pageLanguage: '',
+        colorScheme: '',
+        reducedMotion: ''
+    };
+
+    if (!activeTab || typeof activeTab.id !== 'number' || isRestrictedPage(activeTab.url)) {
+        return fallbackPageInfo;
+    }
+
+    try {
+        const response = await sendMessageToTab(activeTab.id, { type: 'getPageEnvironmentInfo' });
+        return {
+            pageTitle: typeof response?.pageTitle === 'string' && response.pageTitle !== ''
+                ? response.pageTitle
+                : fallbackPageInfo.pageTitle,
+            pageUrl: typeof response?.pageUrl === 'string' && response.pageUrl !== ''
+                ? response.pageUrl
+                : fallbackPageInfo.pageUrl,
+            viewport: formatDimensionLabel(response?.viewportWidth, response?.viewportHeight) || fallbackPageInfo.viewport,
+            screenResolution: formatDimensionLabel(response?.screenWidth, response?.screenHeight),
+            devicePixelRatio: Number.isFinite(response?.devicePixelRatio) ? String(response.devicePixelRatio) : '',
+            pageLanguage: typeof response?.pageLanguage === 'string' ? response.pageLanguage : '',
+            colorScheme: typeof response?.colorScheme === 'string' ? response.colorScheme : '',
+            reducedMotion: typeof response?.reducedMotion === 'string' ? response.reducedMotion : ''
+        };
+    } catch (error) {
+        console.log('Background: Environment snapshot fallback used.', error?.message || '');
+        return fallbackPageInfo;
+    }
+}
+
+async function getEnhancedSystemInfo(activeTab = null) {
+    const baseSystemInfo = getSystemInfo();
+    const pageInfo = await getPageEnvironmentInfo(activeTab);
+
+    let platformInfo = null;
+    try {
+        if (chrome.runtime?.getPlatformInfo) {
+            platformInfo = await chrome.runtime.getPlatformInfo();
+        }
+    } catch (error) {
+        console.log('Background: Platform info unavailable.', error?.message || '');
+    }
+
+    const operatingSystemName = formatPlatformOperatingSystem(platformInfo?.os) || baseSystemInfo.os;
+    const architectureName = platformInfo?.arch || baseSystemInfo.architecture || '';
+
+    return {
+        ...baseSystemInfo,
+        os: operatingSystemName,
+        architecture: architectureName,
+        osDisplay: [operatingSystemName, architectureName].filter(Boolean).join(' '),
+        pageTitle: pageInfo.pageTitle,
+        pageUrl: pageInfo.pageUrl,
+        viewport: pageInfo.viewport,
+        screenResolution: pageInfo.screenResolution,
+        devicePixelRatio: pageInfo.devicePixelRatio,
+        pageLanguage: pageInfo.pageLanguage || baseSystemInfo.language,
+        colorScheme: pageInfo.colorScheme,
+        reducedMotion: pageInfo.reducedMotion
+    };
+}
+
 async function saveSession() {
     while (true) {
         try {
@@ -357,12 +448,12 @@ async function saveSession() {
     }
 }
 
-async function startSession() {
+async function startSession(activeTab = null) {
     if (session.getAnnotations().length > 0) {
         return;
     }
 
-    session = new Session(Date.now(), getSystemInfo());
+    session = new Session(Date.now(), await getEnhancedSystemInfo(activeTab));
     await saveSession();
 }
 
@@ -503,6 +594,10 @@ async function startRecordingFlow() {
 
     if (isRestrictedPage(activeTab.url)) {
         throw new Error('Recording is not available on this type of page.');
+    }
+
+    if (session.getAnnotations().length === 0) {
+        await startSession(activeTab);
     }
 
     const nextRecording = createEmptyRecording();
@@ -836,11 +931,11 @@ async function createAnnotationFromDraft() {
         throw new Error('Description is required before saving the annotation.');
     }
 
-    if (session.getAnnotations().length === 0) {
-        await startSession();
-    }
-
     const activeTab = await getActiveTab();
+
+    if (session.getAnnotations().length === 0) {
+        await startSession(activeTab);
+    }
     const currentUrl = activeTab && activeTab.url ? activeTab.url : 'N/A';
     const annotation = createAnnotationFromDraftData(
         draft.type,

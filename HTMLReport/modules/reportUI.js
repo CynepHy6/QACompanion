@@ -15,25 +15,63 @@ export function displaySessionInfo(session) {
     const sessionInfo = document.getElementById('sessionInfo');
     const browserInfo = session.getBrowserInfo();
     const startDateTime = session.getStartDateTime();
+    const environmentItems = [
+        {
+            label: 'Start Date',
+            value: startDateTime.toLocaleString(),
+            hint: 'The moment when this testing session started.'
+        },
+        {
+            label: 'Browser',
+            value: formatBrowserInfo(browserInfo),
+            hint: 'Detected browser name and version used during the session.'
+        },
+        {
+            label: 'Operating System',
+            value: browserInfo.osDisplay || browserInfo.os || 'N/A',
+            hint: 'Detected operating system and CPU architecture.'
+        },
+        {
+            label: 'Locale',
+            value: browserInfo.pageLanguage || browserInfo.language || 'N/A',
+            hint: 'Language used by the page or browser for translations, formats, and content.'
+        },
+        {
+            label: 'Timezone',
+            value: browserInfo.timezone || 'N/A',
+            hint: 'Browser timezone used to format dates and times.'
+        },
+        {
+            label: 'Viewport',
+            value: browserInfo.viewport || 'N/A',
+            hint: 'Visible page area size in CSS pixels.'
+        },
+        {
+            label: 'Screen',
+            value: browserInfo.screenResolution || 'N/A',
+            hint: 'Reported screen resolution in physical pixels.'
+        },
+        {
+            label: 'DPR',
+            value: browserInfo.devicePixelRatio || 'N/A',
+            hint: 'Device Pixel Ratio. Shows how many physical pixels are used for one CSS pixel. Useful for zoom, screenshots, and sharpness issues.'
+        },
+        {
+            label: 'Page Title',
+            value: browserInfo.pageTitle || 'N/A',
+            hint: 'Current document title of the tested page.'
+        }
+    ];
 
-    sessionInfo.innerHTML = `
+    sessionInfo.innerHTML = environmentItems.map((item) => `
         <div class="info-item">
-            <span class="info-label">Start Date</span>
-            <span class="info-value">${startDateTime.toLocaleString()}</span>
+            <span
+                class="info-label${item.hint ? ' info-label--hint' : ''}"
+                ${item.hint ? `title="${escapeHtml(item.hint)}" aria-label="${escapeHtml(`${item.label}: ${item.hint}`)}"` : ''}
+            >${item.label}${item.hint ? '<span class="info-label__hint-marker" aria-hidden="true">?</span>' : ''}</span>
+            <span class="info-value">${escapeHtml(item.value)}</span>
         </div>
-        <div class="info-item">
-            <span class="info-label">Browser</span>
-            <span class="info-value">${browserInfo.browser} ${browserInfo.browserVersion}</span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Operating System</span>
-            <span class="info-value">${browserInfo.os}</span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Cookies</span>
-            <span class="info-value">${browserInfo.cookies ? 'Enabled' : 'Disabled'}</span>
-        </div>
-    `;
+    `).join('');
 }
 
 /**
@@ -284,6 +322,20 @@ function truncateUrl(url) {
     } catch {
         return url.length > 50 ? url.substring(0, 47) + '...' : url;
     }
+}
+
+function formatBrowserInfo(browserInfo) {
+    if (!browserInfo) {
+        return 'N/A';
+    }
+
+    if (browserInfo.browserDisplayName) {
+        return browserInfo.browserDisplayName;
+    }
+
+    const browserName = typeof browserInfo.browser === 'string' ? browserInfo.browser : '';
+    const browserVersion = typeof browserInfo.browserVersion === 'string' ? browserInfo.browserVersion : '';
+    return [browserName, browserVersion].filter(Boolean).join(' ') || 'N/A';
 }
 
 function formatDate(timestampValue) {

@@ -3,6 +3,7 @@ const {
   launchBrowserWithExtension,
   openExtensionPopup,
   clearExtensionStorage,
+  getSessionData,
   getRecordingData,
   waitForStorageUpdate,
 } = require('./helpers/extension-helper');
@@ -207,5 +208,24 @@ test.describe('Recording and Replay', () => {
     expect(recordingData.recording.stepCount).toBe(0);
     expect(recordingData.recording.screenshotCount).toBe(0);
     await expect(popupPage.locator('#recordingStepsList')).toContainText('No recorded steps yet.');
+  });
+
+  test('should capture environment info when recording starts without actions', async () => {
+    await testPage.goto('http://localhost:8000/test/e2e/test-pages/index.html');
+    await testPage.bringToFront();
+
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 500);
+    await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
+
+    const sessionData = await getSessionData(popupPage);
+    expect(sessionData).toBeTruthy();
+    expect(sessionData.BrowserInfo.browser).toBeTruthy();
+    expect(sessionData.BrowserInfo.browserVersion).toBeTruthy();
+    expect(sessionData.BrowserInfo.os).toBeTruthy();
+    expect(sessionData.BrowserInfo.viewport).toMatch(/^\d+x\d+$/);
+    expect(sessionData.BrowserInfo.screenResolution).toMatch(/^\d+x\d+$/);
+    expect(sessionData.BrowserInfo.devicePixelRatio).toBeTruthy();
+    expect(sessionData.BrowserInfo.pageTitle).toBeTruthy();
   });
 });

@@ -241,10 +241,35 @@ body {
     color: var(--color-text-secondary);
 }
 
+.info-label--hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    cursor: help;
+}
+
+.info-label__hint-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #64748b;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
 .info-value {
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--color-text);
+    word-break: break-word;
 }
 
 /* ============================================

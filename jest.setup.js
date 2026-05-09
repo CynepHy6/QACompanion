@@ -23,9 +23,11 @@ global.chrome = {
 // Mock navigator properties used in browserInfo.js
 global.navigator = {
   ...global.navigator, // Preserve existing navigator properties if any
-  platform: 'TestPlatform',
-  userAgent: 'TestUserAgent/1.0',
+  platform: 'Linux x86_64',
+  userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.93 Safari/537.36',
   cookieEnabled: true,
+  language: 'ru-RU',
+  languages: ['ru-RU', 'en-US'],
 };
 
 
