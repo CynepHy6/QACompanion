@@ -25,6 +25,7 @@ let lastScrolledReplayStepId = '';
 let persistTimer = null;
 let clearDraftArmed = false;
 let clearRecordingArmed = false;
+let clearSessionArmed = false;
 let screenshotCooldownTimer = null;
 let recordingStatePollTimer = null;
 let hoverPreviewAnchorElement = null;
@@ -108,7 +109,7 @@ function getElements() {
     recordingStepCountLabel: document.getElementById('recordingStepCount'),
     recordingStepsList: document.getElementById('recordingStepsList'),
     recordingToggleButton: document.getElementById('recordingToggleBtn'),
-    resetConfirmation: document.getElementById('resetConfirmation')
+    resetButton: document.getElementById('resetBtn')
   };
 }
 
@@ -163,6 +164,22 @@ function renderClearRecordingButtonState() {
   clearRecordingButton.classList.toggle('is-armed', clearRecordingArmed);
   clearRecordingButton.title = clearRecordingArmed ? 'Confirm clear recording' : 'Clear recording';
   clearRecordingButton.setAttribute('aria-label', clearRecordingArmed ? 'Confirm clear recording' : 'Clear recording');
+}
+
+function setClearSessionArmed(isArmed) {
+  clearSessionArmed = isArmed;
+  renderClearSessionButtonState();
+}
+
+function renderClearSessionButtonState() {
+  const { resetButton } = getElements();
+  if (!resetButton) {
+    return;
+  }
+
+  resetButton.classList.toggle('is-armed', clearSessionArmed);
+  resetButton.title = clearSessionArmed ? 'Confirm reset all session data' : 'Reset all session data';
+  resetButton.setAttribute('aria-label', clearSessionArmed ? 'Confirm reset all session data' : 'Reset all session data');
 }
 
 function setScreenshotButtonCooldown() {
@@ -349,6 +366,7 @@ function renderRecordingControls() {
   recordingStepCountLabel.textContent = formatStepCount(currentRecording.stepCount);
   renderRecordingSteps();
   renderClearRecordingButtonState();
+  renderClearSessionButtonState();
   renderModeTabs();
 
   document.querySelectorAll('.type-button').forEach((button) => {
@@ -444,6 +462,7 @@ async function loadDraft() {
 async function updateCounters() {
   const response = await sendRuntimeMessage({ type: 'getSessionData' });
   renderCounters(response);
+  return response;
 }
 
 async function loadRecordingState() {
@@ -615,12 +634,54 @@ async function importSessionJSON(event) {
 
   const reader = new FileReader();
   reader.onload = async (readerEvent) => {
-    await sendRuntimeMessage({
-      type: 'importSessionJSon',
-      jSonSession: readerEvent.target.result
-    });
+    try {
+      const data = readerEvent.target.result;
+      const chunkSize = 1024 * 1024; // 1MB chunks
+      const totalChunks = Math.ceil(data.length / chunkSize);
+      const importId = Date.now().toString();
 
-    await updateCounters();
+      let response;
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = data.slice(i * chunkSize, (i + 1) * chunkSize);
+        response = await sendRuntimeMessage({
+          type: 'importSessionJSonChunk',
+          importId: importId,
+          chunk: chunk,
+          chunkIndex: i,
+          totalChunks: totalChunks
+        });
+        
+        if (response?.status !== 'ok' && response?.status !== 'pending') {
+          alert('Failed to import session JSON chunk.');
+          event.target.value = '';
+          return;
+        }
+      }
+
+      if (response?.status !== 'ok') {
+        alert('Failed to import session JSON.');
+        event.target.value = '';
+        return;
+      }
+
+      await loadDraft();
+      await loadRecordingState();
+      const summary = await updateCounters();
+      if ((summary?.annotationsCount || 0) > 0) {
+        setPopupMode('action');
+      } else if (currentRecording.hasRecording) {
+        setPopupMode('recorder');
+      } else {
+        setPopupMode('action');
+      }
+      event.target.value = '';
+    } catch (error) {
+      alert(error.message || 'Failed to import session JSON.');
+      event.target.value = '';
+    }
+  };
+  reader.onerror = () => {
+    alert('Failed to read selected JSON file.');
     event.target.value = '';
   };
   reader.readAsText(selectedFiles[0]);
@@ -628,7 +689,7 @@ async function importSessionJSON(event) {
 
 async function openPreviewReport() {
   const summary = await sendRuntimeMessage({ type: 'getSessionData' });
-  if (summary.annotationsCount === 0) {
+  if (!summary?.hasExportableState) {
     return;
   }
 
@@ -638,18 +699,23 @@ async function openPreviewReport() {
   });
 }
 
-async function requestResetConfirmation() {
-  const summary = await sendRuntimeMessage({ type: 'getSessionData' });
-  if (summary.annotationsCount === 0) {
-    return;
-  }
-
-  getElements().resetConfirmation.style.display = 'block';
-}
-
 async function resetSession() {
   await sendRuntimeMessage({ type: 'clearSession' });
-  getElements().resetConfirmation.style.display = 'none';
+  currentDraft = {
+    type: DEFAULT_TYPE,
+    description: '',
+    imageEntries: [],
+    imageURLs: []
+  };
+  currentRecording = createEmptyRecordingState();
+  currentPopupMode = 'action';
+  lastScrolledReplayStepId = '';
+  armedDraftImageIndex = null;
+  setClearDraftArmed(false);
+  setClearRecordingArmed(false);
+  setClearSessionArmed(false);
+  renderDraft();
+  renderRecordingControls();
   await updateCounters();
 }
 
@@ -788,14 +854,11 @@ function bindEvents() {
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {
-    requestResetConfirmation().catch((error) => alert(error.message));
-  });
+    if (!clearSessionArmed) {
+      setClearSessionArmed(true);
+      return;
+    }
 
-  document.getElementById('resetNo').addEventListener('click', () => {
-    elements.resetConfirmation.style.display = 'none';
-  });
-
-  document.getElementById('resetYes').addEventListener('click', () => {
     resetSession().catch((error) => alert(error.message));
   });
 
@@ -821,6 +884,18 @@ function bindEvents() {
     }
 
     setClearRecordingArmed(false);
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!clearSessionArmed) {
+      return;
+    }
+
+    if (event.target.closest('#resetBtn')) {
+      return;
+    }
+
+    setClearSessionArmed(false);
   });
 
   document.addEventListener('click', (event) => {

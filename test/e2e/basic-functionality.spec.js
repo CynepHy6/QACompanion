@@ -7,6 +7,14 @@ const {
   waitForStorageUpdate,
 } = require('./helpers/extension-helper');
 
+async function sendRuntimeMessage(popupPage, message) {
+  return popupPage.evaluate((payload) => {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(payload, (response) => resolve(response));
+    });
+  }, message);
+}
+
 test.describe('Basic Extension Functionality', () => {
   let context;
   let extensionId;
@@ -101,6 +109,64 @@ test.describe('Basic Extension Functionality', () => {
 
     const sessionData = await getSessionData(popupPage);
     expect(sessionData).toBeNull();
+  });
+
+  test('should import draft data as a saved action and update counters', async () => {
+    const importedStateJson = JSON.stringify({
+      version: 4,
+      session: {
+        startDateTime: new Date(2026, 4, 9, 19, 50).getTime(),
+        browserInfo: {
+          browser: 'Chrome',
+          browserVersion: '1.0',
+          os: 'Linux'
+        },
+        annotations: [
+          {
+            id: 'imported-action-1',
+            type: 'Bug',
+            name: 'Imported draft should become action',
+            url: '',
+            timestamp: new Date(2026, 4, 9, 19, 50, 10).getTime(),
+            imageEntries: []
+          }
+        ]
+      },
+      recording: {
+        status: 'idle',
+        steps: [],
+        screenshots: []
+      }
+    });
+
+    const chunkSize = 1024 * 1024;
+    const totalChunks = Math.ceil(importedStateJson.length / chunkSize);
+    const importId = Date.now().toString();
+
+    let response;
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = importedStateJson.slice(i * chunkSize, (i + 1) * chunkSize);
+      response = await sendRuntimeMessage(popupPage, {
+        type: 'importSessionJSonChunk',
+        importId: importId,
+        chunk: chunk,
+        chunkIndex: i,
+        totalChunks: totalChunks
+      });
+    }
+
+    expect(response.status).toBe('ok');
+    await popupPage.reload();
+    await popupPage.waitForLoadState('domcontentloaded');
+
+    await expect(popupPage.locator('#draftDescription')).toHaveValue('');
+    const bugCounter = await popupPage.locator('#bugCounter').textContent();
+    expect((bugCounter || '').trim()).toBe('1');
+
+    const sessionData = await getSessionData(popupPage);
+    expect(sessionData.annotations).toHaveLength(1);
+    expect(sessionData.annotations[0].type).toBe('Bug');
+    expect(sessionData.annotations[0].name).toBe('Imported draft should become action');
   });
 
   test('should clear draft after saving annotation', async () => {

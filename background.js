@@ -1,8 +1,9 @@
 import { Session } from './src/Session.js';
 import { Bug, Note, normalizeImageEntries } from './src/Annotation.js';
+import { buildExtensionStatePayload, ExtensionStateService, hasDraftContent, hasExportableState } from './src/ExtensionStateService.js';
 import { createEmptyRecording, normalizeRecording } from './src/Recording.js';
 import { ExportSessionCSV } from './src/ExportSessionCSV.js';
-import { JSonSessionService } from './src/JSonSessionService.js';
+import { createBase64DataUrl } from './src/dataUrlEncoding.js';
 import { getSystemInfo } from './src/browserInfo.js';
 
 const STORAGE_KEYS = {
@@ -298,8 +299,12 @@ async function startSession() {
 }
 
 async function clearSession() {
-    session.clearAnnotations();
+    session = new Session();
+    draft = createEmptyDraft();
+    recording = createEmptyRecording();
     await saveSession();
+    await saveDraft();
+    await saveRecording();
 }
 
 async function updateDraftState(nextDraft) {
@@ -339,16 +344,16 @@ function getSessionSummaryPayload() {
     return {
         bugs: session.getBugs().length,
         notes: session.getNotes().length,
-        annotationsCount: session.getAnnotations().length
+        annotationsCount: session.getAnnotations().length,
+        draftHasContent: hasDraftContent(draft),
+        recordingStepCount: recording.steps.length,
+        recordingScreenshotCount: recording.screenshots.length,
+        hasExportableState: hasExportableState(session, draft, recording)
     };
 }
 
 function getFullSessionPayload() {
-    return {
-        startDateTime: session.StartDateTime,
-        browserInfo: session.getBrowserInfo(),
-        annotations: session.getAnnotations().map((annotation) => annotation.toSerializableObject())
-    };
+    return buildExtensionStatePayload(session, draft, recording);
 }
 
 function formatExportTimestamp(dateValue) {
@@ -828,7 +833,7 @@ async function exportSessionCSV() {
     const browserInfo = session.getBrowserInfo();
     const browserInfoString = `${browserInfo.browser}_${browserInfo.browserVersion}`;
     const fileName = `ExploratorySession_${browserInfoString}_${formatExportTimestamp(session.StartDateTime)}.csv`;
-    const dataUrl = 'data:text/csv;charset=utf-8;base64,' + btoa(csvData);
+    const dataUrl = createBase64DataUrl('text/csv', csvData);
 
     await chrome.downloads.download({
         url: dataUrl,
@@ -842,16 +847,16 @@ async function exportSessionCSV() {
 async function exportSessionJSON() {
     await ensureStateReady();
 
-    if (session.getAnnotations().length === 0) {
+    if (!hasExportableState(session, draft, recording)) {
         return false;
     }
 
-    const exportJsonService = new JSonSessionService();
-    const jsonData = exportJsonService.getJSon(session);
+    const extensionStateService = new ExtensionStateService();
+    const jsonData = extensionStateService.getJSON(session, draft, recording);
     const browserInfo = session.getBrowserInfo();
     const browserInfoString = `${browserInfo.browser}_${browserInfo.browserVersion}`;
     const fileName = `ExploratorySession_${browserInfoString}_${formatExportTimestamp(session.StartDateTime)}.json`;
-    const dataUrl = 'data:application/json;base64,' + btoa(jsonData);
+    const dataUrl = createBase64DataUrl('application/json', jsonData);
 
     await chrome.downloads.download({
         url: dataUrl,
@@ -862,17 +867,48 @@ async function exportSessionJSON() {
     return true;
 }
 
-async function importSessionJSON(sessionJsonData) {
+let importChunks = {};
+
+async function handleImportChunk(request) {
+    const { importId, chunk, chunkIndex, totalChunks } = request;
+    
+    if (!importChunks[importId]) {
+        importChunks[importId] = new Array(totalChunks);
+    }
+    
+    importChunks[importId][chunkIndex] = chunk;
+    
+    let receivedChunks = 0;
+    for (let i = 0; i < totalChunks; i++) {
+        if (importChunks[importId][i]) receivedChunks++;
+    }
+    
+    if (receivedChunks === totalChunks) {
+        const fullJsonData = importChunks[importId].join('');
+        delete importChunks[importId];
+        
+        const success = await processImportedJSON(fullJsonData);
+        return { status: success ? 'ok' : 'nothing to import' };
+    }
+    
+    return { status: 'pending' };
+}
+
+async function processImportedJSON(sessionJsonData) {
     await ensureStateReady();
 
-    const exportJsonService = new JSonSessionService();
-    const importedSession = exportJsonService.getSession(sessionJsonData);
-    if (!importedSession) {
+    const extensionStateService = new ExtensionStateService();
+    const importedState = extensionStateService.getState(sessionJsonData);
+    if (!importedState) {
         return false;
     }
 
-    session = importedSession;
+    session = importedState.session;
+    draft = importedState.draft;
+    recording = importedState.recording;
     await saveSession();
+    await saveDraft();
+    await saveRecording();
     return true;
 }
 
@@ -1028,8 +1064,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return { status: await exportSessionCSV() ? 'ok' : 'nothing to export' };
             case 'exportSessionJSon':
                 return { status: await exportSessionJSON() ? 'ok' : 'nothing to export' };
-            case 'importSessionJSon':
-                return { status: await importSessionJSON(request.jSonSession) ? 'ok' : 'nothing to import' };
+            case 'importSessionJSonChunk':
+                return await handleImportChunk(request);
             case 'clearSession':
                 await clearSession();
                 return { status: 'ok' };
