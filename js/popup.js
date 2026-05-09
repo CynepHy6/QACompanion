@@ -12,6 +12,20 @@ const TYPE_META = {
 };
 
 const DEFAULT_TYPE = 'Bug';
+const RECORDING_BUTTON_LABELS = {
+  record: {
+    icon: '●',
+    label: 'Record'
+  },
+  stop: {
+    icon: '■',
+    label: 'Stop'
+  },
+  play: {
+    icon: '▶',
+    label: 'Play'
+  }
+};
 
 let currentDraft = {
   type: 'Bug',
@@ -114,6 +128,23 @@ function getElements() {
 
 function getButtonDefaultLabel(typeName) {
   return TYPE_META[typeName]?.title || typeName;
+}
+
+function buildRecordingButtonMarkup(buttonKey) {
+  const buttonMeta = RECORDING_BUTTON_LABELS[buttonKey];
+  if (!buttonMeta) {
+    return '';
+  }
+
+  return `<span class="recording-button__icon" aria-hidden="true">${buttonMeta.icon}</span><span class="recording-button__label">${buttonMeta.label}</span>`;
+}
+
+function renderRecordingButtonMarkup(buttonElement, buttonKey) {
+  if (!buttonElement) {
+    return;
+  }
+
+  buttonElement.innerHTML = buildRecordingButtonMarkup(buttonKey);
 }
 
 function renderTypeButtonLabels() {
@@ -283,7 +314,6 @@ function renderRecordingSteps() {
   hidePopupHoverPreview();
   recordingStepsList.innerHTML = currentRecording.steps.map((stepItem, stepIndex) => {
     const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
-    const locatorText = stepItem.locator?.value ? stepItem.locator.value : '';
     const isActiveStep = currentRecording.activeStepId === stepItem.stepId;
     return `
       <article class="recording-step-card${isActiveStep ? ' is-active' : ''}" data-step-id="${escapeHtml(stepItem.stepId)}">
@@ -293,7 +323,6 @@ function renderRecordingSteps() {
         </div>
         ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="Step ${stepIndex + 1} screenshot" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
         <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
-        ${locatorText ? `<p class="recording-step-card__locator">${escapeHtml(locatorText)}</p>` : ''}
       </article>
     `;
   }).join('');
@@ -354,11 +383,15 @@ function renderRecordingControls() {
   const isRecordingActive = currentRecording.status === 'recording';
   const isReplayActive = currentRecording.status === 'replaying';
 
-  recordingToggleButton.textContent = isRecordingActive ? 'Stop' : 'Record';
+  renderRecordingButtonMarkup(
+    recordingToggleButton,
+    isRecordingActive ? 'stop' : 'record'
+  );
   recordingToggleButton.classList.toggle('is-recording', isRecordingActive);
   recordingToggleButton.disabled = isReplayActive;
 
   playRecordingButton.classList.toggle('is-replaying', isReplayActive);
+  renderRecordingButtonMarkup(playRecordingButton, 'play');
   playRecordingButton.disabled = !currentRecording.canPlay || isReplayActive || isRecordingActive;
 
   recordingStatusLabel.textContent = getRecordingStatusText();
@@ -583,8 +616,12 @@ async function clearRecording() {
 async function toggleRecording() {
   let response = null;
   if (currentRecording.status === 'recording') {
-    await sendRuntimeMessage({ type: 'syncRecordingNavigation' });
-    response = await sendRuntimeMessage({ type: 'stopRecordingFlow' });
+    response = await sendRuntimeMessage({
+      type: 'stopRecordingFlow',
+      options: {
+        suppressSyntheticNavigationOnStop: true
+      }
+    });
   } else {
     response = await sendRuntimeMessage({ type: 'startRecordingFlow' });
   }

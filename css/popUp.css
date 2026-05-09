@@ -53,6 +53,13 @@ body[data-type="note"] {
 	font-weight: 600;
 }
 
+button:focus,
+button:focus-visible,
+.btn:focus,
+.btn:focus-visible {
+	outline: none;
+}
+
 .popup-card,
 .popup-card {
 	background: var(--color-surface);
@@ -89,15 +96,21 @@ body[data-type="note"] {
 .mode-tabs {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 6px;
-	margin-bottom: 10px;
+	gap: 4px;
+	margin-bottom: 12px;
+	padding: 4px;
+	border-radius: calc(var(--radius-md) + 2px);
+	background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+	border: 1px solid var(--color-border);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .mode-tab {
-	padding: 8px 12px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	background: #f8fafc;
+	padding: 9px 12px;
+	border: 1px solid transparent;
+	border-bottom: none;
+	border-radius: calc(var(--radius-md) - 1px);
+	background: transparent;
 	color: var(--color-text-secondary);
 	font-size: 0.8rem;
 	font-weight: 700;
@@ -105,14 +118,20 @@ body[data-type="note"] {
 }
 
 .mode-tab:hover {
-	transform: translateY(-1px);
-	box-shadow: var(--shadow-sm);
+	color: var(--color-text);
+	background: rgba(255, 255, 255, 0.55);
 }
 
 .mode-tab.is-active {
-	border-color: var(--color-primary);
-	background: rgba(99, 102, 241, 0.08);
+	border-color: rgba(99, 102, 241, 0.16);
+	background: var(--color-surface);
 	color: var(--color-primary);
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+}
+
+.mode-tab:focus-visible {
+	outline: 2px solid rgba(99, 102, 241, 0.22);
+	outline-offset: 1px;
 }
 
 .mode-panel[hidden] {
@@ -345,9 +364,20 @@ body[data-type="note"] {
 	border-radius: var(--radius-md);
 	background: var(--color-surface);
 	color: var(--color-text);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
 	font-size: 0.8rem;
 	font-weight: 700;
 	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.recording-button__icon,
+.recording-button__label {
+	display: inline-flex;
+	align-items: center;
+	line-height: 1;
 }
 
 .recording-button:hover {

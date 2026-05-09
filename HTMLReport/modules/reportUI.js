@@ -118,15 +118,18 @@ export function displayRecordingTimeline(recordingState) {
                     <span class="recording-step__type">${escapeHtml(stepItem.type)}</span>
                     <span class="recording-step__time">${formatDateTime(stepItem.timestamp)}</span>
                 </div>
-                <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
-                ${stepItem.url ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
-                ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
-                ${linkedScreenshot ? `
-                    <div class="recording-step__shot">
-                        <img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="Recording screenshot for step ${stepIndex + 1}">
-                        <span class="recording-step__shot-time">${formatTime(linkedScreenshot.createdAt)}</span>
+                <div class="recording-step__body">
+                    <div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
+                        ${linkedScreenshot
+                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="Recording screenshot for step ${stepIndex + 1}">`
+                : '<div class="recording-step__shot-placeholder">No screenshot</div>'}
                     </div>
-                ` : ''}
+                    <div class="recording-step__content">
+                        <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
+                        ${stepItem.url ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
+                        ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
+                    </div>
+                </div>
             </article>
         `;
     }).join('');

@@ -12,6 +12,8 @@ const STORAGE_KEYS = {
     recording: 'recording'
 };
 
+const RECORDING_SCREENSHOT_DELAY_MS = 250;
+
 const VALID_ANNOTATION_TYPES = ['Bug', 'Note'];
 
 const ANNOTATION_CONSTRUCTORS = {
@@ -258,6 +260,12 @@ function showNotification(title, message, timeoutMilliseconds = 5000) {
     }, timeoutMilliseconds);
 }
 
+function waitForDuration(timeoutMilliseconds) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, timeoutMilliseconds);
+    });
+}
+
 async function saveSession() {
     while (true) {
         try {
@@ -381,6 +389,8 @@ async function getActiveTab() {
 
 async function captureRecordingScreenshot(stepId, tabId) {
     try {
+        await waitForDuration(RECORDING_SCREENSHOT_DELAY_MS);
+
         const activeTab = await getActiveTab();
         if (!activeTab || activeTab.id !== tabId) {
             return '';
@@ -447,7 +457,7 @@ async function startRecordingFlow() {
     return createRecordingPayload();
 }
 
-async function stopRecordingFlow() {
+async function stopRecordingFlow(options = {}) {
     await ensureStateReady();
 
     if (recording.status !== 'recording') {
@@ -455,6 +465,7 @@ async function stopRecordingFlow() {
     }
 
     const currentTabId = recording.tabId;
+    const suppressSyntheticNavigationOnStop = Boolean(options.suppressSyntheticNavigationOnStop);
     if (typeof currentTabId === 'number') {
         try {
             await waitForTabComplete(currentTabId);
@@ -462,9 +473,18 @@ async function stopRecordingFlow() {
             const lastRecordedStep = recording.steps.length > 0
                 ? recording.steps[recording.steps.length - 1]
                 : null;
-            const shouldAppendFinalNavigation = currentTab &&
+            const hasRealUrlChange = Boolean(
+                currentTab &&
                 currentTab.url &&
-                (!lastRecordedStep || lastRecordedStep.url !== currentTab.url || lastRecordedStep.type !== 'navigation');
+                currentTab.url !== recording.lastKnownUrl
+            );
+            const shouldAppendFinalNavigation = suppressSyntheticNavigationOnStop
+                ? hasRealUrlChange
+                : Boolean(
+                    currentTab &&
+                    currentTab.url &&
+                    (!lastRecordedStep || lastRecordedStep.url !== currentTab.url || lastRecordedStep.type !== 'navigation')
+                );
 
             if (shouldAppendFinalNavigation) {
                 const stepId = createRuntimeId('recording-step');
@@ -1029,7 +1049,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             case 'syncRecordingNavigation':
                 return { status: 'ok', recording: await syncRecordingNavigationFromActiveTab() };
             case 'stopRecordingFlow':
-                return { status: 'ok', recording: await stopRecordingFlow() };
+                return { status: 'ok', recording: await stopRecordingFlow(request.options || {}) };
             case 'clearRecordingData':
                 return { status: 'ok', recording: await clearRecordingData() };
             case 'appendRecordedStep':

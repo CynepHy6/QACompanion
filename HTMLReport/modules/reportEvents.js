@@ -22,6 +22,7 @@ export function setupAllListeners(reportState) {
     setupFilterListeners(reportState);
     setupDownloadListener(reportState);
     setupTableActionListeners(reportState.session);
+    setupPreviewImageListeners();
 }
 
 /**
@@ -128,10 +129,6 @@ function setupTableActionListeners(session) {
             return;
         }
 
-        const previewImage = event.target.closest('.preview-image');
-        if (previewImage) {
-            showImagePreview(previewImage.dataset.preview);
-        }
     });
 
     document.getElementById('annotationsTableBody').addEventListener('input', (event) => {
@@ -150,33 +147,6 @@ function setupTableActionListeners(session) {
         }
 
         await persistDescriptionField(session, descriptionField, { silent: false });
-    });
-
-    document.getElementById('annotationsTableBody').addEventListener('mouseover', (event) => {
-        const previewImage = event.target.closest('.preview-image');
-        if (!previewImage) {
-            return;
-        }
-
-        showHoverPreview(previewImage.dataset.preview, previewImage);
-    });
-
-    document.getElementById('annotationsTableBody').addEventListener('mousemove', (event) => {
-        const previewImage = event.target.closest('.preview-image');
-        if (!previewImage) {
-            return;
-        }
-
-        updateHoverPosition(previewImage);
-    });
-
-    document.getElementById('annotationsTableBody').addEventListener('mouseout', (event) => {
-        const previewImage = event.target.closest('.preview-image');
-        if (!previewImage || previewImage.contains(event.relatedTarget)) {
-            return;
-        }
-
-        hideHoverPreview();
     });
 
     window.addEventListener('resize', () => {
@@ -227,6 +197,44 @@ function setupTableActionListeners(session) {
 
     renderDeleteImageButtonState();
     renderDeleteAnnotationButtonState();
+}
+
+function setupPreviewImageListeners() {
+    document.addEventListener('click', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage) {
+            return;
+        }
+
+        showImagePreview(previewImage.dataset.preview);
+    });
+
+    document.addEventListener('mouseover', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage) {
+            return;
+        }
+
+        showHoverPreview(previewImage.dataset.preview, previewImage);
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage) {
+            return;
+        }
+
+        updateHoverPosition(previewImage);
+    });
+
+    document.addEventListener('mouseout', (event) => {
+        const previewImage = event.target.closest('.preview-image');
+        if (!previewImage || previewImage.contains(event.relatedTarget)) {
+            return;
+        }
+
+        hideHoverPreview();
+    });
 }
 
 function getSavedDescriptionValue(descriptionField) {
