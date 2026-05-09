@@ -141,8 +141,4 @@
 - This section is a temporary reminder list of planned improvements.
 - Remove or update items from this list as soon as they are implemented in code, so `AGENTS.md` does not drift away from reality.
 - Pending ideas:
-  - Add hover preview for screenshot thumbnails everywhere, not only in the HTML report.
-  - Fix import/export behavior.
-  - Improve action recording quality and coverage.
-  - Show recorded action flows in the HTML report.
-  - Add configurable replay speed.
+

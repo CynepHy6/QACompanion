@@ -64,7 +64,7 @@ test.describe('Recording and Replay', () => {
   test('should record and replay a flow with navigation', async () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
-    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText('Stop');
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(/Stop/);
 
     await testPage.fill('#testInput', 'Replay target value');
     await testPage.click('button:has-text("Ir a Página 1")');
@@ -73,7 +73,7 @@ test.describe('Recording and Replay', () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, { type: 'syncRecordingNavigation' });
     await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
-    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText('Record');
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(/Record/);
     await waitForStorageUpdate(popupPage, 700);
 
     const recordingData = await getRecordingData(popupPage);

@@ -13,6 +13,8 @@ const STORAGE_KEYS = {
 };
 
 const RECORDING_SCREENSHOT_DELAY_MS = 250;
+const PLAYBACK_DELAY_MIN_MS = 150;
+const PLAYBACK_DELAY_MAX_MS = 2000;
 
 const VALID_ANNOTATION_TYPES = ['Bug', 'Note'];
 
@@ -194,6 +196,24 @@ function getNextStepForPlayback(stepIndex) {
     }
 
     return recording.steps[stepIndex + 1];
+}
+
+function getBoundedPlaybackDelayMilliseconds(currentStep, nextStep) {
+    if (!currentStep || !nextStep) {
+        return 0;
+    }
+
+    const currentTimestamp = typeof currentStep.timestamp === 'number' ? currentStep.timestamp : NaN;
+    const nextTimestamp = typeof nextStep.timestamp === 'number' ? nextStep.timestamp : NaN;
+    if (!Number.isFinite(currentTimestamp) || !Number.isFinite(nextTimestamp)) {
+        return PLAYBACK_DELAY_MIN_MS;
+    }
+
+    const recordedDelayMilliseconds = nextTimestamp - currentTimestamp;
+    return Math.min(
+        PLAYBACK_DELAY_MAX_MS,
+        Math.max(PLAYBACK_DELAY_MIN_MS, recordedDelayMilliseconds)
+    );
 }
 
 function markRecordingStopped() {
@@ -665,18 +685,17 @@ async function playRecordingFlow() {
 
                 await waitForTabComplete(activeTab.id, stepItem.url);
                 await ensureContentScriptReady(activeTab.id);
-                continue;
-            }
-
-            await waitForTabComplete(activeTab.id);
-            const playbackResponse = await playRecordedStepOnTab(activeTab.id, stepItem);
-            if (!playbackResponse || playbackResponse.success !== true) {
-                throw new Error(playbackResponse?.error || `Failed to replay step ${stepItem.type}.`);
+            } else {
+                await waitForTabComplete(activeTab.id);
+                const playbackResponse = await playRecordedStepOnTab(activeTab.id, stepItem);
+                if (!playbackResponse || playbackResponse.success !== true) {
+                    throw new Error(playbackResponse?.error || `Failed to replay step ${stepItem.type}.`);
+                }
             }
 
             const nextStep = getNextStepForPlayback(stepIndex);
-            if (nextStep && nextStep.type !== 'navigation') {
-                await new Promise((resolve) => setTimeout(resolve, 150));
+            if (nextStep) {
+                await waitForDuration(getBoundedPlaybackDelayMilliseconds(stepItem, nextStep));
             }
         }
 
