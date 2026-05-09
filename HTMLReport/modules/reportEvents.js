@@ -6,6 +6,7 @@ let currentFilter = 'all';
 let hoverPreviewAnchorElement = null;
 let armedDeleteImageKey = '';
 let armedDeleteAnnotationId = '';
+const pendingDescriptionSaveById = new Map();
 
 /**
  * Returns the current active filter type.
@@ -20,7 +21,7 @@ export function getCurrentFilter() {
 export function setupAllListeners(session) {
     setupFilterListeners(session);
     setupDownloadListener(session);
-    setupTableActionListeners();
+    setupTableActionListeners(session);
 }
 
 /**
@@ -87,7 +88,7 @@ function setupDownloadListener(session) {
     });
 }
 
-function setupTableActionListeners() {
+function setupTableActionListeners(session) {
     document.getElementById('annotationsTableBody').addEventListener('click', async (event) => {
         const deleteButton = event.target.closest('.delete-btn');
         if (deleteButton) {
@@ -148,14 +149,7 @@ function setupTableActionListeners() {
             return;
         }
 
-        try {
-            await updateAnnotationName(descriptionField.dataset.annotationId, descriptionField.value);
-            descriptionField.dataset.savedValue = descriptionField.value;
-            descriptionField.classList.remove('is-dirty');
-        } catch (error) {
-            updateDescriptionDirtyState(descriptionField);
-            alert(error.message || 'Failed to update description.');
-        }
+        await persistDescriptionField(session, descriptionField, { silent: false });
     });
 
     document.getElementById('annotationsTableBody').addEventListener('mouseover', (event) => {
@@ -219,14 +213,97 @@ function setupTableActionListeners() {
         renderDeleteAnnotationButtonState();
     });
 
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            return;
+        }
+
+        flushDirtyDescriptionEditors(session, { silent: true });
+    });
+
+    window.addEventListener('pagehide', () => {
+        flushDirtyDescriptionEditors(session, { silent: true });
+    });
+
     renderDeleteImageButtonState();
     renderDeleteAnnotationButtonState();
 }
 
-function updateDescriptionDirtyState(descriptionField) {
-    const savedValue = typeof descriptionField.dataset.savedValue === 'string'
+function getSavedDescriptionValue(descriptionField) {
+    return typeof descriptionField.dataset.savedValue === 'string'
         ? descriptionField.dataset.savedValue
         : '';
+}
+
+async function persistDescriptionField(session, descriptionField, options = {}) {
+    const annotationId = descriptionField.dataset.annotationId || '';
+    if (annotationId === '') {
+        return false;
+    }
+
+    if (pendingDescriptionSaveById.has(annotationId)) {
+        return pendingDescriptionSaveById.get(annotationId);
+    }
+
+    const { silent = false } = options;
+    const previousSavedValue = getSavedDescriptionValue(descriptionField);
+    const nextSavedValue = descriptionField.value.trim();
+
+    if (nextSavedValue === previousSavedValue) {
+        descriptionField.value = previousSavedValue;
+        updateDescriptionDirtyState(descriptionField);
+        return false;
+    }
+
+    if (nextSavedValue === '') {
+        descriptionField.value = previousSavedValue;
+        updateDescriptionDirtyState(descriptionField);
+        if (!silent) {
+            alert('Description cannot be empty.');
+        }
+        return false;
+    }
+
+    session.updateAnnotationName(annotationId, nextSavedValue);
+    descriptionField.value = nextSavedValue;
+
+    const savePromise = updateAnnotationName(annotationId, nextSavedValue)
+        .then(() => {
+            descriptionField.dataset.savedValue = nextSavedValue;
+            descriptionField.classList.remove('is-dirty');
+            return true;
+        })
+        .catch((error) => {
+            session.updateAnnotationName(annotationId, previousSavedValue);
+            descriptionField.value = previousSavedValue;
+            descriptionField.dataset.savedValue = previousSavedValue;
+            updateDescriptionDirtyState(descriptionField);
+            if (!silent) {
+                alert(error.message || 'Failed to update description.');
+            }
+            return false;
+        })
+        .finally(() => {
+            pendingDescriptionSaveById.delete(annotationId);
+        });
+
+    pendingDescriptionSaveById.set(annotationId, savePromise);
+    return savePromise;
+}
+
+function flushDirtyDescriptionEditors(session, options = {}) {
+    const dirtyEditors = Array.from(document.querySelectorAll('.description-editor.is-dirty'));
+    if (dirtyEditors.length === 0) {
+        return Promise.resolve([]);
+    }
+
+    return Promise.allSettled(
+        dirtyEditors.map((descriptionField) => persistDescriptionField(session, descriptionField, options))
+    );
+}
+
+function updateDescriptionDirtyState(descriptionField) {
+    const savedValue = getSavedDescriptionValue(descriptionField);
     descriptionField.classList.toggle('is-dirty', descriptionField.value !== savedValue);
 }
 
