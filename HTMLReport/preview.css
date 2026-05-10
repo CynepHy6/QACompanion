@@ -167,8 +167,16 @@ body {
 }
 
 /* ============================================
-   Report Tabs
+   Report Tabs And Actions
    ============================================ */
+.report-switcher-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
 .report-tabs {
     display: inline-flex;
     gap: 8px;
@@ -633,7 +641,7 @@ body {
 }
 
 /* ============================================
-   Toolbar Card (Filter + Download)
+   Toolbar Card (Filters)
    ============================================ */
 .toolbar-card {
     background: var(--color-surface);
@@ -643,17 +651,22 @@ body {
     border: 1px solid var(--color-border);
     border-bottom: 2px solid var(--color-border);
     display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
 }
 
 @media (max-width: 768px) {
-    .toolbar-card {
-        flex-direction: column;
+    .report-switcher-bar {
         align-items: stretch;
+    }
+
+    .report-switcher-bar .button-group {
+        width: 100%;
+    }
+
+    .toolbar-card {
+        padding: 14px 16px;
     }
 }
 
@@ -710,6 +723,7 @@ body {
    ============================================ */
 .button-group {
     display: flex;
+    justify-content: flex-end;
     gap: 10px;
     flex-wrap: wrap;
 }
@@ -1282,10 +1296,18 @@ body {
    Responsive
    ============================================ */
 @media (max-width: 640px) {
+    .report-switcher-bar {
+        flex-direction: column;
+    }
+
     .report-tabs {
         width: 100%;
         display: grid;
         grid-template-columns: 1fr 1fr;
+    }
+
+    .report-switcher-bar .button-group {
+        justify-content: stretch;
     }
 
     .report-tab-button {

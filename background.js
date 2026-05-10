@@ -13,6 +13,8 @@ const STORAGE_KEYS = {
 };
 
 const RECORDING_SCREENSHOT_DELAY_MS = 250;
+const RECORDING_SCREENSHOT_MAX_WIDTH = 1080;
+const RECORDING_SCREENSHOT_JPEG_QUALITY = 0.72;
 const PLAYBACK_DELAY_MIN_MS = 150;
 const PLAYBACK_DELAY_MAX_MS = 2000;
 
@@ -556,6 +558,38 @@ async function getActiveTab() {
     return tabs[0] || null;
 }
 
+async function optimizeRecordingScreenshot(dataUrl) {
+    const response = await fetch(dataUrl);
+    const imageBlob = await response.blob();
+    const imageBitmap = await createImageBitmap(imageBlob);
+    const maximumWidth = RECORDING_SCREENSHOT_MAX_WIDTH;
+    const targetWidth = imageBitmap.width > maximumWidth ? maximumWidth : imageBitmap.width;
+    const targetHeight = Math.max(
+        1,
+        Math.round((imageBitmap.height * targetWidth) / Math.max(1, imageBitmap.width))
+    );
+    const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+    const canvasContext = canvas.getContext('2d');
+
+    if (!canvasContext) {
+        throw new Error('Failed to create canvas context for recording screenshot optimization.');
+    }
+
+    canvasContext.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+
+    const optimizedBlob = await canvas.convertToBlob({
+        type: 'image/jpeg',
+        quality: RECORDING_SCREENSHOT_JPEG_QUALITY
+    });
+
+    return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Failed to read optimized recording screenshot.'));
+        reader.readAsDataURL(optimizedBlob);
+    });
+}
+
 async function captureRecordingScreenshot(stepId, tabId) {
     try {
         await waitForDuration(RECORDING_SCREENSHOT_DELAY_MS);
@@ -565,10 +599,12 @@ async function captureRecordingScreenshot(stepId, tabId) {
             return '';
         }
 
-        const imageURL = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-        if (!imageURL) {
+        const sourceImageUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+        if (!sourceImageUrl) {
             return '';
         }
+
+        const imageURL = await optimizeRecordingScreenshot(sourceImageUrl);
 
         const screenshotId = createRuntimeId('recording-shot');
         recording.screenshots.push({

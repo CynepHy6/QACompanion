@@ -1,6 +1,22 @@
 import { serializeReportState } from './reportData.js';
 import { formatDateTimeLocalized, getMessage, getUiLocale } from '../../src/i18n.js';
 
+function getImageExtensionFromDataUrl(imageUrl) {
+    if (typeof imageUrl !== 'string') {
+        return 'png';
+    }
+
+    if (imageUrl.startsWith('data:image/jpeg;')) {
+        return 'jpg';
+    }
+
+    if (imageUrl.startsWith('data:image/webp;')) {
+        return 'webp';
+    }
+
+    return 'png';
+}
+
 /**
  * Downloads all screenshots as a ZIP file.
  */
@@ -59,7 +75,8 @@ ${getMessage('reportDownloadReadmeBody', undefined, 'This ZIP file contains scre
         const timestamp = screenshot.createdAt
             ? new Date(screenshot.createdAt).toISOString().replace(/[:.]/g, '-')
             : `annotation-${screenshotIndex}`;
-        const fileName = `${screenshotIndex + 1}_${screenshot.sourceType}_${type}_${timestamp}_${screenshot.imageIndex + 1}.png`;
+        const fileExtension = getImageExtensionFromDataUrl(screenshot.imageURL);
+        const fileName = `${screenshotIndex + 1}_${screenshot.sourceType}_${type}_${timestamp}_${screenshot.imageIndex + 1}.${fileExtension}`;
 
         // Convert base64 to binary
         const base64Data = screenshot.imageURL.split(',')[1];
