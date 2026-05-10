@@ -29,3 +29,5 @@ npm install
 ```
 
 Then load the extension as unpacked in Chrome/Chromium from this folder.
+
+Note: for Yandex Browser go to `browser://extensions/`

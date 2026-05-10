@@ -2,33 +2,6 @@
 
 Короткая инструкция по сборке и публикации расширения в Chrome Web Store.
 
-## Что уже есть в репо
-
-Для сборки publish-архива есть команда:
-
-```bash
-npm run build:webstore
-```
-
-Она собирает чистый `.zip` в `dist/qa-companion-webstore-v<version>.zip` и включает только runtime-файлы расширения:
-
-- `manifest.json`
-- `background.js`
-- `popup.html`
-- `import-session.html`
-- `src/`
-- `js/`
-- `css/`
-- `icons/`
-- `images/`
-- `lib/`
-- `HTMLReport/`
-- `_locales/`
-
-Тесты, docs, `.cursor/`, `.github/`, `node_modules/`, `playwright-report/` и прочая служебка в архив не попадают.
-
-Промежуточная staging-папка создается только на время сборки и затем автоматически удаляется, так что в `dist/` должен оставаться только итоговый архив.
-
 ## Перед публикацией
 
 Сделай минимум этот чеклист:
