@@ -25,7 +25,7 @@ npm run build:webstore
 - `HTMLReport/`
 - `_locales/`
 
-Тесты, docs, `.claude/`, `.github/`, `node_modules/`, `playwright-report/` и прочая служебка в архив не попадают.
+Тесты, docs, `.cursor/`, `.github/`, `node_modules/`, `playwright-report/` и прочая служебка в архив не попадают.
 
 Промежуточная staging-папка создается только на время сборки и затем автоматически удаляется, так что в `dist/` должен оставаться только итоговый архив.
 

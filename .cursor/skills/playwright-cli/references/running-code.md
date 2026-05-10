@@ -199,7 +199,7 @@ playwright-cli run-code "async page => {
   try {
     await page.click('.maybe-missing', { timeout: 1000 });
     return 'clicked';
-  } catch (e) {
+  } catch (error) {
     return 'element not found';
   }
 }"
@@ -222,8 +222,8 @@ playwright-cli run-code "async page => {
 # Scrape data from multiple pages
 playwright-cli run-code "async page => {
   const results = [];
-  for (let i = 1; i <= 3; i++) {
-    await page.goto(\`https://example.com/page/\${i}\`);
+  for (let index = 1; index <= 3; index++) {
+    await page.goto(`https://example.com/page/${index}`);
     const items = await page.locator('.item').allTextContents();
     results.push(...items);
   }
