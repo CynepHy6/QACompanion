@@ -5,10 +5,22 @@ on:
     branches: [master]
     paths-ignore:
       - '**/*.md'
+      - '**/*.png'
+      - '**/*.jpg'
+      - '**/*.jpeg'
+      - '**/*.gif'
+      - '**/*.webp'
+      - '**/*.svg'
   pull_request:
     branches: [master]
     paths-ignore:
       - '**/*.md'
+      - '**/*.png'
+      - '**/*.jpg'
+      - '**/*.jpeg'
+      - '**/*.gif'
+      - '**/*.webp'
+      - '**/*.svg'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
