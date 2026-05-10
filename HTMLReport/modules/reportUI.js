@@ -75,10 +75,12 @@ export function displaySessionInfo(session) {
 
     sessionInfo.innerHTML = environmentItems.map((item) => `
         <div class="info-item">
-            <span
-                class="info-label${item.hint ? ' info-label--hint' : ''}"
-                ${item.hint ? `title="${escapeHtml(item.hint)}" aria-label="${escapeHtml(`${item.label}: ${item.hint}`)}"` : ''}
-            >${item.label}${item.hint ? '<span class="info-label__hint-marker" aria-hidden="true">?</span>' : ''}</span>
+            <span class="info-key">
+                <span
+                    class="info-label${item.hint ? ' info-label--hint' : ''}"
+                    ${item.hint ? `title="${escapeHtml(item.hint)}" aria-label="${escapeHtml(`${item.label}: ${item.hint}`)}"` : ''}
+                >${item.label}${item.hint ? '<span class="info-label__hint-marker" aria-hidden="true">?</span>' : ''}</span>
+            </span>
             <span class="info-value">${escapeHtml(item.value)}</span>
         </div>
     `).join('');
@@ -88,6 +90,11 @@ export function displaySessionInfo(session) {
  * Renders the summary stat cards.
  */
 export function displayStats(reportState) {
+    const statsContainer = document.getElementById('statsCards');
+    if (!statsContainer) {
+        return;
+    }
+
     const replayEntries = getReplayEntries(reportState);
     const totalRecordedSteps = replayEntries.reduce((totalCount, replayEntry) => totalCount + replayEntry.recordingState.steps.length, 0);
     const stats = [
@@ -96,17 +103,16 @@ export function displayStats(reportState) {
         { type: 'Recording', label: getMessage('reportStatsRecordedSteps', undefined, 'Recorded steps'), count: totalRecordedSteps, icon: '' }
     ];
 
-    const statsContainer = document.getElementById('statsCards');
     statsContainer.innerHTML = stats.map(stat => `
-        <div class="stat-card stat-card--${stat.type.toLowerCase()}">
-            <div class="stat-card__icon">
+        <div class="chart-legend__item chart-legend__item--${stat.type.toLowerCase()}">
+            <div class="chart-legend__icon">
                 ${stat.icon
             ? `<img src="${stat.icon}" alt="${escapeHtml(getAnnotationTypeLabel(stat.type))}" class="annotation-icon">`
-            : `<span class="stat-card__glyph">${escapeHtml(stat.label.slice(0, 1))}</span>`}
+            : `<span class="chart-legend__glyph">${escapeHtml(stat.label.slice(0, 1))}</span>`}
             </div>
-            <div class="stat-card__content">
-                <span class="stat-card__count">${stat.count}</span>
-                <span class="stat-card__label">${stat.label}</span>
+            <div class="chart-legend__content">
+                <span class="chart-legend__count">${stat.count}</span>
+                <span class="chart-legend__label">${stat.label}</span>
             </div>
         </div>
     `).join('');

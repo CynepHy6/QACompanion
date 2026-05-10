@@ -145,7 +145,7 @@ body {
 
 .section--overview {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
     gap: 20px;
     align-items: stretch;
 }
@@ -157,6 +157,10 @@ body {
 
     .section--state-grid {
         grid-template-columns: 1fr;
+    }
+
+    .info-column {
+        grid-template-columns: minmax(180px, 0.95fr) minmax(0, 1.1fr);
     }
 }
 
@@ -228,21 +232,26 @@ body {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    justify-content: space-evenly;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1.35fr);
+    column-gap: 18px;
+    row-gap: 10px;
+    align-content: start;
 }
 
 .info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 6px 0;
+    display: contents;
+}
+
+.info-key {
+    min-width: 0;
 }
 
 .info-label {
-    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -278,45 +287,27 @@ body {
     font-weight: 500;
     color: var(--color-text);
     word-break: break-word;
+    text-align: left;
 }
 
 /* ============================================
-   Stats Cards
+   Chart Legend
    ============================================ */
-.stats-column {
+.chart-legend {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    justify-content: space-evenly;
+    gap: 10px;
 }
 
-@media (max-width: 968px) {
-    .stats-column {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-.stat-card {
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    padding: 14px 16px;
+.chart-legend__item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--color-border);
-    transition: transform var(--transition), box-shadow var(--transition);
+    gap: 10px;
 }
 
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.stat-card__icon {
-    width: 36px;
-    height: 36px;
+.chart-legend__icon {
+    width: 34px;
+    height: 34px;
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
@@ -324,39 +315,38 @@ body {
     flex-shrink: 0;
 }
 
-.stat-card__icon img {
+.chart-legend__icon img {
     width: 18px;
     height: 18px;
 }
 
-.stat-card--bug .stat-card__icon { background-color: var(--color-bug-light); }
-.stat-card--note .stat-card__icon { background-color: var(--color-note-light); }
-.stat-card--draft .stat-card__icon { background-color: var(--color-draft-light); }
-.stat-card--recording .stat-card__icon { background-color: var(--color-recording-light); }
+.chart-legend__item--bug .chart-legend__icon { background-color: var(--color-bug-light); }
+.chart-legend__item--note .chart-legend__icon { background-color: var(--color-note-light); }
+.chart-legend__item--recording .chart-legend__icon { background-color: var(--color-recording-light); }
 
-.stat-card__content {
+.chart-legend__content {
     display: flex;
     flex-direction: column;
+    gap: 1px;
 }
 
-.stat-card__count {
-    font-size: 1.4rem;
+.chart-legend__count {
+    font-size: 1.15rem;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
-.stat-card--bug .stat-card__count { color: var(--color-bug); }
-.stat-card--note .stat-card__count { color: var(--color-note); }
-.stat-card--draft .stat-card__count { color: var(--color-draft); }
-.stat-card--recording .stat-card__count { color: var(--color-recording); }
+.chart-legend__item--bug .chart-legend__count { color: var(--color-bug); }
+.chart-legend__item--note .chart-legend__count { color: var(--color-note); }
+.chart-legend__item--recording .chart-legend__count { color: var(--color-recording); }
 
-.stat-card__glyph {
-    font-size: 1rem;
+.chart-legend__glyph {
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--color-text);
 }
 
-.stat-card__label {
+.chart-legend__label {
     font-size: 0.78rem;
     color: var(--color-text-secondary);
     font-weight: 500;
@@ -385,19 +375,32 @@ body {
     justify-content: center;
 }
 
+.chart-card__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 12px;
+}
+
+.chart-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.chart-card__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .chart-column canvas {
     width: 100% !important;
     height: auto !important;
     max-width: 220px;
     max-height: 220px;
     margin: 0 auto;
-}
-
-.chart-card__title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--color-text);
-    margin-bottom: 12px;
 }
 
 /* ============================================
@@ -1405,16 +1408,19 @@ body {
         font-size: 1.5rem;
     }
 
-    .info-grid {
-        grid-template-columns: 1fr 1fr;
+    .info-column {
+        grid-template-columns: 1fr;
+        row-gap: 12px;
     }
 
-    .stats-grid {
-        grid-template-columns: 1fr 1fr;
+    .info-item {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 3px;
     }
 
-    .chart-card {
-        width: 100%;
+    .chart-card__body {
+        gap: 14px;
     }
 
     .filter-pills {

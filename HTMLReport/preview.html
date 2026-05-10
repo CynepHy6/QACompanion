@@ -25,10 +25,13 @@
         <!-- Session Overview: Info + Stats + Chart -->
         <section class="section section--overview">
             <div id="sessionInfo" class="info-column"></div>
-            <div id="statsCards" class="stats-column"></div>
             <div id="chartContainer" class="chart-column">
                 <h3 class="chart-card__title">__MSG_reportChartTitle__</h3>
-                <canvas id="annotationsChart"></canvas>
+                <div class="chart-card__body">
+                    <div class="chart-card__visual">
+                        <canvas id="annotationsChart"></canvas>
+                    </div>
+                </div>
             </div>
         </section>
 
