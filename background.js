@@ -25,7 +25,8 @@ const STORAGE_KEYS = {
 
 const RECORDING_SCREENSHOT_DELAY_MS = 250;
 const RECORDING_SCREENSHOT_MAX_WIDTH = 1080;
-const RECORDING_SCREENSHOT_JPEG_QUALITY = 0.72;
+const STORED_SCREENSHOT_MIME_TYPE = 'image/webp';
+const STORED_SCREENSHOT_QUALITY = 0.82;
 const PLAYBACK_DELAY_MIN_MS = 150;
 const PLAYBACK_DELAY_MAX_MS = 2000;
 
@@ -634,7 +635,7 @@ async function updateDraftState(nextDraft) {
 }
 
 async function appendImagesToDraft(imageURLs) {
-    const nextImageEntries = normalizeImageEntries(imageURLs);
+    const nextImageEntries = await optimizeImageEntriesForStorage(imageURLs);
     draft.imageEntries.push(...nextImageEntries);
     draft.imageURLs = draft.imageEntries.map((imageEntry) => imageEntry.imageURL);
     await saveDraft();
@@ -716,12 +717,34 @@ async function getActiveTab() {
     return tabs[0] || null;
 }
 
-async function optimizeRecordingScreenshot(dataUrl) {
+function isStoredScreenshotDataUrl(dataUrl) {
+    return typeof dataUrl === 'string' && dataUrl.startsWith('data:image/webp;');
+}
+
+async function readBlobAsDataUrl(blob) {
+    return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Failed to read optimized screenshot.'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function optimizeImageForStorage(dataUrl, maximumWidth = 0) {
+    if (typeof dataUrl !== 'string' || dataUrl.length === 0) {
+        return '';
+    }
+
+    if (maximumWidth <= 0 && isStoredScreenshotDataUrl(dataUrl)) {
+        return dataUrl;
+    }
+
     const response = await fetch(dataUrl);
     const imageBlob = await response.blob();
     const imageBitmap = await createImageBitmap(imageBlob);
-    const maximumWidth = RECORDING_SCREENSHOT_MAX_WIDTH;
-    const targetWidth = imageBitmap.width > maximumWidth ? maximumWidth : imageBitmap.width;
+    const targetWidth = maximumWidth > 0 && imageBitmap.width > maximumWidth
+        ? maximumWidth
+        : imageBitmap.width;
     const targetHeight = Math.max(
         1,
         Math.round((imageBitmap.height * targetWidth) / Math.max(1, imageBitmap.width))
@@ -736,16 +759,25 @@ async function optimizeRecordingScreenshot(dataUrl) {
     canvasContext.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
 
     const optimizedBlob = await canvas.convertToBlob({
-        type: 'image/jpeg',
-        quality: RECORDING_SCREENSHOT_JPEG_QUALITY
+        type: STORED_SCREENSHOT_MIME_TYPE,
+        quality: STORED_SCREENSHOT_QUALITY
     });
 
-    return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error('Failed to read optimized recording screenshot.'));
-        reader.readAsDataURL(optimizedBlob);
-    });
+    return await readBlobAsDataUrl(optimizedBlob);
+}
+
+async function optimizeImageEntriesForStorage(imageSource, maximumWidth = 0) {
+    const normalizedImageEntries = normalizeImageEntries(imageSource);
+    const optimizedImageEntries = [];
+
+    for (const imageEntry of normalizedImageEntries) {
+        optimizedImageEntries.push({
+            ...imageEntry,
+            imageURL: await optimizeImageForStorage(imageEntry.imageURL, maximumWidth)
+        });
+    }
+
+    return optimizedImageEntries;
 }
 
 async function captureRecordingScreenshot(stepId, tabId) {
@@ -763,7 +795,7 @@ async function captureRecordingScreenshot(stepId, tabId) {
             return '';
         }
 
-        const imageURL = await optimizeRecordingScreenshot(sourceImageUrl);
+        const imageURL = await optimizeImageForStorage(sourceImageUrl, RECORDING_SCREENSHOT_MAX_WIDTH);
 
         const screenshotId = createRuntimeId('recording-shot');
         recordingState.screenshots.push({
@@ -1222,7 +1254,8 @@ async function updateAnnotationName(annotationId, newName) {
 async function appendAnnotationImages(annotationId, imageURLs) {
     await ensureStateReady();
 
-    const updated = session.appendAnnotationImages(annotationId, imageURLs);
+    const optimizedImageEntries = await optimizeImageEntriesForStorage(imageURLs);
+    const updated = session.appendAnnotationImages(annotationId, optimizedImageEntries);
     if (!updated) {
         throw new Error(getMessage('errorAnnotationNotFound', undefined, 'Annotation not found.'));
     }

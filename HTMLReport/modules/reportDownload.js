@@ -120,8 +120,9 @@ export async function downloadCompleteReport(reportState) {
 
     // Remove interactive-only elements from download
     removeInteractiveElements(reportContent);
+    prepareStandalonePreviewImages(reportContent);
 
-    // Embed all images as base64
+    // Inline any remaining non-preview image URLs.
     await embedImages(reportContent);
     const icons = await loadSvgIconsAsBase64();
     replaceSvgIcons(reportContent, icons);
@@ -198,23 +199,44 @@ function removeInteractiveElements(container) {
     });
 }
 
+function prepareStandalonePreviewImages(container) {
+    container.querySelectorAll('.preview-image').forEach((imageElement) => {
+        imageElement.removeAttribute('src');
+        imageElement.removeAttribute('data-preview');
+    });
+}
+
 async function embedImages(container) {
-    const images = container.querySelectorAll('.preview-image');
-    await Promise.all(Array.from(images).map(img => {
+    const images = container.querySelectorAll('img:not(.preview-image)');
+    await Promise.all(Array.from(images).map((imageElement) => {
         return new Promise((resolve) => {
-            if (!img.src) return resolve();
-            const tempImg = new Image();
-            tempImg.crossOrigin = 'Anonymous';
-            tempImg.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = tempImg.width;
-                canvas.height = tempImg.height;
-                canvas.getContext('2d').drawImage(tempImg, 0, 0);
-                img.src = canvas.toDataURL('image/png');
+            if (!imageElement.src) {
                 resolve();
-            };
-            tempImg.onerror = () => resolve();
-            tempImg.src = img.src;
+                return;
+            }
+
+            if (imageElement.src.startsWith('data:image/')) {
+                resolve();
+                return;
+            }
+
+            fetch(imageElement.src)
+                .then((response) => response.blob())
+                .then((imageBlob) => {
+                    if (!imageBlob.type.startsWith('image/')) {
+                        resolve();
+                        return;
+                    }
+
+                    const fileReader = new FileReader();
+                    fileReader.onloadend = () => {
+                        imageElement.src = typeof fileReader.result === 'string' ? fileReader.result : imageElement.src;
+                        resolve();
+                    };
+                    fileReader.onerror = () => resolve();
+                    fileReader.readAsDataURL(imageBlob);
+                })
+                .catch(() => resolve());
         });
     }));
 }
@@ -253,15 +275,63 @@ function extractStyles() {
 }
 
 function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
+    const downloadJsonLabel = getMessage('popupExportJsonTitle', undefined, 'Export session to JSON');
+    const standaloneHeaderButtonMarkup = `
+                <div class="standalone-header-actions">
+                    <button id="downloadEmbeddedJsonBtn" class="btn-download btn-download--secondary" title="${downloadJsonLabel}">
+                        ${downloadJsonLabel}
+                    </button>
+                </div>`;
+    const standaloneReportHtml = reportHtml.replace(
+        /<p class="report-header__subtitle">([\s\S]*?)<\/p>/,
+        `<div class="standalone-header-meta"><p class="report-header__subtitle">$1</p>${standaloneHeaderButtonMarkup}</div>`
+    );
     return `<!DOCTYPE html>
 <html lang="${getUiLocale()}">
 <head>
     <meta charset="utf-8">
     <title>${getMessage('reportHtmlTitle', undefined, 'Exploratory Testing Report')}</title>
-    <style>${styles}</style>
+    <style>${styles}
+.standalone-header-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.standalone-header-meta .report-header__subtitle {
+    margin: 0;
+    min-width: 0;
+}
+
+.standalone-header-actions {
+    margin-left: auto;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .standalone-header-meta {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .standalone-header-meta .report-header__subtitle {
+        width: 100%;
+    }
+
+    .standalone-header-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+</style>
 </head>
 <body>
-    ${reportHtml}
+    ${standaloneReportHtml}
     <div id="imagePreview" class="image-preview">
         <img src="" alt="${getMessage('reportImagePreviewAlt', undefined, 'Preview')}">
     </div>
@@ -271,6 +341,96 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
     <script>
         const sessionData = ${sessionJSON};
         let hoverPreviewAnchorElement = null;
+
+        function buildSessionJsonFileName() {
+            const startedAtValue = sessionData?.session?.startDateTime || Date.now();
+            const startedAtDate = new Date(startedAtValue);
+            const isoDatePart = Number.isNaN(startedAtDate.getTime())
+                ? new Date().toISOString().slice(0, 10)
+                : startedAtDate.toISOString().slice(0, 10);
+            return 'ExploratorySession_' + isoDatePart + '.json';
+        }
+
+        function downloadEmbeddedJson() {
+            const jsonString = JSON.stringify(sessionData, null, 2);
+            const jsonBlob = new Blob([jsonString], { type: 'application/json' });
+            const objectUrl = URL.createObjectURL(jsonBlob);
+            const linkElement = document.createElement('a');
+            linkElement.href = objectUrl;
+            linkElement.download = buildSessionJsonFileName();
+            document.body.appendChild(linkElement);
+            linkElement.click();
+            document.body.removeChild(linkElement);
+            URL.revokeObjectURL(objectUrl);
+        }
+
+        function getSessionAnnotation(annotationIdentifier) {
+            if (typeof annotationIdentifier !== 'string' || annotationIdentifier === '') {
+                return null;
+            }
+
+            const annotationList = Array.isArray(sessionData?.session?.annotations)
+                ? sessionData.session.annotations
+                : [];
+            return annotationList.find((annotationItem) => annotationItem.id === annotationIdentifier) || null;
+        }
+
+        function getAnnotationImageSource(annotationIdentifier, imageIndexValue) {
+            const annotationItem = getSessionAnnotation(annotationIdentifier);
+            if (!annotationItem || !Array.isArray(annotationItem.imageEntries)) {
+                return '';
+            }
+
+            const imageIndex = Number.parseInt(imageIndexValue, 10);
+            if (!Number.isInteger(imageIndex) || imageIndex < 0 || imageIndex >= annotationItem.imageEntries.length) {
+                return '';
+            }
+
+            return annotationItem.imageEntries[imageIndex]?.imageURL || '';
+        }
+
+        function getRecordingImageSource(annotationIdentifier, stepIdentifier) {
+            if (typeof annotationIdentifier !== 'string' || annotationIdentifier === '' || typeof stepIdentifier !== 'string' || stepIdentifier === '') {
+                return '';
+            }
+
+            const recordingState = sessionData?.annotationRecordingsById?.[annotationIdentifier];
+            if (!recordingState || !Array.isArray(recordingState.screenshots)) {
+                return '';
+            }
+
+            const screenshotItem = recordingState.screenshots.find((recordingScreenshot) => recordingScreenshot.triggerStepId === stepIdentifier);
+            return screenshotItem?.imageURL || '';
+        }
+
+        function getStandalonePreviewSource(imageElement) {
+            const annotationIdentifier = imageElement.dataset.annotationId || '';
+            const imageIndexValue = imageElement.dataset.imageIndex || '';
+            if (annotationIdentifier !== '' && imageIndexValue !== '') {
+                return getAnnotationImageSource(annotationIdentifier, imageIndexValue);
+            }
+
+            const recordingAnnotationIdentifier = imageElement.dataset.recordingAnnotationId || '';
+            const recordingStepIdentifier = imageElement.dataset.recordingStepId || '';
+            if (recordingAnnotationIdentifier !== '' && recordingStepIdentifier !== '') {
+                return getRecordingImageSource(recordingAnnotationIdentifier, recordingStepIdentifier);
+            }
+
+            return '';
+        }
+
+        function hydrateStandalonePreviewImages() {
+            document.querySelectorAll('.preview-image').forEach((imageElement) => {
+                const imageSource = getStandalonePreviewSource(imageElement);
+                if (imageSource === '') {
+                    imageElement.remove();
+                    return;
+                }
+
+                imageElement.src = imageSource;
+                imageElement.dataset.preview = imageSource;
+            });
+        }
 
         function showImagePreview(src) {
             const preview = document.getElementById('imagePreview');
@@ -380,6 +540,17 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
             activateTab(initialActiveButton.dataset.reportTab);
         }
 
+        function setupEmbeddedJsonDownload() {
+            const downloadButton = document.getElementById('downloadEmbeddedJsonBtn');
+            if (!downloadButton) {
+                return;
+            }
+
+            downloadButton.addEventListener('click', () => {
+                downloadEmbeddedJson();
+            });
+        }
+
         // Filter functionality for downloaded report
         document.querySelectorAll('.filter-pill').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -397,8 +568,10 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            hydrateStandalonePreviewImages();
             setupReportTabs();
             setupImageHover();
+            setupEmbeddedJsonDownload();
         });
     <\/script>
 </body>

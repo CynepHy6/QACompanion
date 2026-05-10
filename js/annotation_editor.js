@@ -19,6 +19,8 @@
     const TEXT_FONT_SIZE = 20;
     const TEXT_FONT = `bold ${TEXT_FONT_SIZE}px 'IBM Plex Sans', sans-serif`;
     const BLUR_RADIUS = 12; // px – strength of the blur effect
+    const OUTPUT_IMAGE_MIME_TYPE = 'image/webp';
+    const OUTPUT_IMAGE_QUALITY = 0.82;
 
     // Text input element
     const textInput = document.getElementById('text-input');
@@ -324,7 +326,7 @@
     // Action buttons
     document.getElementById('save-button').addEventListener('click', () => {
         // Get final canvas as data URL
-        const annotatedImageData = canvas.toDataURL('image/png');
+        const annotatedImageData = canvas.toDataURL(OUTPUT_IMAGE_MIME_TYPE, OUTPUT_IMAGE_QUALITY);
 
         // Send back to content script or background
         window.parent.postMessage({

@@ -138,7 +138,7 @@ function getReplayEntries(reportState) {
         .filter(({ recordingState }) => Array.isArray(recordingState.steps) && recordingState.steps.length > 0);
 }
 
-function renderRecordingTimelineMarkup(recordingState) {
+function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
     const screenshotByStepId = new Map(
         recordingState.screenshots.map((screenshotItem) => [screenshotItem.triggerStepId, screenshotItem])
     );
@@ -156,7 +156,7 @@ function renderRecordingTimelineMarkup(recordingState) {
                 <div class="recording-step__body">
                     <div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
                         ${linkedScreenshot
-                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
+                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" data-recording-annotation-id="${annotationIdentifier}" data-recording-step-id="${stepItem.stepId}" alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
                 : `<div class="recording-step__shot-placeholder">${escapeHtml(getMessage('reportRecordingNoScreenshot', undefined, 'No screenshot'))}</div>`}
                     </div>
                     <div class="recording-step__content">
@@ -305,7 +305,7 @@ export function displayAnnotationsTable(reportState, currentFilter) {
                         <span class="annotation-replay-details__meta">${escapeHtml(replaySummaryText)}</span>
                     </summary>
                     <div class="annotation-replay-details__body">
-                        ${renderRecordingTimelineMarkup(recordingState)}
+                        ${renderRecordingTimelineMarkup(recordingState, annotation.id)}
                     </div>
                 </details>
             </td>
