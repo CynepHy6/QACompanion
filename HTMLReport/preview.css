@@ -640,6 +640,41 @@ body {
     text-align: center;
 }
 
+.recording-group {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    background: var(--color-surface);
+}
+
+.recording-group__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.recording-group__type {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: var(--color-primary);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.recording-group__title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.recording-group__timeline {
+    display: grid;
+    gap: 12px;
+}
+
 /* ============================================
    Toolbar Card (Filters)
    ============================================ */
@@ -817,6 +852,53 @@ body {
 
 .annotation-row--bug td:first-child { border-left: 3px solid var(--color-bug); }
 .annotation-row--note td:first-child { border-left: 3px solid var(--color-note); }
+
+.annotation-replay-row td {
+    padding-top: 0;
+    background: #fafcff;
+}
+
+.annotation-replay-row__cell {
+    border-top: none !important;
+}
+
+.annotation-replay-details {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    overflow: hidden;
+}
+
+.annotation-replay-details__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.annotation-replay-details__summary::-webkit-details-marker {
+    display: none;
+}
+
+.annotation-replay-details__title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.annotation-replay-details__meta {
+    font-size: 0.76rem;
+    color: var(--color-text-secondary);
+}
+
+.annotation-replay-details__body {
+    padding: 0 14px 14px;
+    display: grid;
+    gap: 12px;
+}
 
 .col-actions {
     width: 52px;

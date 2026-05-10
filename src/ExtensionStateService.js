@@ -1,5 +1,11 @@
 import { Bug, Note, normalizeImageEntries } from './Annotation.js';
-import { createEmptyRecording, normalizeRecording } from './Recording.js';
+import {
+    createEmptyRecording,
+    createRecordingSummary,
+    normalizeRecording,
+    normalizeRecordingMap,
+    sanitizeRecording
+} from './Recording.js';
 import { Session } from './Session.js';
 
 const ANNOTATION_CONSTRUCTORS = {
@@ -8,7 +14,8 @@ const ANNOTATION_CONSTRUCTORS = {
 };
 
 const VALID_ANNOTATION_TYPES = ['Bug', 'Note'];
-const EXPORT_FORMAT_VERSION = 4;
+const EXPORT_FORMAT_VERSION = 5;
+const SYNTHETIC_DRAFT_ANNOTATION_ID = '__draft-annotation__';
 
 function normalizeDraftType(draftType) {
     return VALID_ANNOTATION_TYPES.includes(draftType) ? draftType : 'Bug';
@@ -73,17 +80,29 @@ function createAnnotationFromDraft(draftState = {}) {
     );
 }
 
-function sanitizeRecording(recordingState = {}) {
-    const normalizedRecording = normalizeRecording(recordingState);
+function createEmptyDraftRecordingState() {
+    return sanitizeRecording(createEmptyRecording());
+}
 
-    return {
-        ...normalizedRecording,
-        status: 'idle',
-        tabId: null,
-        activeStepId: '',
-        failedStepId: '',
-        lastError: ''
-    };
+function normalizeAnnotationRecordingsById(rawRecordings = {}) {
+    return Object.fromEntries(
+        Object.entries(normalizeRecordingMap(rawRecordings))
+            .map(([annotationId, recordingState]) => [annotationId, sanitizeRecording(recordingState)])
+    );
+}
+
+function createDraftAnnotationId() {
+    return SYNTHETIC_DRAFT_ANNOTATION_ID;
+}
+
+function getLegacyRecordingImportTarget(rawSession = {}) {
+    const annotations = Array.isArray(rawSession.annotations) ? rawSession.annotations : [];
+    const lastAnnotation = annotations.length > 0 ? annotations[annotations.length - 1] : null;
+    if (lastAnnotation && typeof lastAnnotation.id === 'string' && lastAnnotation.id !== '') {
+        return lastAnnotation.id;
+    }
+
+    return '';
 }
 
 function serializeSession(session) {
@@ -119,42 +138,98 @@ export function hasRecordingContent(recordingState = {}) {
     return normalizedRecording.steps.length > 0 || normalizedRecording.screenshots.length > 0;
 }
 
+export function hasAnnotationRecordings(annotationRecordingsById = {}) {
+    return Object.values(normalizeAnnotationRecordingsById(annotationRecordingsById))
+        .some((recordingState) => hasRecordingContent(recordingState));
+}
+
 export function hasSessionContent(session) {
     return session.getAnnotations().length > 0;
 }
 
-export function hasExportableState(session, draftState = {}, recordingState = {}) {
-    return hasSessionContent(session) || hasDraftContent(draftState) || hasRecordingContent(recordingState);
+export function hasExportableState(session, draftState = {}, draftRecordingState = {}, annotationRecordingsById = {}) {
+    return hasSessionContent(session)
+        || hasDraftContent(draftState)
+        || hasRecordingContent(draftRecordingState)
+        || hasAnnotationRecordings(annotationRecordingsById);
 }
 
-export function buildExtensionStatePayload(session, draftState = {}, recordingState = {}) {
+export function buildExtensionStatePayload(session, draftState = {}, draftRecordingState = {}, annotationRecordingsById = {}) {
     const serializedSession = serializeSession(session);
     const draftAnnotation = createAnnotationFromDraft(draftState);
+    const sanitizedDraftRecording = sanitizeRecording(draftRecordingState);
+    const sanitizedAnnotationRecordings = normalizeAnnotationRecordingsById(annotationRecordingsById);
+    let draftAnnotationId = '';
+
     if (draftAnnotation) {
+        draftAnnotationId = createDraftAnnotationId();
+        draftAnnotation.id = draftAnnotationId;
         serializedSession.annotations.push(serializeAnnotation(draftAnnotation));
+    }
+
+    if (draftAnnotationId !== '' && hasRecordingContent(sanitizedDraftRecording)) {
+        sanitizedAnnotationRecordings[draftAnnotationId] = sanitizedDraftRecording;
     }
 
     return {
         version: EXPORT_FORMAT_VERSION,
         exportedAt: Date.now(),
         session: serializedSession,
-        recording: sanitizeRecording(recordingState)
+        draftRecording: sanitizedDraftRecording,
+        annotationRecordingsById: sanitizedAnnotationRecordings,
+        draftAnnotationId
     };
 }
 
 export class ExtensionStateService {
-    getJSON(session, draftState = {}, recordingState = {}) {
-        return JSON.stringify(buildExtensionStatePayload(session, draftState, recordingState), null, 2);
+    getJSON(session, draftState = {}, draftRecordingState = {}, annotationRecordingsById = {}) {
+        return JSON.stringify(buildExtensionStatePayload(session, draftState, draftRecordingState, annotationRecordingsById), null, 2);
     }
 
     getState(jsonString) {
         const rawObject = JSON.parse(jsonString);
         const rawSession = rawObject?.session || {};
+        const isLegacyVersion = (rawObject?.version || 0) < EXPORT_FORMAT_VERSION;
+        const draftAnnotationId = typeof rawObject?.draftAnnotationId === 'string' ? rawObject.draftAnnotationId : '';
+        const rawAnnotationRecordings = normalizeAnnotationRecordingsById(rawObject?.annotationRecordingsById || {});
+        let draftState = serializeDraft({});
+        let draftRecording = sanitizeRecording(rawObject?.draftRecording || createEmptyDraftRecordingState());
+        const session = createSessionFromExport(rawSession);
+        const annotationRecordingsById = { ...rawAnnotationRecordings };
+
+        if (draftAnnotationId !== '') {
+            const draftAnnotation = session.getAnnotationById(draftAnnotationId);
+            if (draftAnnotation) {
+                draftState = serializeDraft({
+                    type: draftAnnotation.getType(),
+                    description: draftAnnotation.getName(),
+                    imageEntries: draftAnnotation.getImageEntries()
+                });
+                if (annotationRecordingsById[draftAnnotationId]) {
+                    draftRecording = sanitizeRecording(annotationRecordingsById[draftAnnotationId]);
+                    delete annotationRecordingsById[draftAnnotationId];
+                }
+                session.deleteAnnotation(draftAnnotationId);
+            }
+        }
+
+        if (isLegacyVersion && rawObject?.recording) {
+            const legacyRecording = sanitizeRecording(rawObject.recording);
+            if (hasRecordingContent(legacyRecording)) {
+                const legacyTargetAnnotationId = getLegacyRecordingImportTarget(rawSession);
+                if (legacyTargetAnnotationId !== '') {
+                    annotationRecordingsById[legacyTargetAnnotationId] = legacyRecording;
+                } else {
+                    draftRecording = legacyRecording;
+                }
+            }
+        }
 
         return {
-            session: createSessionFromExport(rawSession),
-            draft: serializeDraft({}),
-            recording: sanitizeRecording(rawObject?.recording || createEmptyRecording())
+            session,
+            draft: draftState,
+            draftRecording,
+            annotationRecordingsById
         };
     }
 }

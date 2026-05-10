@@ -1,12 +1,13 @@
 import { Bug, Note } from '../../src/Annotation';
-import { ExtensionStateService, hasDraftContent, hasExportableState, hasRecordingContent } from '../../src/ExtensionStateService';
+import { ExtensionStateService, hasAnnotationRecordings, hasDraftContent, hasExportableState, hasRecordingContent } from '../../src/ExtensionStateService';
 import { Session } from '../../src/Session';
 
 describe('ExtensionStateService', function () {
     let extensionStateService;
     let testSession;
     let draftState;
-    let recordingState;
+    let draftRecordingState;
+    let annotationRecordingsById;
 
     beforeEach(function () {
         extensionStateService = new ExtensionStateService();
@@ -48,7 +49,7 @@ describe('ExtensionStateService', function () {
             ]
         };
 
-        recordingState = {
+        draftRecordingState = {
             id: 'recording-identifier',
             status: 'recording',
             startedAt: new Date(2026, 4, 8, 21, 48).getTime(),
@@ -100,13 +101,52 @@ describe('ExtensionStateService', function () {
                 }
             ]
         };
+
+        annotationRecordingsById = {
+            'bug-identifier': {
+                id: 'bug-recording',
+                status: 'idle',
+                startedAt: new Date(2026, 4, 8, 21, 50).getTime(),
+                stoppedAt: new Date(2026, 4, 8, 21, 51).getTime(),
+                tabId: null,
+                lastKnownUrl: 'http://example.test/bug',
+                lastError: '',
+                activeStepId: '',
+                failedStepId: '',
+                steps: [
+                    {
+                        stepId: 'bug-step-1',
+                        type: 'click',
+                        url: 'http://example.test/bug',
+                        timestamp: new Date(2026, 4, 8, 21, 50, 10).getTime(),
+                        locator: {
+                            strategy: 'css',
+                            value: '.submit'
+                        },
+                        value: '',
+                        inputType: '',
+                        tagName: 'BUTTON',
+                        text: 'Save',
+                        screenshotRef: 'bug-shot-1'
+                    }
+                ],
+                screenshots: [
+                    {
+                        id: 'bug-shot-1',
+                        imageURL: 'data:image/jpeg;base64,bug-recording-shot',
+                        createdAt: new Date(2026, 4, 8, 21, 50, 11).getTime(),
+                        triggerStepId: 'bug-step-1'
+                    }
+                ]
+            }
+        };
     });
 
     it('should export a compact full-state JSON without legacy image fields', function () {
-        const exportedJson = extensionStateService.getJSON(testSession, draftState, recordingState);
+        const exportedJson = extensionStateService.getJSON(testSession, draftState, draftRecordingState, annotationRecordingsById);
         const exportedState = JSON.parse(exportedJson);
 
-        expect(exportedState.version).toBe(4);
+        expect(exportedState.version).toBe(5);
         expect(exportedState.session.annotations).toHaveLength(3);
         expect(exportedState.session.annotations[0].imageEntries).toEqual([
             expect.objectContaining({
@@ -129,18 +169,31 @@ describe('ExtensionStateService', function () {
             })
         );
         expect(exportedState.draft).toBeUndefined();
-        expect(exportedState.recording.status).toBe('idle');
-        expect(exportedState.recording.tabId).toBeNull();
-        expect(exportedState.recording.activeStepId).toBe('');
-        expect(exportedState.recording.failedStepId).toBe('');
-        expect(exportedState.recording.lastError).toBe('');
+        expect(exportedState.draftRecording.status).toBe('idle');
+        expect(exportedState.draftRecording.tabId).toBeNull();
+        expect(exportedState.draftRecording.activeStepId).toBe('');
+        expect(exportedState.draftRecording.failedStepId).toBe('');
+        expect(exportedState.draftRecording.lastError).toBe('');
+        expect(exportedState.annotationRecordingsById['bug-identifier']).toEqual(
+            expect.objectContaining({
+                status: 'idle',
+                steps: expect.any(Array),
+                screenshots: expect.any(Array)
+            })
+        );
+        expect(exportedState.annotationRecordingsById[exportedState.draftAnnotationId]).toEqual(
+            expect.objectContaining({
+                status: 'idle',
+                steps: expect.any(Array)
+            })
+        );
     });
 
-    it('should restore session annotations and recording from exported JSON', function () {
-        const exportedJson = extensionStateService.getJSON(testSession, draftState, recordingState);
+    it('should restore session annotations, draft replay and per-annotation recordings from exported JSON', function () {
+        const exportedJson = extensionStateService.getJSON(testSession, draftState, draftRecordingState, annotationRecordingsById);
         const restoredState = extensionStateService.getState(exportedJson);
 
-        expect(restoredState.session.getAnnotations()).toHaveLength(3);
+        expect(restoredState.session.getAnnotations()).toHaveLength(2);
         expect(restoredState.session.getAnnotations()[0].getName()).toBe('Тестовый баг');
         expect(restoredState.session.getAnnotations()[0].getImageEntries()).toEqual([
             expect.objectContaining({
@@ -148,21 +201,25 @@ describe('ExtensionStateService', function () {
                 createdAt: expect.any(Number)
             })
         ]);
-        expect(restoredState.session.getAnnotations()[2].getType()).toBe('Note');
-        expect(restoredState.session.getAnnotations()[2].getName()).toBe('Черновик не должен становиться аннотацией');
         expect(restoredState.draft).toEqual({
-            type: 'Bug',
-            description: '',
-            imageEntries: [],
-            imageURLs: []
+            type: 'Note',
+            description: 'Черновик не должен становиться аннотацией',
+            imageEntries: [
+                expect.objectContaining({
+                    imageURL: 'data:image/png;base64,draft-shot',
+                    createdAt: expect.any(Number)
+                })
+            ],
+            imageURLs: ['data:image/png;base64,draft-shot']
         });
-        expect(restoredState.recording.status).toBe('idle');
-        expect(restoredState.recording.steps).toHaveLength(2);
-        expect(restoredState.recording.screenshots).toHaveLength(1);
-        expect(restoredState.recording.steps[1].screenshotRef).toBe('shot-1');
+        expect(restoredState.draftRecording.status).toBe('idle');
+        expect(restoredState.draftRecording.steps).toHaveLength(2);
+        expect(restoredState.draftRecording.screenshots).toHaveLength(1);
+        expect(restoredState.draftRecording.steps[1].screenshotRef).toBe('shot-1');
+        expect(restoredState.annotationRecordingsById['bug-identifier'].steps).toHaveLength(1);
     });
 
-    it('should ignore draft field during import because export folds draft into session', function () {
+    it('should map legacy global recording to a saved annotation on import', function () {
         const importedJson = JSON.stringify({
             version: 4,
             session: {
@@ -172,24 +229,33 @@ describe('ExtensionStateService', function () {
                     browserVersion: '1.0',
                     os: 'Linux'
                 },
-                annotations: []
+                annotations: [
+                    {
+                        id: 'legacy-annotation',
+                        type: 'Bug',
+                        name: 'Legacy bug',
+                        url: 'http://example.test/legacy',
+                        timestamp: new Date(2026, 4, 8, 21, 41).getTime(),
+                        imageEntries: []
+                    }
+                ]
             },
-            draft: draftState,
-            recording: recordingState
+            recording: draftRecordingState
         });
 
         const restoredState = extensionStateService.getState(importedJson);
 
-        expect(restoredState.session.getAnnotations()).toHaveLength(0);
+        expect(restoredState.session.getAnnotations()).toHaveLength(1);
         expect(restoredState.draft).toEqual({
             type: 'Bug',
             description: '',
             imageEntries: [],
             imageURLs: []
         });
+        expect(restoredState.annotationRecordingsById['legacy-annotation'].steps).toHaveLength(2);
     });
 
-    it('should report when draft, recording or annotations make state exportable', function () {
+    it('should report when draft, replays or annotations make state exportable', function () {
         const emptySession = new Session(new Date(2026, 4, 8, 21, 41), {
             browser: 'Chrome',
             browserVersion: '1.0',
@@ -198,9 +264,11 @@ describe('ExtensionStateService', function () {
 
         expect(hasExportableState(emptySession, {}, {})).toBe(false);
         expect(hasDraftContent(draftState)).toBe(true);
-        expect(hasRecordingContent(recordingState)).toBe(true);
-        expect(hasExportableState(emptySession, draftState, {})).toBe(true);
-        expect(hasExportableState(emptySession, {}, recordingState)).toBe(true);
+        expect(hasRecordingContent(draftRecordingState)).toBe(true);
+        expect(hasAnnotationRecordings(annotationRecordingsById)).toBe(true);
+        expect(hasExportableState(emptySession, draftState, {}, {})).toBe(true);
+        expect(hasExportableState(emptySession, {}, draftRecordingState, {})).toBe(true);
+        expect(hasExportableState(emptySession, {}, {}, annotationRecordingsById)).toBe(true);
         expect(hasExportableState(testSession, {}, {})).toBe(true);
     });
 });

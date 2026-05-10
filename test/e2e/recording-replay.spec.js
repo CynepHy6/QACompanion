@@ -69,7 +69,10 @@ test.describe('Recording and Replay', () => {
 
   test('should record and replay a flow with navigation', async () => {
     await testPage.bringToFront();
-    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
     await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(STOP_LABEL);
 
     await testPage.fill('#testInput', 'Replay target value');
@@ -107,7 +110,10 @@ test.describe('Recording and Replay', () => {
 
   test('should record and replay clicks on custom clickable elements', async () => {
     await testPage.bringToFront();
-    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
 
     await testPage.click('#customChip');
     await waitForStorageUpdate(popupPage, 700);
@@ -177,12 +183,15 @@ test.describe('Recording and Replay', () => {
     await expect(popupPage.locator('#recordingStatus')).toContainText(REPLAY_TARGET_NOT_FOUND_MESSAGE, {
       timeout: 4000
     });
-    await expect(popupPage.locator('.recording-step-card.is-failed')).toHaveCount(1);
+    await expect(popupPage.locator('#recordingStepsList .recording-step-card.is-failed')).toHaveCount(1);
   });
 
   test('should require confirmation before clearing recorded steps', async () => {
     await testPage.bringToFront();
-    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
     await testPage.fill('#testInput', 'Disposable recording');
     await testPage.click('button:has-text("Añadir Contenido")');
     await waitForStorageUpdate(popupPage, 700);
@@ -232,5 +241,83 @@ test.describe('Recording and Replay', () => {
     expect(sessionData.BrowserInfo.screenResolution).toMatch(/^\d+x\d+$/);
     expect(sessionData.BrowserInfo.devicePixelRatio).toBeTruthy();
     expect(sessionData.BrowserInfo.pageTitle).toBeTruthy();
+  });
+
+  test('should move draft replay to the saved annotation', async () => {
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await testPage.fill('#testInput', 'Draft replay value');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+
+    await popupPage.fill('#draftDescription', 'Bug with replay');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    const sessionData = await getSessionData(popupPage);
+    const savedAnnotation = sessionData.annotations.find((annotationItem) => annotationItem.name === 'Bug with replay');
+    expect(savedAnnotation).toBeTruthy();
+
+    const draftRecordingData = await getRecordingData(popupPage, 'draft');
+    expect(draftRecordingData.steps).toHaveLength(0);
+
+    const annotationRecordingData = await getRecordingData(popupPage, savedAnnotation.id);
+    expect(annotationRecordingData.steps.length).toBeGreaterThan(0);
+    expect(annotationRecordingData.steps.some((stepItem) => stepItem.type === 'input' || stepItem.type === 'change')).toBeTruthy();
+  });
+
+  test('should keep separate recordings for different saved annotations', async () => {
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await testPage.fill('#testInput', 'First replay');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+
+    await popupPage.fill('#draftDescription', 'First bug');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.fill('#draftDescription', 'Second bug');
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
+    await testPage.click('#customChip');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+    await popupPage.bringToFront();
+    await popupPage.click('#actionTabBtn');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    const sessionData = await getSessionData(popupPage);
+    const firstAnnotation = sessionData.annotations.find((annotationItem) => annotationItem.name === 'First bug');
+    const secondAnnotation = sessionData.annotations.find((annotationItem) => annotationItem.name === 'Second bug');
+
+    const firstRecording = await getRecordingData(popupPage, firstAnnotation.id);
+    const secondRecording = await getRecordingData(popupPage, secondAnnotation.id);
+    expect(firstRecording.steps.some((stepItem) => stepItem.type === 'input' || stepItem.type === 'change')).toBeTruthy();
+    expect(secondRecording.steps.some((stepItem) => stepItem.type === 'click')).toBeTruthy();
+
+    await sendRuntimeMessage(popupPage, {
+      type: 'clearRecordingData',
+      target: { kind: 'annotation', annotationId: secondAnnotation.id }
+    });
+    await waitForStorageUpdate(popupPage, 500);
+
+    const firstRecordingAfterClear = await getRecordingData(popupPage, firstAnnotation.id);
+    const secondRecordingAfterClear = await getRecordingData(popupPage, secondAnnotation.id);
+    expect(firstRecordingAfterClear.steps.length).toBeGreaterThan(0);
+    expect(secondRecordingAfterClear.steps).toHaveLength(0);
   });
 });

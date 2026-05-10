@@ -260,6 +260,93 @@ button:focus-visible,
 	gap: 8px;
 }
 
+.saved-annotations-panel {
+	margin-top: 10px;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: 10px;
+	background: var(--color-surface);
+}
+
+.saved-annotations-list--empty {
+	display: block;
+	padding: 8px 10px;
+	border: 1px dashed var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--color-surface);
+}
+
+.saved-annotations-list {
+	display: grid;
+	gap: 8px;
+}
+
+.saved-annotation-card {
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	padding: 10px;
+	background: #fbfcfe;
+	cursor: pointer;
+	transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.saved-annotation-card:hover {
+	border-color: var(--color-primary);
+	box-shadow: var(--shadow-sm);
+	transform: translateY(-1px);
+}
+
+.saved-annotation-card.is-selected {
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.saved-annotation-card__meta {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.saved-annotation-card__type {
+	display: inline-flex;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 0.68rem;
+	font-weight: 700;
+}
+
+.saved-annotation-card__type--bug {
+	background: var(--color-bug-light);
+	color: var(--color-bug-text);
+}
+
+.saved-annotation-card__type--note {
+	background: var(--color-note-light);
+	color: var(--color-note-text);
+}
+
+.saved-annotation-card__title {
+	margin: 6px 0 0;
+	font-size: 0.8rem;
+	font-weight: 700;
+}
+
+.saved-annotation-card__summary {
+	margin: 4px 0 0;
+	font-size: 0.72rem;
+	color: var(--color-text-secondary);
+}
+
+.saved-annotation-card__preview {
+	width: 84px;
+	height: 62px;
+	flex: 0 0 84px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-border);
+	object-fit: cover;
+}
+
 .recording-steps-panel {
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-lg);

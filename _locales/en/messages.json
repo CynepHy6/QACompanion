@@ -46,6 +46,22 @@
     "popupClearDraftTitle": { "message": "Clear draft" },
     "popupClearDraftLabel": { "message": "Clear draft" },
     "popupNoScreenshotsYet": { "message": "No screenshots yet." },
+    "popupDraftReplayAria": { "message": "Replay for current draft" },
+    "popupDraftReplayTitle": { "message": "Replay for current draft" },
+    "popupDraftReplayCaption": {
+        "message": "Record actions for this draft before saving the step."
+    },
+    "popupDraftReplayEmpty": { "message": "No replay linked to this draft yet." },
+    "popupDraftReplayControlsAria": { "message": "Draft replay controls" },
+    "popupOpenReplayDetails": { "message": "Open details" },
+    "popupSavedStepsReplayAria": { "message": "Replay for saved steps" },
+    "popupSavedStepsReplayTitle": { "message": "Saved steps" },
+    "popupSavedStepsReplayCaption": {
+        "message": "Each saved bug or note can keep its own replay."
+    },
+    "popupNoSavedStepsYet": { "message": "No saved steps yet." },
+    "popupSavedReplayCaption": { "message": "Replay recorded for the saved step." },
+    "popupSavedReplayDetailsTitle": { "message": "Saved step replay" },
     "popupRecorderModeAria": { "message": "Recorder mode" },
     "popupRecordReplayAria": { "message": "Record and replay actions" },
     "popupRecorderTitle": { "message": "Recorder" },
@@ -80,7 +96,10 @@
     "popupRecorderStatusReplaying": {
         "message": "Replaying the last recorded flow"
     },
-    "popupRecorderStatusReady": { "message": "Recording is ready to replay" },
+    "popupRecorderStatusReady": { "message": "Recorded steps are ready" },
+    "popupRecorderReadyDescription": {
+        "message": "Recorded steps can be replayed on $1."
+    },
     "popupRecorderStatusIdle": { "message": "Recorder idle" },
     "popupRecorderNavigateTo": { "message": "Go to $1" },
     "popupRecorderClickText": { "message": "Click $1" },
@@ -187,9 +206,14 @@
     "reportRecordingStateCapturedBody": {
         "message": "Recorded actions are shown below and restored on import."
     },
+    "reportRecordingPerAnnotationBody": {
+        "message": "Recorded actions are linked to individual saved steps and included in the export."
+    },
     "reportRecordingStateEmptyBody": {
         "message": "No recorder steps were available in the exported state."
     },
+    "reportRecordingMetricFlows": { "message": "Linked replays" },
+    "reportRecordingMetricAnnotations": { "message": "Annotations" },
     "reportRecordingMetricScreenshots": { "message": "Screenshots" },
     "reportRecordingMetricStarted": { "message": "Started" },
     "reportRecordingMetricStopped": { "message": "Stopped" },
@@ -206,6 +230,8 @@
     "reportRecordingNavigatedTo": { "message": "Navigated to $1" },
     "reportRecordingNavigationEvent": { "message": "Navigation event" },
     "reportRecordingFallbackAction": { "message": "Recorded action" },
+    "reportAnnotationReplayTitle": { "message": "Recorded actions" },
+    "reportNoReplayLinked": { "message": "No replay linked." },
     "reportNoAnnotationsForFilter": {
         "message": "No annotations found for this filter."
     },
@@ -359,6 +385,10 @@
     "notificationActionSavedTitle": { "message": "Step saved" },
     "notificationActionSavedBody": {
         "message": "\"$1\" was saved successfully."
+    },
+    "notificationImportSuccessTitle": { "message": "Import completed" },
+    "notificationImportSuccessBody": {
+        "message": "Session data was imported successfully."
     },
     "notificationSelectionUnavailableTitle": {
         "message": "Selection unavailable"

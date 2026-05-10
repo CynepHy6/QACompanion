@@ -78,7 +78,7 @@ function setupFilterListeners(reportState) {
             currentFilter = this.dataset.type;
             armedDeleteImageKey = '';
             armedDeleteAnnotationId = '';
-            displayAnnotationsTable(reportState.session, currentFilter);
+            displayAnnotationsTable(reportState, currentFilter);
             renderDeleteImageButtonState();
             renderDeleteAnnotationButtonState();
             rebindTableListeners();

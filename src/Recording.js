@@ -1,4 +1,6 @@
 const VALID_RECORDING_STATUSES = ['idle', 'recording', 'replaying'];
+export const DRAFT_RECORDING_TARGET_KIND = 'draft';
+export const ANNOTATION_RECORDING_TARGET_KIND = 'annotation';
 
 function normalizeTimestamp(timestampValue) {
     if (typeof timestampValue === 'number' && Number.isFinite(timestampValue)) {
@@ -76,6 +78,87 @@ export function createEmptyRecording() {
         steps: [],
         screenshots: []
     };
+}
+
+export function createDraftRecordingTarget() {
+    return {
+        kind: DRAFT_RECORDING_TARGET_KIND,
+        annotationId: ''
+    };
+}
+
+export function createAnnotationRecordingTarget(annotationId = '') {
+    return {
+        kind: ANNOTATION_RECORDING_TARGET_KIND,
+        annotationId: typeof annotationId === 'string' ? annotationId : ''
+    };
+}
+
+export function normalizeRecordingTarget(rawTarget = {}) {
+    if (rawTarget?.kind === ANNOTATION_RECORDING_TARGET_KIND && typeof rawTarget.annotationId === 'string' && rawTarget.annotationId !== '') {
+        return createAnnotationRecordingTarget(rawTarget.annotationId);
+    }
+
+    return createDraftRecordingTarget();
+}
+
+export function isAnnotationRecordingTarget(recordingTarget = {}) {
+    return normalizeRecordingTarget(recordingTarget).kind === ANNOTATION_RECORDING_TARGET_KIND;
+}
+
+export function serializeRecording(recordingState = {}) {
+    const normalizedRecording = normalizeRecording(recordingState);
+
+    return {
+        ...normalizedRecording,
+        steps: normalizedRecording.steps.map((stepItem) => ({ ...stepItem })),
+        screenshots: normalizedRecording.screenshots.map((screenshotItem) => ({ ...screenshotItem }))
+    };
+}
+
+export function sanitizeRecording(recordingState = {}) {
+    const normalizedRecording = normalizeRecording(recordingState);
+
+    return {
+        ...serializeRecording(normalizedRecording),
+        status: 'idle',
+        tabId: null,
+        activeStepId: '',
+        failedStepId: '',
+        lastError: ''
+    };
+}
+
+export function createRecordingSummary(recordingState = {}) {
+    const normalizedRecording = normalizeRecording(recordingState);
+
+    return {
+        id: normalizedRecording.id,
+        status: normalizedRecording.status,
+        startedAt: normalizedRecording.startedAt,
+        stoppedAt: normalizedRecording.stoppedAt,
+        lastError: normalizedRecording.lastError,
+        activeStepId: normalizedRecording.activeStepId,
+        failedStepId: normalizedRecording.failedStepId,
+        stepCount: normalizedRecording.steps.length,
+        screenshotCount: normalizedRecording.screenshots.length,
+        canPlay: normalizedRecording.steps.length > 0 && normalizedRecording.status === 'idle',
+        hasRecording: normalizedRecording.steps.length > 0,
+        steps: normalizedRecording.steps.map((stepItem) => ({ ...stepItem })),
+        screenshots: normalizedRecording.screenshots.map((screenshotItem) => ({ ...screenshotItem }))
+    };
+}
+
+export function normalizeRecordingMap(rawRecordingMap = {}) {
+    if (!rawRecordingMap || typeof rawRecordingMap !== 'object') {
+        return {};
+    }
+
+    return Object.fromEntries(
+        Object.entries(rawRecordingMap)
+            .filter(([annotationId]) => typeof annotationId === 'string' && annotationId !== '')
+            .map(([annotationId, recordingState]) => [annotationId, normalizeRecording(recordingState)])
+    );
 }
 
 export function normalizeRecording(rawRecording = {}) {

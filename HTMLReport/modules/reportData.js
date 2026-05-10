@@ -1,5 +1,5 @@
 import { buildExtensionStatePayload } from '../../src/ExtensionStateService.js';
-import { normalizeRecording } from '../../src/Recording.js';
+import { createEmptyRecording, normalizeRecording, normalizeRecordingMap, serializeRecording } from '../../src/Recording.js';
 import { Session } from '../../src/Session.js';
 import { Bug, Note } from '../../src/Annotation.js';
 
@@ -35,7 +35,10 @@ function buildReportState(rawPayload) {
             imageEntries: [],
             imageURLs: []
         },
-        recording: normalizeRecording(rawPayload?.recording || {})
+        draftRecording: normalizeRecording(rawPayload?.draftRecording || {}),
+        annotationRecordingsById: normalizeRecordingMap(rawPayload?.annotationRecordingsById || {}),
+        draftAnnotationId: typeof rawPayload?.draftAnnotationId === 'string' ? rawPayload.draftAnnotationId : '',
+        selectedRecordingTarget: rawPayload?.selectedRecordingTarget || { kind: 'draft', annotationId: '' }
     };
 }
 
@@ -98,6 +101,23 @@ export function serializeReportState(reportState) {
     return buildExtensionStatePayload(
         reportState.session,
         reportState.draft,
-        reportState.recording
+        reportState.draftRecording,
+        reportState.annotationRecordingsById
     );
+}
+
+export function getAnnotationRecording(reportState, annotationId) {
+    if (!annotationId || !reportState?.annotationRecordingsById) {
+        return createEmptyRecording();
+    }
+
+    return normalizeRecording(reportState.annotationRecordingsById[annotationId] || {});
+}
+
+export function setAnnotationRecording(reportState, annotationId, recordingState) {
+    if (!reportState.annotationRecordingsById) {
+        reportState.annotationRecordingsById = {};
+    }
+
+    reportState.annotationRecordingsById[annotationId] = serializeRecording(recordingState);
 }

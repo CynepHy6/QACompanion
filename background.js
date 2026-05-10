@@ -1,7 +1,18 @@
 import { Session } from './src/Session.js';
 import { Bug, Note, normalizeImageEntries } from './src/Annotation.js';
 import { buildExtensionStatePayload, ExtensionStateService, hasDraftContent, hasExportableState } from './src/ExtensionStateService.js';
-import { createEmptyRecording, normalizeRecording } from './src/Recording.js';
+import {
+    ANNOTATION_RECORDING_TARGET_KIND,
+    createAnnotationRecordingTarget,
+    createDraftRecordingTarget,
+    createEmptyRecording,
+    createRecordingSummary,
+    isAnnotationRecordingTarget,
+    normalizeRecording,
+    normalizeRecordingMap,
+    normalizeRecordingTarget,
+    serializeRecording
+} from './src/Recording.js';
 import { createBase64DataUrl } from './src/dataUrlEncoding.js';
 import { getSystemInfo } from './src/browserInfo.js';
 import { getMessage } from './src/i18n.js';
@@ -27,7 +38,10 @@ const ANNOTATION_CONSTRUCTORS = {
 
 let session = new Session();
 let draft = createEmptyDraft();
-let recording = createEmptyRecording();
+let draftRecording = createEmptyRecording();
+let annotationRecordingsById = {};
+let selectedRecordingTarget = createDraftRecordingTarget();
+let activeRecordingTarget = createDraftRecordingTarget();
 let stateReadyPromise = null;
 let playbackToken = null;
 
@@ -72,7 +86,7 @@ async function ensureStateReady() {
             const storedValues = await chrome.storage.local.get([STORAGE_KEYS.session, STORAGE_KEYS.draft, STORAGE_KEYS.recording]);
             session = reconstructSession(storedValues[STORAGE_KEYS.session]);
             draft = normalizeDraft(storedValues[STORAGE_KEYS.draft]);
-            recording = normalizeRecording(storedValues[STORAGE_KEYS.recording]);
+            hydrateRecordingStore(storedValues[STORAGE_KEYS.recording]);
         })();
     }
 
@@ -102,31 +116,145 @@ function createRuntimeId(prefix) {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function createRecordingPayload() {
+function hydrateRecordingStore(rawRecordingStore = {}) {
+    if (rawRecordingStore && typeof rawRecordingStore === 'object' && Array.isArray(rawRecordingStore.steps)) {
+        draftRecording = normalizeRecording(rawRecordingStore);
+        annotationRecordingsById = {};
+        selectedRecordingTarget = createDraftRecordingTarget();
+        activeRecordingTarget = createDraftRecordingTarget();
+        return;
+    }
+
+    draftRecording = normalizeRecording(rawRecordingStore?.draftRecording || {});
+    annotationRecordingsById = normalizeRecordingMap(rawRecordingStore?.annotationRecordingsById || {});
+    selectedRecordingTarget = normalizeRecordingTarget(rawRecordingStore?.selectedRecordingTarget || createDraftRecordingTarget());
+    activeRecordingTarget = normalizeRecordingTarget(rawRecordingStore?.activeRecordingTarget || selectedRecordingTarget);
+    selectedRecordingTarget = resolveRecordingTarget(selectedRecordingTarget);
+    activeRecordingTarget = resolveRecordingTarget(activeRecordingTarget);
+}
+
+function cloneRecordingMap(recordingMap = {}) {
+    return Object.fromEntries(
+        Object.entries(recordingMap).map(([annotationId, recordingState]) => [annotationId, serializeRecording(recordingState)])
+    );
+}
+
+function saveableRecordingStore() {
     return {
-        id: recording.id,
-        status: recording.status,
-        startedAt: recording.startedAt,
-        stoppedAt: recording.stoppedAt,
-        lastError: recording.lastError,
-        activeStepId: recording.activeStepId,
-        failedStepId: recording.failedStepId,
-        stepCount: recording.steps.length,
-        screenshotCount: recording.screenshots.length,
-        canPlay: recording.steps.length > 0 && recording.status === 'idle',
-        hasRecording: recording.steps.length > 0,
-        steps: recording.steps.map((stepItem) => ({ ...stepItem })),
-        screenshots: recording.screenshots.map((screenshotItem) => ({ ...screenshotItem }))
+        draftRecording: serializeRecording(draftRecording),
+        annotationRecordingsById: cloneRecordingMap(annotationRecordingsById),
+        selectedRecordingTarget: { ...selectedRecordingTarget },
+        activeRecordingTarget: { ...activeRecordingTarget }
+    };
+}
+
+function resolveRecordingTarget(rawTarget = null) {
+    const normalizedTarget = normalizeRecordingTarget(rawTarget || selectedRecordingTarget);
+    if (!isAnnotationRecordingTarget(normalizedTarget)) {
+        return createDraftRecordingTarget();
+    }
+
+    if (!session.getAnnotationById(normalizedTarget.annotationId)) {
+        return createDraftRecordingTarget();
+    }
+
+    return normalizedTarget;
+}
+
+function setSelectedRecordingTarget(nextTarget) {
+    selectedRecordingTarget = resolveRecordingTarget(nextTarget);
+}
+
+function setActiveRecordingTarget(nextTarget) {
+    activeRecordingTarget = resolveRecordingTarget(nextTarget);
+}
+
+function getRecordingStateForTarget(recordingTarget = null) {
+    const resolvedTarget = resolveRecordingTarget(recordingTarget);
+    if (!isAnnotationRecordingTarget(resolvedTarget)) {
+        return draftRecording;
+    }
+
+    if (!annotationRecordingsById[resolvedTarget.annotationId]) {
+        annotationRecordingsById[resolvedTarget.annotationId] = createEmptyRecording();
+    }
+
+    return annotationRecordingsById[resolvedTarget.annotationId];
+}
+
+function setRecordingStateForTarget(recordingTarget, nextRecordingState) {
+    const resolvedTarget = resolveRecordingTarget(recordingTarget);
+    const normalizedRecordingState = normalizeRecording(nextRecordingState);
+    if (!isAnnotationRecordingTarget(resolvedTarget)) {
+        draftRecording = normalizedRecordingState;
+        return;
+    }
+
+    annotationRecordingsById[resolvedTarget.annotationId] = normalizedRecordingState;
+}
+
+function deleteRecordingStateForTarget(recordingTarget) {
+    const resolvedTarget = resolveRecordingTarget(recordingTarget);
+    if (!isAnnotationRecordingTarget(resolvedTarget)) {
+        draftRecording = createEmptyRecording();
+        return;
+    }
+
+    delete annotationRecordingsById[resolvedTarget.annotationId];
+}
+
+function createRecordingPayload(recordingTarget = null) {
+    return createRecordingSummary(getRecordingStateForTarget(recordingTarget));
+}
+
+function createRecordingSummariesByAnnotationId() {
+    return Object.fromEntries(
+        session.getAnnotations().map((annotation) => {
+            const annotationId = annotation.getId();
+            return [annotationId, createRecordingPayload(createAnnotationRecordingTarget(annotationId))];
+        })
+    );
+}
+
+function createAnnotationSummaryPayload(annotation) {
+    const annotationId = annotation.getId();
+    const recordingSummary = createRecordingPayload(createAnnotationRecordingTarget(annotationId));
+    const imageEntries = annotation.getImageEntries();
+    return {
+        id: annotationId,
+        type: annotation.getType(),
+        name: annotation.getName(),
+        url: annotation.getURL(),
+        timestamp: annotation.getTimeStamp().getTime(),
+        imageCount: imageEntries.length,
+        imageEntries,
+        recording: {
+            stepCount: recordingSummary.stepCount,
+            screenshotCount: recordingSummary.screenshotCount,
+            hasRecording: recordingSummary.hasRecording,
+            status: recordingSummary.status
+        }
+    };
+}
+
+function createPopupStatePayload() {
+    return {
+        draft: getDraftPayload(),
+        draftRecording: createRecordingPayload(createDraftRecordingTarget()),
+        selectedRecordingTarget: { ...selectedRecordingTarget },
+        selectedRecording: createRecordingPayload(selectedRecordingTarget),
+        activeRecordingTarget: { ...activeRecordingTarget },
+        annotations: session.getAnnotations()
+            .slice()
+            .sort((leftAnnotation, rightAnnotation) => rightAnnotation.getTimeStamp().getTime() - leftAnnotation.getTimeStamp().getTime())
+            .map((annotation) => createAnnotationSummaryPayload(annotation)),
+        summary: getSessionSummaryPayload()
     };
 }
 
 async function saveRecording() {
     await chrome.storage.local.set({
-        [STORAGE_KEYS.recording]: {
-            ...recording,
-            steps: recording.steps.map((stepItem) => ({ ...stepItem })),
-            screenshots: recording.screenshots.map((screenshotItem) => ({ ...screenshotItem }))
-        }
+        [STORAGE_KEYS.recording]: saveableRecordingStore()
     });
 }
 
@@ -134,20 +262,37 @@ function clearPlaybackToken() {
     playbackToken = null;
 }
 
-function updateRecordingStatus(nextStatus, errorMessage = '') {
-    recording.status = nextStatus;
-    recording.lastError = errorMessage;
+function updateRecordingStatus(recordingState, nextStatus, errorMessage = '') {
+    recordingState.status = nextStatus;
+    recordingState.lastError = errorMessage;
     if (nextStatus !== 'replaying') {
-        recording.activeStepId = '';
+        recordingState.activeStepId = '';
     }
 }
 
-function clearReplayFailureState() {
-    recording.failedStepId = '';
+function clearReplayFailureState(recordingState) {
+    recordingState.failedStepId = '';
 }
 
 function shouldCaptureRecordingScreenshot(stepType) {
     return stepType === 'click' || stepType === 'submit' || stepType === 'navigation';
+}
+
+function getActiveRecordingState() {
+    return getRecordingStateForTarget(activeRecordingTarget);
+}
+
+function getSelectedRecordingState() {
+    return getRecordingStateForTarget(selectedRecordingTarget);
+}
+
+function getRecordingTargetLabel(recordingTarget) {
+    const resolvedTarget = resolveRecordingTarget(recordingTarget);
+    if (!isAnnotationRecordingTarget(resolvedTarget)) {
+        return 'draft';
+    }
+
+    return resolvedTarget.annotationId;
 }
 
 async function ensureContentScriptReady(tabId) {
@@ -198,11 +343,12 @@ async function waitForTabComplete(tabId, expectedUrl = null, timeoutMilliseconds
 }
 
 function getNextStepForPlayback(stepIndex) {
-    if (stepIndex + 1 >= recording.steps.length) {
+    const recordingState = getRecordingStateForTarget(activeRecordingTarget);
+    if (stepIndex + 1 >= recordingState.steps.length) {
         return null;
     }
 
-    return recording.steps[stepIndex + 1];
+    return recordingState.steps[stepIndex + 1];
 }
 
 function getBoundedPlaybackDelayMilliseconds(currentStep, nextStep) {
@@ -223,15 +369,16 @@ function getBoundedPlaybackDelayMilliseconds(currentStep, nextStep) {
     );
 }
 
-function markRecordingStopped() {
-    recording.tabId = null;
-    recording.lastKnownUrl = '';
-    recording.stoppedAt = Date.now();
-    recording.activeStepId = '';
+function markRecordingStopped(recordingState) {
+    recordingState.tabId = null;
+    recordingState.lastKnownUrl = '';
+    recordingState.stoppedAt = Date.now();
+    recordingState.activeStepId = '';
 }
 
 async function setActiveReplayStep(stepId) {
-    recording.activeStepId = typeof stepId === 'string' ? stepId : '';
+    const recordingState = getRecordingStateForTarget(activeRecordingTarget);
+    recordingState.activeStepId = typeof stepId === 'string' ? stepId : '';
     await saveRecording();
 }
 
@@ -471,7 +618,10 @@ async function startSession(activeTab = null) {
 async function clearSession() {
     session = new Session();
     draft = createEmptyDraft();
-    recording = createEmptyRecording();
+    draftRecording = createEmptyRecording();
+    annotationRecordingsById = {};
+    selectedRecordingTarget = createDraftRecordingTarget();
+    activeRecordingTarget = createDraftRecordingTarget();
     await saveSession();
     await saveDraft();
     await saveRecording();
@@ -511,27 +661,35 @@ function getDraftPayload() {
 }
 
 function getSessionSummaryPayload() {
+    const draftRecordingSummary = createRecordingPayload(createDraftRecordingTarget());
+    const annotationRecordingSummaries = createRecordingSummariesByAnnotationId();
+    const totalRecordingStepCount = draftRecordingSummary.stepCount
+        + Object.values(annotationRecordingSummaries).reduce((totalCount, recordingSummary) => totalCount + recordingSummary.stepCount, 0);
+    const totalRecordingScreenshotCount = draftRecordingSummary.screenshotCount
+        + Object.values(annotationRecordingSummaries).reduce((totalCount, recordingSummary) => totalCount + recordingSummary.screenshotCount, 0);
     return {
         bugs: session.getBugs().length,
         notes: session.getNotes().length,
         annotationsCount: session.getAnnotations().length,
         draftHasContent: hasDraftContent(draft),
-        recordingStepCount: recording.steps.length,
-        recordingScreenshotCount: recording.screenshots.length,
-        hasExportableState: hasExportableState(session, draft, recording)
+        recordingStepCount: totalRecordingStepCount,
+        recordingScreenshotCount: totalRecordingScreenshotCount,
+        hasExportableState: hasExportableState(session, draft, draftRecording, annotationRecordingsById),
+        selectedRecordingTarget: { ...selectedRecordingTarget },
+        draftRecording: draftRecordingSummary,
+        annotationRecordingsById: annotationRecordingSummaries,
+        annotations: session.getAnnotations().map((annotation) => createAnnotationSummaryPayload(annotation))
     };
 }
 
 function getFullSessionPayload() {
-    const extensionState = buildExtensionStatePayload(session, draft, recording);
+    const extensionState = buildExtensionStatePayload(session, draft, draftRecording, annotationRecordingsById);
     return {
         ...extensionState,
-        recording: {
-            ...extensionState.recording,
-            lastError: recording.lastError,
-            activeStepId: recording.activeStepId,
-            failedStepId: recording.failedStepId
-        }
+        draftRecording: serializeRecording(draftRecording),
+        annotationRecordingsById: cloneRecordingMap(annotationRecordingsById),
+        selectedRecordingTarget: { ...selectedRecordingTarget },
+        activeRecordingTarget: { ...activeRecordingTarget }
     };
 }
 
@@ -593,9 +751,10 @@ async function optimizeRecordingScreenshot(dataUrl) {
 async function captureRecordingScreenshot(stepId, tabId) {
     try {
         await waitForDuration(RECORDING_SCREENSHOT_DELAY_MS);
+        const recordingState = getActiveRecordingState();
 
         const activeTab = await getActiveTab();
-        if (!activeTab || activeTab.id !== tabId) {
+        if (!activeTab || activeTab.id !== tabId || recordingState.tabId !== tabId) {
             return '';
         }
 
@@ -607,7 +766,7 @@ async function captureRecordingScreenshot(stepId, tabId) {
         const imageURL = await optimizeRecordingScreenshot(sourceImageUrl);
 
         const screenshotId = createRuntimeId('recording-shot');
-        recording.screenshots.push({
+        recordingState.screenshots.push({
             id: screenshotId,
             imageURL,
             createdAt: Date.now(),
@@ -621,14 +780,20 @@ async function captureRecordingScreenshot(stepId, tabId) {
     }
 }
 
-async function startRecordingFlow() {
+async function startRecordingFlow(recordingTarget = null) {
     await ensureStateReady();
 
-    if (recording.status === 'recording') {
-        return createRecordingPayload();
+    const targetToUse = resolveRecordingTarget(recordingTarget || selectedRecordingTarget);
+    setSelectedRecordingTarget(targetToUse);
+    setActiveRecordingTarget(targetToUse);
+    const recordingState = getActiveRecordingState();
+
+    if (recordingState.status === 'recording') {
+        await saveRecording();
+        return createRecordingPayload(targetToUse);
     }
 
-    if (recording.status === 'replaying') {
+    if (recordingState.status === 'replaying') {
         throw new Error(getMessage('errorReplayAlreadyRunning', undefined, 'Replay is already running.'));
     }
 
@@ -652,41 +817,41 @@ async function startRecordingFlow() {
     nextRecording.tabId = activeTab.id;
     nextRecording.lastKnownUrl = activeTab.url || '';
     nextRecording.failedStepId = '';
-
-    recording = nextRecording;
+    setRecordingStateForTarget(targetToUse, nextRecording);
 
     try {
         await sendMessageToTab(activeTab.id, { type: 'setRecordingMode', isRecording: true });
         await saveRecording();
     } catch (error) {
-        recording = createEmptyRecording();
+        setRecordingStateForTarget(targetToUse, createEmptyRecording());
         await saveRecording();
         throw error;
     }
 
-    return createRecordingPayload();
+    return createRecordingPayload(targetToUse);
 }
 
 async function stopRecordingFlow(options = {}) {
     await ensureStateReady();
 
-    if (recording.status !== 'recording') {
-        return createRecordingPayload();
+    const recordingState = getActiveRecordingState();
+    if (recordingState.status !== 'recording') {
+        return createRecordingPayload(activeRecordingTarget);
     }
 
-    const currentTabId = recording.tabId;
+    const currentTabId = recordingState.tabId;
     const suppressSyntheticNavigationOnStop = Boolean(options.suppressSyntheticNavigationOnStop);
     if (typeof currentTabId === 'number') {
         try {
             await waitForTabComplete(currentTabId);
             const currentTab = await chrome.tabs.get(currentTabId);
-            const lastRecordedStep = recording.steps.length > 0
-                ? recording.steps[recording.steps.length - 1]
+            const lastRecordedStep = recordingState.steps.length > 0
+                ? recordingState.steps[recordingState.steps.length - 1]
                 : null;
             const hasRealUrlChange = Boolean(
                 currentTab &&
                 currentTab.url &&
-                currentTab.url !== recording.lastKnownUrl
+                currentTab.url !== recordingState.lastKnownUrl
             );
             const shouldAppendFinalNavigation = suppressSyntheticNavigationOnStop
                 ? hasRealUrlChange
@@ -698,7 +863,7 @@ async function stopRecordingFlow(options = {}) {
 
             if (shouldAppendFinalNavigation) {
                 const stepId = createRuntimeId('recording-step');
-                recording.steps.push({
+                recordingState.steps.push({
                     stepId,
                     type: 'navigation',
                     url: currentTab.url,
@@ -710,15 +875,15 @@ async function stopRecordingFlow(options = {}) {
                     text: '',
                     screenshotRef: await captureRecordingScreenshot(stepId, currentTabId)
                 });
-                recording.lastKnownUrl = currentTab.url;
+                recordingState.lastKnownUrl = currentTab.url;
             }
         } catch (error) {
             console.log('Background: Failed to capture final navigation step.', error?.message || '');
         }
     }
 
-    updateRecordingStatus('idle');
-    markRecordingStopped();
+    updateRecordingStatus(recordingState, 'idle');
+    markRecordingStopped(recordingState);
     await saveRecording();
 
     if (typeof currentTabId === 'number') {
@@ -729,32 +894,40 @@ async function stopRecordingFlow(options = {}) {
         }
     }
 
-    return createRecordingPayload();
+    return createRecordingPayload(activeRecordingTarget);
 }
 
-async function clearRecordingData() {
+async function clearRecordingData(recordingTarget = null) {
     playbackToken = null;
-    recording = createEmptyRecording();
+    const targetToClear = resolveRecordingTarget(recordingTarget || selectedRecordingTarget);
+    deleteRecordingStateForTarget(targetToClear);
+    if (getRecordingTargetLabel(activeRecordingTarget) === getRecordingTargetLabel(targetToClear)) {
+        setActiveRecordingTarget(createDraftRecordingTarget());
+    }
+    if (getRecordingTargetLabel(selectedRecordingTarget) === getRecordingTargetLabel(targetToClear)) {
+        setSelectedRecordingTarget(targetToClear);
+    }
     await saveRecording();
-    return createRecordingPayload();
+    return createRecordingPayload(targetToClear);
 }
 
 async function appendRecordedStep(rawStep, senderTab) {
     await ensureStateReady();
 
-    if (recording.status !== 'recording') {
-        return createRecordingPayload();
+    const recordingState = getActiveRecordingState();
+    if (recordingState.status !== 'recording') {
+        return createRecordingPayload(activeRecordingTarget);
     }
 
-    if (!senderTab || senderTab.id !== recording.tabId) {
-        return createRecordingPayload();
+    if (!senderTab || senderTab.id !== recordingState.tabId) {
+        return createRecordingPayload(activeRecordingTarget);
     }
 
     const stepId = createRuntimeId('recording-step');
     const stepItem = {
         stepId,
         type: typeof rawStep.type === 'string' ? rawStep.type : 'unknown',
-        url: typeof rawStep.url === 'string' ? rawStep.url : senderTab.url || recording.lastKnownUrl || '',
+        url: typeof rawStep.url === 'string' ? rawStep.url : senderTab.url || recordingState.lastKnownUrl || '',
         timestamp: Date.now(),
         locator: rawStep.locator || null,
         value: typeof rawStep.value === 'string' ? rawStep.value : '',
@@ -764,34 +937,35 @@ async function appendRecordedStep(rawStep, senderTab) {
         screenshotRef: ''
     };
 
-    const lastRecordedStep = recording.steps.length > 0
-        ? recording.steps[recording.steps.length - 1]
+    const lastRecordedStep = recordingState.steps.length > 0
+        ? recordingState.steps[recordingState.steps.length - 1]
         : null;
-    const isDuplicateNavigation = stepItem.type === 'navigation' &&
-        lastRecordedStep &&
-        lastRecordedStep.type === 'navigation' &&
-        lastRecordedStep.url === stepItem.url;
+    const isDuplicateNavigation = stepItem.type === 'navigation'
+        && lastRecordedStep
+        && lastRecordedStep.type === 'navigation'
+        && lastRecordedStep.url === stepItem.url;
 
     if (isDuplicateNavigation) {
-        return createRecordingPayload();
+        return createRecordingPayload(activeRecordingTarget);
     }
 
     if (shouldCaptureRecordingScreenshot(stepItem.type)) {
         stepItem.screenshotRef = await captureRecordingScreenshot(stepId, senderTab.id);
     }
 
-    recording.steps.push(stepItem);
-    recording.lastKnownUrl = stepItem.url;
+    recordingState.steps.push(stepItem);
+    recordingState.lastKnownUrl = stepItem.url;
     await saveRecording();
-    return createRecordingPayload();
+    return createRecordingPayload(activeRecordingTarget);
 }
 
 async function appendNavigationStep(tabId, nextUrl) {
-    if (recording.status !== 'recording' || tabId !== recording.tabId) {
+    const recordingState = getActiveRecordingState();
+    if (recordingState.status !== 'recording' || tabId !== recordingState.tabId) {
         return;
     }
 
-    if (!nextUrl || nextUrl === recording.lastKnownUrl) {
+    if (!nextUrl || nextUrl === recordingState.lastKnownUrl) {
         return;
     }
 
@@ -809,8 +983,8 @@ async function appendNavigationStep(tabId, nextUrl) {
         screenshotRef: await captureRecordingScreenshot(stepId, tabId)
     };
 
-    recording.steps.push(stepItem);
-    recording.lastKnownUrl = nextUrl;
+    recordingState.steps.push(stepItem);
+    recordingState.lastKnownUrl = nextUrl;
     await saveRecording();
 }
 
@@ -821,18 +995,23 @@ async function playRecordedStepOnTab(tabId, stepItem) {
     });
 }
 
-async function playRecordingFlow() {
+async function playRecordingFlow(recordingTarget = null) {
     await ensureStateReady();
 
-    if (recording.status === 'recording') {
+    const targetToUse = resolveRecordingTarget(recordingTarget || selectedRecordingTarget);
+    setSelectedRecordingTarget(targetToUse);
+    setActiveRecordingTarget(targetToUse);
+    const recordingState = getActiveRecordingState();
+
+    if (recordingState.status === 'recording') {
         throw new Error(getMessage('errorStopRecordingBeforeReplay', undefined, 'Stop recording before starting replay.'));
     }
 
-    if (recording.status === 'replaying') {
+    if (recordingState.status === 'replaying') {
         throw new Error(getMessage('errorReplayAlreadyRunning', undefined, 'Replay is already running.'));
     }
 
-    if (recording.steps.length === 0) {
+    if (recordingState.steps.length === 0) {
         throw new Error(getMessage('errorNoRecordingToReplay', undefined, 'There is no recording to replay.'));
     }
 
@@ -847,26 +1026,26 @@ async function playRecordingFlow() {
 
     const playbackId = createRuntimeId('playback');
     playbackToken = playbackId;
-    recording.status = 'replaying';
-    recording.lastError = '';
-    clearReplayFailureState();
-    recording.tabId = activeTab.id;
+    recordingState.status = 'replaying';
+    recordingState.lastError = '';
+    clearReplayFailureState(recordingState);
+    recordingState.tabId = activeTab.id;
     await saveRecording();
 
     try {
-        const firstStep = recording.steps[0];
+        const firstStep = recordingState.steps[0];
         if (firstStep && firstStep.url && activeTab.url !== firstStep.url) {
             await chrome.tabs.update(activeTab.id, { url: firstStep.url });
             await waitForTabComplete(activeTab.id, firstStep.url);
             await ensureContentScriptReady(activeTab.id);
         }
 
-        for (let stepIndex = 0; stepIndex < recording.steps.length; stepIndex += 1) {
+        for (let stepIndex = 0; stepIndex < recordingState.steps.length; stepIndex += 1) {
             if (playbackToken !== playbackId) {
                 throw new Error(getMessage('errorReplayCancelled', undefined, 'Replay cancelled.'));
             }
 
-            const stepItem = recording.steps[stepIndex];
+            const stepItem = recordingState.steps[stepIndex];
             await setActiveReplayStep(stepItem.stepId);
             try {
                 if (stepItem.type === 'navigation') {
@@ -894,16 +1073,16 @@ async function playRecordingFlow() {
             }
         }
 
-        updateRecordingStatus('idle');
-        markRecordingStopped();
-        clearReplayFailureState();
+        updateRecordingStatus(recordingState, 'idle');
+        markRecordingStopped(recordingState);
+        clearReplayFailureState(recordingState);
         await saveRecording();
         clearPlaybackToken();
-        return createRecordingPayload();
+        return createRecordingPayload(targetToUse);
     } catch (error) {
-        recording.failedStepId = typeof error?.failedStepId === 'string' ? error.failedStepId : '';
-        updateRecordingStatus('idle', error.message || getMessage('errorReplayActionFailed', ['?'], 'Replay failed.'));
-        markRecordingStopped();
+        recordingState.failedStepId = typeof error?.failedStepId === 'string' ? error.failedStepId : '';
+        updateRecordingStatus(recordingState, 'idle', error.message || getMessage('errorReplayActionFailed', ['?'], 'Replay failed.'));
+        markRecordingStopped(recordingState);
         await saveRecording();
         clearPlaybackToken();
         throw error;
@@ -912,46 +1091,49 @@ async function playRecordingFlow() {
 
 async function cancelPlayback() {
     playbackToken = null;
-    if (recording.status === 'replaying') {
-        clearReplayFailureState();
-        updateRecordingStatus('idle', getMessage('errorReplayCancelled', undefined, 'Replay cancelled.'));
-        markRecordingStopped();
+    const recordingState = getActiveRecordingState();
+    if (recordingState.status === 'replaying') {
+        clearReplayFailureState(recordingState);
+        updateRecordingStatus(recordingState, 'idle', getMessage('errorReplayCancelled', undefined, 'Replay cancelled.'));
+        markRecordingStopped(recordingState);
         await saveRecording();
     }
 
-    return createRecordingPayload();
+    return createRecordingPayload(activeRecordingTarget);
 }
 
 function isRecorderActiveForSender(senderTab) {
-    return recording.status === 'recording' &&
-        senderTab &&
-        typeof senderTab.id === 'number' &&
-        senderTab.id === recording.tabId;
+    const recordingState = getActiveRecordingState();
+    return recordingState.status === 'recording'
+        && senderTab
+        && typeof senderTab.id === 'number'
+        && senderTab.id === recordingState.tabId;
 }
 
 async function syncRecordingNavigationFromActiveTab() {
-    if (recording.status !== 'recording') {
-        return createRecordingPayload();
+    const recordingState = getActiveRecordingState();
+    if (recordingState.status !== 'recording') {
+        return createRecordingPayload(activeRecordingTarget);
     }
 
     const activeTab = await getActiveTab();
-    if (!activeTab || activeTab.id !== recording.tabId || !activeTab.url) {
-        return createRecordingPayload();
+    if (!activeTab || activeTab.id !== recordingState.tabId || !activeTab.url) {
+        return createRecordingPayload(activeRecordingTarget);
     }
 
-    const lastRecordedStep = recording.steps.length > 0
-        ? recording.steps[recording.steps.length - 1]
+    const lastRecordedStep = recordingState.steps.length > 0
+        ? recordingState.steps[recordingState.steps.length - 1]
         : null;
-    const shouldAppendNavigation = !lastRecordedStep ||
-        lastRecordedStep.url !== activeTab.url ||
-        lastRecordedStep.type !== 'navigation';
+    const shouldAppendNavigation = !lastRecordedStep
+        || lastRecordedStep.url !== activeTab.url
+        || lastRecordedStep.type !== 'navigation';
 
     if (!shouldAppendNavigation) {
-        return createRecordingPayload();
+        return createRecordingPayload(activeRecordingTarget);
     }
 
     const stepId = createRuntimeId('recording-step');
-    recording.steps.push({
+    recordingState.steps.push({
         stepId,
         type: 'navigation',
         url: activeTab.url,
@@ -963,9 +1145,9 @@ async function syncRecordingNavigationFromActiveTab() {
         text: '',
         screenshotRef: await captureRecordingScreenshot(stepId, activeTab.id)
     });
-    recording.lastKnownUrl = activeTab.url;
+    recordingState.lastKnownUrl = activeTab.url;
     await saveRecording();
-    return createRecordingPayload();
+    return createRecordingPayload(activeRecordingTarget);
 }
 
 async function createAnnotationFromDraft() {
@@ -990,7 +1172,18 @@ async function createAnnotationFromDraft() {
     );
 
     session.addAnnotation(annotation);
+    const annotationId = annotation.getId();
+    const draftRecordingHasContent = draftRecording.steps.length > 0 || draftRecording.screenshots.length > 0;
+    if (draftRecordingHasContent) {
+        annotationRecordingsById[annotationId] = normalizeRecording(draftRecording);
+        draftRecording = createEmptyRecording();
+        setSelectedRecordingTarget(createAnnotationRecordingTarget(annotationId));
+        setActiveRecordingTarget(createAnnotationRecordingTarget(annotationId));
+    } else {
+        setSelectedRecordingTarget(createAnnotationRecordingTarget(annotationId));
+    }
     await saveSession();
+    await saveRecording();
 
     const savedType = draft.type;
     const savedDescription = draft.description;
@@ -1005,7 +1198,8 @@ async function createAnnotationFromDraft() {
     return {
         annotation: annotation.toSerializableObject(),
         draft: getDraftPayload(),
-        summary: getSessionSummaryPayload()
+        summary: getSessionSummaryPayload(),
+        popupState: createPopupStatePayload()
     };
 }
 
@@ -1055,18 +1249,27 @@ async function deleteAnnotation(annotationId) {
         throw new Error(getMessage('errorAnnotationNotFound', undefined, 'Annotation not found.'));
     }
 
+    delete annotationRecordingsById[annotationId];
+    if (isAnnotationRecordingTarget(selectedRecordingTarget) && selectedRecordingTarget.annotationId === annotationId) {
+        setSelectedRecordingTarget(createDraftRecordingTarget());
+    }
+    if (isAnnotationRecordingTarget(activeRecordingTarget) && activeRecordingTarget.annotationId === annotationId) {
+        setActiveRecordingTarget(createDraftRecordingTarget());
+    }
+
     await saveSession();
+    await saveRecording();
 }
 
 async function exportSessionJSON() {
     await ensureStateReady();
 
-    if (!hasExportableState(session, draft, recording)) {
+    if (!hasExportableState(session, draft, draftRecording, annotationRecordingsById)) {
         return false;
     }
 
     const extensionStateService = new ExtensionStateService();
-    const jsonData = extensionStateService.getJSON(session, draft, recording);
+    const jsonData = extensionStateService.getJSON(session, draft, draftRecording, annotationRecordingsById);
     const browserInfo = session.getBrowserInfo();
     const browserInfoString = `${browserInfo.browser}_${browserInfo.browserVersion}`;
     const fileName = `ExploratorySession_${browserInfoString}_${formatExportTimestamp(session.StartDateTime)}.json`;
@@ -1132,7 +1335,10 @@ async function processImportedJSON(sessionJsonData) {
 
     session = importedState.session;
     draft = importedState.draft;
-    recording = importedState.recording;
+    draftRecording = importedState.draftRecording || createEmptyRecording();
+    annotationRecordingsById = normalizeRecordingMap(importedState.annotationRecordingsById || {});
+    selectedRecordingTarget = createDraftRecordingTarget();
+    activeRecordingTarget = createDraftRecordingTarget();
     try {
         await saveSession();
         await saveDraft();
@@ -1140,6 +1346,10 @@ async function processImportedJSON(sessionJsonData) {
     } catch (error) {
         throw error;
     }
+    showNotification(
+        getMessage('notificationImportSuccessTitle', undefined, 'Import completed'),
+        getMessage('notificationImportSuccessBody', undefined, 'Session data was imported successfully.')
+    );
     return true;
 }
 
@@ -1229,37 +1439,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         await ensureStateReady();
 
         switch (request.type) {
+            case 'getPopupState':
+                return { status: 'ok', popupState: createPopupStatePayload() };
             case 'getRecordingState':
-                return { status: 'ok', recording: createRecordingPayload() };
+                return {
+                    status: 'ok',
+                    recording: createRecordingPayload(selectedRecordingTarget),
+                    selectedRecordingTarget: { ...selectedRecordingTarget },
+                    draftRecording: createRecordingPayload(createDraftRecordingTarget()),
+                    annotationRecordingsById: createRecordingSummariesByAnnotationId()
+                };
             case 'getRecorderModeForSender':
+                const activeRecordingState = getActiveRecordingState();
                 return {
                     status: 'ok',
                     isRecording: isRecorderActiveForSender(sender.tab || null),
-                    lastKnownUrl: recording.lastKnownUrl,
-                    recordingId: recording.id
+                    lastKnownUrl: activeRecordingState.lastKnownUrl,
+                    recordingId: activeRecordingState.id
                 };
+            case 'setSelectedRecordingTarget':
+                setSelectedRecordingTarget(request.target || createDraftRecordingTarget());
+                await saveRecording();
+                return { status: 'ok', popupState: createPopupStatePayload() };
             case 'startRecordingFlow':
-                return { status: 'ok', recording: await startRecordingFlow() };
+                return { status: 'ok', recording: await startRecordingFlow(request.target || null), popupState: createPopupStatePayload() };
             case 'syncRecordingNavigation':
-                return { status: 'ok', recording: await syncRecordingNavigationFromActiveTab() };
+                return { status: 'ok', recording: await syncRecordingNavigationFromActiveTab(), popupState: createPopupStatePayload() };
             case 'stopRecordingFlow':
-                return { status: 'ok', recording: await stopRecordingFlow(request.options || {}) };
+                return { status: 'ok', recording: await stopRecordingFlow(request.options || {}), popupState: createPopupStatePayload() };
             case 'clearRecordingData':
-                return { status: 'ok', recording: await clearRecordingData() };
+                return { status: 'ok', recording: await clearRecordingData(request.target || null), popupState: createPopupStatePayload() };
             case 'appendRecordedStep':
-                return { status: 'ok', recording: await appendRecordedStep(request.step || {}, sender.tab || null) };
+                return { status: 'ok', recording: await appendRecordedStep(request.step || {}, sender.tab || null), popupState: createPopupStatePayload() };
             case 'playRecordingFlow':
-                return { status: 'ok', recording: await playRecordingFlow() };
+                return { status: 'ok', recording: await playRecordingFlow(request.target || null), popupState: createPopupStatePayload() };
             case 'cancelPlayback':
-                return { status: 'ok', recording: await cancelPlayback() };
+                return { status: 'ok', recording: await cancelPlayback(), popupState: createPopupStatePayload() };
             case 'getDraft':
                 return { status: 'ok', draft: getDraftPayload() };
             case 'updateDraft':
                 return { status: 'ok', draft: await updateDraftState(request.draft) };
             case 'clearDraft':
                 draft = createEmptyDraft(request.typeName || draft.type || 'Bug');
+                draftRecording = createEmptyRecording();
+                setSelectedRecordingTarget(createDraftRecordingTarget());
+                setActiveRecordingTarget(createDraftRecordingTarget());
                 await saveDraft();
-                return { status: 'ok', draft: getDraftPayload() };
+                await saveRecording();
+                return { status: 'ok', draft: getDraftPayload(), popupState: createPopupStatePayload() };
             case 'removeDraftImage':
                 return { status: 'ok', draft: await removeDraftImage(request.imageIndex) };
             case 'addDraftScreenshot':
@@ -1327,11 +1554,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
     ensureStateReady()
         .then(async () => {
-            if (recording.tabId !== tabId) {
+            const recordingState = getActiveRecordingState();
+            if (recordingState.tabId !== tabId) {
                 return;
             }
 
-            if (recording.status === 'recording') {
+            if (recordingState.status === 'recording') {
                 await appendNavigationStep(tabId, tab.url || '');
                 try {
                     await sendMessageToTab(tabId, { type: 'setRecordingMode', isRecording: true });
@@ -1340,7 +1568,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 }
             }
 
-            if (recording.status === 'replaying') {
+            if (recordingState.status === 'replaying') {
                 try {
                     await ensureContentScriptReady(tabId);
                 } catch (error) {

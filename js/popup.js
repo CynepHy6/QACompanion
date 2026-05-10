@@ -72,6 +72,7 @@ const TYPE_META = {
 };
 
 const DEFAULT_TYPE = 'Bug';
+const POPUP_MODE_STORAGE_KEY = 'qaCompanion.popupMode';
 const RECORDING_BUTTON_LABELS = {
   record: {
     icon: '●',
@@ -92,8 +93,13 @@ let currentDraft = {
   description: '',
   imageURLs: []
 };
+let currentDraftRecording = createEmptyRecordingState();
 let currentRecording = createEmptyRecordingState();
-let currentPopupMode = 'action';
+let currentSelectedRecordingTarget = createDraftTarget();
+let currentActiveRecordingTarget = createDraftTarget();
+let currentAnnotations = [];
+let currentSummary = null;
+let currentPopupMode = loadStoredPopupMode();
 let lastScrolledReplayStepId = '';
 
 let persistTimer = null;
@@ -105,21 +111,54 @@ let recordingStatePollTimer = null;
 let hoverPreviewAnchorElement = null;
 let armedDraftImageIndex = null;
 
-function getRecordingStateSignature(recordingState) {
+function createDraftTarget() {
+  return {
+    kind: 'draft',
+    annotationId: ''
+  };
+}
+
+function createAnnotationTarget(annotationId) {
+  return {
+    kind: 'annotation',
+    annotationId: typeof annotationId === 'string' ? annotationId : ''
+  };
+}
+
+function loadStoredPopupMode() {
+  try {
+    const storedMode = window.localStorage.getItem(POPUP_MODE_STORAGE_KEY);
+    return storedMode === 'recorder' ? 'recorder' : 'action';
+  } catch {
+    return 'action';
+  }
+}
+
+function persistPopupMode(nextMode) {
+  try {
+    window.localStorage.setItem(POPUP_MODE_STORAGE_KEY, nextMode);
+  } catch {
+    // Ignore storage unavailability in popup context.
+  }
+}
+
+function isDraftTarget(recordingTarget) {
+  return !recordingTarget || recordingTarget.kind !== 'annotation' || !recordingTarget.annotationId;
+}
+
+function getRecordingTargetKey(recordingTarget) {
+  return isDraftTarget(recordingTarget) ? 'draft' : recordingTarget.annotationId;
+}
+
+function getPopupStateSignature(popupState) {
   return JSON.stringify({
-    id: recordingState?.id || '',
-    status: recordingState?.status || '',
-    startedAt: recordingState?.startedAt || null,
-    stoppedAt: recordingState?.stoppedAt || null,
-    lastError: recordingState?.lastError || '',
-    activeStepId: recordingState?.activeStepId || '',
-    failedStepId: recordingState?.failedStepId || '',
-    stepCount: recordingState?.stepCount || 0,
-    screenshotCount: recordingState?.screenshotCount || 0,
-    canPlay: Boolean(recordingState?.canPlay),
-    hasRecording: Boolean(recordingState?.hasRecording),
-    steps: Array.isArray(recordingState?.steps) ? recordingState.steps : [],
-    screenshots: Array.isArray(recordingState?.screenshots) ? recordingState.screenshots : []
+    draft: popupState?.draft || null,
+    draftRecording: popupState?.draftRecording || null,
+    selectedRecordingTarget: popupState?.selectedRecordingTarget || null,
+    selectedRecording: popupState?.selectedRecording || null,
+    activeRecordingTarget: popupState?.activeRecordingTarget || null,
+    annotations: popupState?.annotations || [],
+    summary: popupState?.summary || null
   });
 }
 
@@ -180,10 +219,15 @@ function getElements() {
     recorderPanel: document.getElementById('recorderPanel'),
     recorderTabButton: document.getElementById('recorderTabBtn'),
     recordingScreenshotCountLabel: document.getElementById('recordingScreenshotCount'),
+    recordingDescriptionLabel: document.getElementById('recordingDescription'),
+    recordingSelectionCaption: document.getElementById('selectedRecordingCaption'),
     recordingStatusLabel: document.getElementById('recordingStatus'),
     recordingStepCountLabel: document.getElementById('recordingStepCount'),
+    recordingStepsPanel: document.getElementById('recordingStepsPanel'),
     recordingStepsList: document.getElementById('recordingStepsList'),
     recordingToggleButton: document.getElementById('recordingToggleBtn'),
+    savedAnnotationsPanel: document.getElementById('savedAnnotationsPanel'),
+    savedAnnotationsList: document.getElementById('savedAnnotationsList'),
     resetButton: document.getElementById('resetBtn')
   };
 }
@@ -309,9 +353,12 @@ function formatStepCount(stepCount) {
   return getPluralMessage('countStep', stepCount, `${stepCount} steps`);
 }
 
-function setPopupMode(nextMode) {
+function setPopupMode(nextMode, options = {}) {
   currentPopupMode = nextMode === 'recorder' ? 'recorder' : 'action';
-  renderModeTabs();
+  persistPopupMode(currentPopupMode);
+  if (options.render !== false) {
+    renderModeTabs();
+  }
 }
 
 function renderModeTabs() {
@@ -355,6 +402,23 @@ function getRecordingStepSummary(stepItem) {
   return getAnnotationTypeLabel(stepItem.type);
 }
 
+function getAnnotationSummaryById(annotationId) {
+  return currentAnnotations.find((annotationItem) => annotationItem.id === annotationId) || null;
+}
+
+function getRecordingTargetSubtitle(recordingTarget) {
+  if (isDraftTarget(recordingTarget)) {
+    return getMessage('popupDraftReplayCaption', undefined, 'Record actions that belong to the current draft before saving it.');
+  }
+
+  const annotationSummary = getAnnotationSummaryById(recordingTarget.annotationId);
+  if (!annotationSummary) {
+    return getMessage('popupSavedReplayCaption', undefined, 'Replay recorded for the saved step.');
+  }
+
+  return `${getAnnotationTypeLabel(annotationSummary.type)} • ${annotationSummary.name || getMessage('errorNoTitleAvailable', undefined, 'Untitled page')}`;
+}
+
 function getHighlightedRecordingStepId() {
   if (currentRecording.status === 'replaying' && currentRecording.activeStepId !== '') {
     return currentRecording.activeStepId;
@@ -376,49 +440,67 @@ function escapeHtml(textValue) {
     .replaceAll("'", '&#39;');
 }
 
+function buildRecordingStepsMarkup(recordingState, options = {}) {
+  const screenshotMap = new Map(
+    (recordingState.screenshots || []).map((screenshotItem) => [screenshotItem.id, screenshotItem])
+  );
+
+  if (!recordingState.steps || recordingState.steps.length === 0) {
+    return {
+      className: `${options.emptyClassName || 'recording-steps-list recording-steps-list--empty'}`,
+      html: `<p class="recording-steps-list__empty">${escapeHtml(getMessage(options.emptyMessageKey || 'popupNoRecordedStepsYet', undefined, 'No recorded steps yet.'))}</p>`
+    };
+  }
+
+  return {
+    className: options.listClassName || 'recording-steps-list',
+    html: recordingState.steps.map((stepItem, stepIndex) => {
+      const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
+      const isActiveStep = recordingState.status === 'replaying' && recordingState.activeStepId === stepItem.stepId;
+      const isFailedStep = recordingState.failedStepId === stepItem.stepId;
+      const stepStateClassName = isFailedStep ? ' is-failed' : (isActiveStep ? ' is-active' : '');
+      const failureDetailsMarkup = isFailedStep && recordingState.lastError
+        ? `<p class="recording-step-card__error">${escapeHtml(recordingState.lastError)}</p>`
+        : '';
+      return `
+        <article class="recording-step-card${stepStateClassName}" data-step-id="${escapeHtml(stepItem.stepId)}">
+          <div class="recording-step-card__meta">
+            <span class="recording-step-card__index">${escapeHtml(getMessage('popupStepLabel', [String(stepIndex + 1)], `Step ${stepIndex + 1}`))}</span>
+            <span class="recording-step-card__type">${escapeHtml(getMessage(`stepType${stepItem.type.charAt(0).toUpperCase()}${stepItem.type.slice(1)}`, undefined, stepItem.type))}</span>
+          </div>
+          ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('popupStepScreenshotAlt', [String(stepIndex + 1)], `Screenshot for step ${stepIndex + 1}`))}" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
+          <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
+          ${failureDetailsMarkup}
+        </article>
+      `;
+    }).join('')
+  };
+}
+
 function renderRecordingSteps() {
   const {
     recordingScreenshotCountLabel,
-    recordingStepsList
+    recordingStepsList,
+    recordingStepsPanel
   } = getElements();
-  const screenshotMap = new Map(
-    currentRecording.screenshots.map((screenshotItem) => [screenshotItem.id, screenshotItem])
-  );
+  const recordingMarkup = buildRecordingStepsMarkup(currentRecording);
+  const hasRecordedSteps = Array.isArray(currentRecording.steps) && currentRecording.steps.length > 0;
 
   recordingScreenshotCountLabel.textContent = formatScreenshotCount(currentRecording.screenshotCount);
+  if (recordingStepsPanel) {
+    recordingStepsPanel.hidden = !hasRecordedSteps;
+  }
 
-  if (!currentRecording.steps || currentRecording.steps.length === 0) {
+  if (!hasRecordedSteps) {
     if (clearRecordingArmed) {
       clearRecordingArmed = false;
     }
-    recordingStepsList.className = 'recording-steps-list recording-steps-list--empty';
-    recordingStepsList.innerHTML = `<p class="recording-steps-list__empty">${escapeHtml(getMessage('popupNoRecordedStepsYet', undefined, 'No recorded steps yet.'))}</p>`;
     renderClearRecordingButtonState();
-    return;
   }
 
-  recordingStepsList.className = 'recording-steps-list';
   hidePopupHoverPreview();
-  recordingStepsList.innerHTML = currentRecording.steps.map((stepItem, stepIndex) => {
-    const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
-    const isActiveStep = currentRecording.status === 'replaying' && currentRecording.activeStepId === stepItem.stepId;
-    const isFailedStep = currentRecording.failedStepId === stepItem.stepId;
-    const stepStateClassName = isFailedStep ? ' is-failed' : (isActiveStep ? ' is-active' : '');
-    const failureDetailsMarkup = isFailedStep && currentRecording.lastError
-      ? `<p class="recording-step-card__error">${escapeHtml(currentRecording.lastError)}</p>`
-      : '';
-    return `
-      <article class="recording-step-card${stepStateClassName}" data-step-id="${escapeHtml(stepItem.stepId)}">
-        <div class="recording-step-card__meta">
-          <span class="recording-step-card__index">${escapeHtml(getMessage('popupStepLabel', [String(stepIndex + 1)], `Step ${stepIndex + 1}`))}</span>
-          <span class="recording-step-card__type">${escapeHtml(getMessage(`stepType${stepItem.type.charAt(0).toUpperCase()}${stepItem.type.slice(1)}`, undefined, stepItem.type))}</span>
-        </div>
-        ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('popupStepScreenshotAlt', [String(stepIndex + 1)], `Screenshot for step ${stepIndex + 1}`))}" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
-        <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
-        ${failureDetailsMarkup}
-      </article>
-    `;
-  }).join('');
+  recordingStepsList.className = recordingMarkup.className;
+  recordingStepsList.innerHTML = recordingMarkup.html;
 
   const highlightedStepId = getHighlightedRecordingStepId();
   if (highlightedStepId === '') {
@@ -443,6 +525,46 @@ function renderRecordingSteps() {
   lastScrolledReplayStepId = highlightedStepId;
 }
 
+function renderSavedAnnotationsList() {
+  const { savedAnnotationsList, savedAnnotationsPanel } = getElements();
+  if (!savedAnnotationsList || !savedAnnotationsPanel) {
+    return;
+  }
+
+  if (!currentAnnotations.length) {
+    savedAnnotationsPanel.hidden = true;
+    savedAnnotationsList.className = 'saved-annotations-list saved-annotations-list--empty';
+    savedAnnotationsList.innerHTML = `<p class="recording-steps-list__empty">${escapeHtml(getMessage('popupNoSavedStepsYet', undefined, 'No saved steps yet.'))}</p>`;
+    return;
+  }
+
+  savedAnnotationsPanel.hidden = false;
+  savedAnnotationsList.className = 'saved-annotations-list';
+  savedAnnotationsList.innerHTML = currentAnnotations.map((annotationItem) => {
+    const isSelected = getRecordingTargetKey(currentSelectedRecordingTarget) === annotationItem.id;
+    const previewImage = Array.isArray(annotationItem.imageEntries) && annotationItem.imageEntries.length > 0
+      ? annotationItem.imageEntries[0].imageURL
+      : '';
+    const replaySummary = annotationItem.recording.hasRecording
+      ? `${formatStepCount(annotationItem.recording.stepCount)}`
+      : getMessage('reportNoReplayLinked', undefined, 'No replay linked.');
+
+    return `
+      <article class="saved-annotation-card${isSelected ? ' is-selected' : ''}" data-annotation-id="${escapeHtml(annotationItem.id)}">
+        <div class="saved-annotation-card__meta">
+          <div>
+            <span class="saved-annotation-card__type saved-annotation-card__type--${escapeHtml(annotationItem.type.toLowerCase())}">${escapeHtml(getAnnotationTypeLabel(annotationItem.type))}</span>
+            <h6 class="saved-annotation-card__title">${escapeHtml(annotationItem.name || getMessage('errorNoTitleAvailable', undefined, 'Untitled page'))}</h6>
+            <p class="saved-annotation-card__summary">${escapeHtml(formatScreenshotCount(annotationItem.imageCount || 0))}</p>
+            <p class="saved-annotation-card__summary">${escapeHtml(replaySummary)}</p>
+          </div>
+          ${previewImage ? `<img src="${escapeHtml(previewImage)}" class="saved-annotation-card__preview popup-preview-image" data-preview="${escapeHtml(previewImage)}" alt="${escapeHtml(getMessage('reportScreenshotAlt', ['1'], 'Screenshot 1'))}">` : ''}
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 function getRecordingStatusText() {
   if (currentRecording.status === 'recording') {
     return getMessage('popupRecorderStatusRecording', undefined, 'Recording actions on the current tab');
@@ -457,10 +579,51 @@ function getRecordingStatusText() {
   }
 
   if (currentRecording.hasRecording) {
-    return getMessage('popupRecorderStatusReady', undefined, 'Recording is ready to replay');
+    return getMessage('popupRecorderStatusReady', undefined, 'Recorded steps are ready');
   }
 
   return getMessage('popupRecorderStatusIdle', undefined, 'Recorder idle');
+}
+
+function getFirstRecordingStepUrl(recordingState) {
+  if (!Array.isArray(recordingState?.steps) || recordingState.steps.length === 0) {
+    return '';
+  }
+
+  const firstStepWithUrl = recordingState.steps.find((stepItem) => typeof stepItem?.url === 'string' && stepItem.url !== '');
+  return firstStepWithUrl?.url || '';
+}
+
+function formatPopupRecordingUrl(rawUrl) {
+  if (typeof rawUrl !== 'string' || rawUrl === '') {
+    return '';
+  }
+
+  try {
+    const parsedUrl = new URL(rawUrl);
+    const pathName = parsedUrl.pathname && parsedUrl.pathname !== '/' ? parsedUrl.pathname : '';
+    const shortUrl = `${parsedUrl.hostname}${pathName}`;
+    return shortUrl.length > 48 ? `${shortUrl.slice(0, 45)}...` : shortUrl;
+  } catch {
+    return rawUrl.length > 48 ? `${rawUrl.slice(0, 45)}...` : rawUrl;
+  }
+}
+
+function getRecordingDescriptionMarkup() {
+  const firstStepUrl = getFirstRecordingStepUrl(currentRecording);
+  if (currentRecording.status !== 'idle' || !currentRecording.hasRecording || firstStepUrl === '') {
+    return escapeHtml(getMessage('popupRecorderDescription', undefined, 'Record user actions on the current page and replay the last captured flow.'));
+  }
+
+  const placeholderToken = '__RECORDING_URL__';
+  const templateText = getMessage(
+    'popupRecorderReadyDescription',
+    [placeholderToken],
+    `Recorded steps can be replayed on ${placeholderToken}.`
+  );
+  const linkLabel = formatPopupRecordingUrl(firstStepUrl);
+  const linkMarkup = `<a href="${escapeHtml(firstStepUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel)}</a>`;
+  return escapeHtml(templateText).replace(placeholderToken, linkMarkup);
 }
 
 function renderRecordingControls() {
@@ -470,28 +633,36 @@ function renderRecordingControls() {
     clearRecordingButton,
     descriptionField,
     playRecordingButton,
+    recordingDescriptionLabel,
+    recordingSelectionCaption,
     recordingStatusLabel,
     recordingStepCountLabel,
     recordingToggleButton
   } = getElements();
   const isRecordingActive = currentRecording.status === 'recording';
   const isReplayActive = currentRecording.status === 'replaying';
+  const isDraftTargetSelected = isDraftTarget(currentSelectedRecordingTarget);
 
-  renderRecordingButtonMarkup(
-    recordingToggleButton,
-    isRecordingActive ? 'stop' : 'record'
-  );
+  renderRecordingButtonMarkup(recordingToggleButton, isRecordingActive ? 'stop' : 'record');
   recordingToggleButton.classList.toggle('is-recording', isRecordingActive);
-  recordingToggleButton.disabled = isReplayActive;
+  recordingToggleButton.hidden = !isDraftTargetSelected;
+  recordingToggleButton.disabled = isReplayActive || !isDraftTargetSelected;
 
   playRecordingButton.classList.toggle('is-replaying', isReplayActive);
-  renderRecordingButtonMarkup(playRecordingButton, 'play');
-  playRecordingButton.disabled = !currentRecording.canPlay || isReplayActive || isRecordingActive;
+  renderRecordingButtonMarkup(playRecordingButton, isReplayActive ? 'stop' : 'play');
+  playRecordingButton.disabled = (!currentRecording.canPlay && !isReplayActive) || isRecordingActive;
 
+  if (recordingSelectionCaption) {
+    recordingSelectionCaption.textContent = getRecordingTargetSubtitle(currentSelectedRecordingTarget);
+  }
+  if (recordingDescriptionLabel) {
+    recordingDescriptionLabel.innerHTML = getRecordingDescriptionMarkup();
+  }
   recordingStatusLabel.textContent = getRecordingStatusText();
   recordingStepCountLabel.textContent = formatStepCount(currentRecording.stepCount);
   renderRecordingSteps();
   renderClearRecordingButtonState();
+  renderSavedAnnotationsList();
   renderClearSessionButtonState();
   renderModeTabs();
 
@@ -507,7 +678,8 @@ function renderRecordingControls() {
   document.getElementById('resetBtn').disabled = isReplayActive;
 
   addScreenshotButton.disabled = isReplayActive || screenshotCooldownTimer !== null;
-  clearRecordingButton.disabled = isReplayActive || isRecordingActive;
+  clearRecordingButton.hidden = !isDraftTargetSelected;
+  clearRecordingButton.disabled = isReplayActive || isRecordingActive || !isDraftTargetSelected;
 }
 
 function renderDraft() {
@@ -546,11 +718,13 @@ function renderDraftImages() {
   hidePopupHoverPreview();
 
   if (currentDraft.imageURLs.length === 0) {
+    imagesContainer.hidden = true;
     imagesContainer.className = 'draft-images draft-images--empty';
     imagesContainer.innerHTML = `<p class="draft-images__empty">${escapeHtml(getMessage('popupNoScreenshotsYet', undefined, 'No screenshots yet.'))}</p>`;
     return;
   }
 
+  imagesContainer.hidden = false;
   imagesContainer.className = 'draft-images';
   imagesContainer.innerHTML = currentDraft.imageURLs.map((imageURL, imageIndex) => `
     <div class="draft-image-card__preview-shell">
@@ -578,37 +752,31 @@ function renderCounters(summary) {
   });
 }
 
-async function loadDraft() {
-  const response = await sendRuntimeMessage({ type: 'getDraft' });
-  currentDraft = response?.draft || currentDraft;
+function applyPopupState(popupState) {
+  currentDraft = popupState?.draft || currentDraft;
+  currentDraftRecording = popupState?.draftRecording || currentDraftRecording;
+  currentSelectedRecordingTarget = popupState?.selectedRecordingTarget || currentSelectedRecordingTarget;
+  currentActiveRecordingTarget = popupState?.activeRecordingTarget || currentActiveRecordingTarget;
+  currentRecording = popupState?.selectedRecording || currentRecording;
+  currentAnnotations = Array.isArray(popupState?.annotations) ? popupState.annotations : [];
+  currentSummary = popupState?.summary || currentSummary;
+
+  if (
+    currentRecording.status === 'recording'
+    || currentRecording.status === 'replaying'
+    || currentRecording.failedStepId
+  ) {
+    setPopupMode('recorder', { render: false });
+  }
+
+  renderCounters(currentSummary || {});
   renderDraft();
 }
 
-async function updateCounters() {
-  const response = await sendRuntimeMessage({ type: 'getSessionData' });
-  renderCounters(response);
-  return response;
-}
-
-async function loadRecordingState() {
-  const response = await sendRuntimeMessage({ type: 'getRecordingState' });
-  const nextRecordingState = response?.recording || createEmptyRecordingState();
-  const previousSignature = getRecordingStateSignature(currentRecording);
-  const nextSignature = getRecordingStateSignature(nextRecordingState);
-
-  if (previousSignature === nextSignature) {
-    return;
-  }
-
-  currentRecording = nextRecordingState;
-  if (
-    currentRecording.status === 'recording' ||
-    currentRecording.status === 'replaying' ||
-    currentRecording.failedStepId
-  ) {
-    currentPopupMode = 'recorder';
-  }
-  renderRecordingControls();
+async function refreshPopupState() {
+  const response = await sendRuntimeMessage({ type: 'getPopupState' });
+  applyPopupState(response?.popupState || {});
+  return response?.popupState || {};
 }
 
 async function persistDraft() {
@@ -673,8 +841,7 @@ async function clearDraft() {
     typeName: currentDraft.type
   });
 
-  currentDraft = response.draft;
-  renderDraft();
+  applyPopupState(response.popupState || { draft: response.draft });
   getElements().descriptionField.focus();
 }
 
@@ -685,9 +852,7 @@ async function saveDraftAnnotation() {
   await persistDraft();
 
   const response = await sendRuntimeMessage({ type: 'createAnnotationFromDraft' });
-  currentDraft = response.draft;
-  renderDraft();
-  renderCounters(response.summary);
+  applyPopupState(response.popupState || { draft: response.draft, summary: response.summary });
   getElements().descriptionField.focus();
 }
 
@@ -705,9 +870,8 @@ async function removeDraftImage(imageIndex) {
 
 async function clearRecording() {
   setClearRecordingArmed(false);
-  const response = await sendRuntimeMessage({ type: 'clearRecordingData' });
-  currentRecording = response.recording || createEmptyRecordingState();
-  renderRecordingControls();
+  const response = await sendRuntimeMessage({ type: 'clearRecordingData', target: currentSelectedRecordingTarget });
+  applyPopupState(response.popupState || {});
 }
 
 async function toggleRecording() {
@@ -720,17 +884,26 @@ async function toggleRecording() {
       }
     });
   } else {
-    response = await sendRuntimeMessage({ type: 'startRecordingFlow' });
+    response = await sendRuntimeMessage({ type: 'startRecordingFlow', target: currentSelectedRecordingTarget });
   }
 
-  currentRecording = response.recording || createEmptyRecordingState();
+  if (response.popupState) {
+    applyPopupState(response.popupState);
+  }
   if (currentRecording.status === 'recording' || currentRecording.hasRecording) {
-    currentPopupMode = 'recorder';
+    setPopupMode('recorder', { render: false });
   }
   renderRecordingControls();
 }
 
-async function playRecording() {
+async function playRecording(options = {}) {
+  if (currentRecording.status === 'replaying') {
+    const cancelResponse = await sendRuntimeMessage({ type: 'cancelPlayback' });
+    applyPopupState(cancelResponse.popupState || { selectedRecording: cancelResponse.recording });
+    renderRecordingControls();
+    return;
+  }
+
   currentRecording = {
     ...currentRecording,
     status: 'replaying',
@@ -740,16 +913,38 @@ async function playRecording() {
   };
   renderRecordingControls();
 
-  const response = await sendRuntimeMessage({ type: 'playRecordingFlow' });
-  currentRecording = response.recording || createEmptyRecordingState();
-  currentPopupMode = 'recorder';
+  if (options.closePopupOnStart === true) {
+    sendRuntimeMessage({ type: 'playRecordingFlow', target: currentSelectedRecordingTarget })
+      .catch((error) => {
+        console.warn('Replay failed:', error.message);
+      });
+    window.close();
+    return;
+  }
+
+  const response = await sendRuntimeMessage({ type: 'playRecordingFlow', target: currentSelectedRecordingTarget });
+  applyPopupState(response.popupState || { selectedRecording: response.recording });
+  setPopupMode('recorder', { render: false });
   renderRecordingControls();
+}
+
+async function selectRecordingTarget(recordingTarget, options = {}) {
+  setClearRecordingArmed(false);
+  const response = await sendRuntimeMessage({
+    type: 'setSelectedRecordingTarget',
+    target: recordingTarget
+  });
+  applyPopupState(response.popupState || {});
+  if (options.openRecorder === true) {
+    setPopupMode('recorder', { render: false });
+    renderRecordingControls();
+  }
 }
 
 function startRecordingStatePolling() {
   clearInterval(recordingStatePollTimer);
   recordingStatePollTimer = setInterval(() => {
-    loadRecordingState().catch(() => {});
+    refreshPopupState().catch(() => {});
   }, 1000);
 }
 
@@ -784,8 +979,12 @@ async function resetSession() {
     imageEntries: [],
     imageURLs: []
   };
+  currentDraftRecording = createEmptyRecordingState();
   currentRecording = createEmptyRecordingState();
-  currentPopupMode = 'action';
+  currentSelectedRecordingTarget = createDraftTarget();
+  currentActiveRecordingTarget = createDraftTarget();
+  currentAnnotations = [];
+  setPopupMode('action', { render: false });
   lastScrolledReplayStepId = '';
   armedDraftImageIndex = null;
   setClearDraftArmed(false);
@@ -793,7 +992,7 @@ async function resetSession() {
   setClearSessionArmed(false);
   renderDraft();
   renderRecordingControls();
-  await updateCounters();
+  await refreshPopupState();
 }
 
 function bindEvents() {
@@ -809,6 +1008,12 @@ function bindEvents() {
     setClearDraftArmed(false);
     currentDraft.description = event.target.value;
     scheduleDraftPersist();
+  });
+
+  elements.descriptionField.addEventListener('focus', () => {
+    if (!isDraftTarget(currentSelectedRecordingTarget)) {
+      selectRecordingTarget(createDraftTarget()).catch(() => {});
+    }
   });
 
   elements.descriptionField.addEventListener('keydown', (event) => {
@@ -910,16 +1115,27 @@ function bindEvents() {
 
   elements.recordingToggleButton.addEventListener('click', () => {
     toggleRecording().catch((error) => {
-      loadRecordingState().catch(() => {});
+      refreshPopupState().catch(() => {});
       alert(error.message);
     });
   });
 
   elements.playRecordingButton.addEventListener('click', () => {
-    playRecording().catch((error) => {
+    playRecording({ closePopupOnStart: true }).catch((error) => {
       console.warn('Replay failed:', error.message);
-      loadRecordingState().catch(() => {});
+      refreshPopupState().catch(() => {});
     });
+  });
+
+  document.getElementById('savedAnnotationsList').addEventListener('click', (event) => {
+    const annotationCard = event.target.closest('[data-annotation-id]');
+    if (!annotationCard) {
+      return;
+    }
+
+    const annotationId = annotationCard.dataset.annotationId || '';
+    const annotationTarget = createAnnotationTarget(annotationId);
+    selectRecordingTarget(annotationTarget, { openRecorder: true }).catch((error) => alert(error.message));
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {
@@ -1063,5 +1279,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearInterval(recordingStatePollTimer);
   });
   renderModeTabs();
-  await Promise.all([loadDraft(), updateCounters(), loadRecordingState()]);
+  await refreshPopupState();
 });

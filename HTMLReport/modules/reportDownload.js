@@ -32,14 +32,21 @@ export async function downloadAllImages(reportState) {
         }));
     });
 
-    const recordingScreenshots = reportState.recording.screenshots.map((screenshotItem, imageIndex) => ({
-        sourceType: 'recording',
-        annotationType: 'Recording',
-        annotationName: screenshotItem.triggerStepId || `step-${imageIndex + 1}`,
-        imageURL: screenshotItem.imageURL,
-        createdAt: screenshotItem.createdAt,
-        imageIndex
-    }));
+    const recordingScreenshots = reportState.session.getAnnotations().flatMap((annotation) => {
+        const recordingState = reportState.annotationRecordingsById?.[annotation.getId()];
+        if (!recordingState || !Array.isArray(recordingState.screenshots)) {
+            return [];
+        }
+
+        return recordingState.screenshots.map((screenshotItem, imageIndex) => ({
+            sourceType: 'recording',
+            annotationType: annotation.getType(),
+            annotationName: annotation.getName() || screenshotItem.triggerStepId || `step-${imageIndex + 1}`,
+            imageURL: screenshotItem.imageURL,
+            createdAt: screenshotItem.createdAt,
+            imageIndex
+        }));
+    });
 
     const screenshots = [
         ...annotationScreenshots,

@@ -88,10 +88,12 @@ export function displaySessionInfo(session) {
  * Renders the summary stat cards.
  */
 export function displayStats(reportState) {
+    const replayEntries = getReplayEntries(reportState);
+    const totalRecordedSteps = replayEntries.reduce((totalCount, replayEntry) => totalCount + replayEntry.recordingState.steps.length, 0);
     const stats = [
         { type: 'Bug', label: getMessage('reportStatsBugs', undefined, 'Bugs'), count: reportState.session.getBugs().length, icon: ANNOTATION_ICONS.Bug },
         { type: 'Note', label: getMessage('reportStatsNotes', undefined, 'Notes'), count: reportState.session.getNotes().length, icon: ANNOTATION_ICONS.Note },
-        { type: 'Recording', label: getMessage('reportStatsRecordedSteps', undefined, 'Recorded steps'), count: reportState.recording.steps.length, icon: '' }
+        { type: 'Recording', label: getMessage('reportStatsRecordedSteps', undefined, 'Recorded steps'), count: totalRecordedSteps, icon: '' }
     ];
 
     const statsContainer = document.getElementById('statsCards');
@@ -110,66 +112,32 @@ export function displayStats(reportState) {
     `).join('');
 }
 
-export function displayRecordingCard(recordingState) {
-    const recordingStateCard = document.getElementById('recordingStateCard');
-    if (!recordingStateCard) {
-        return;
-    }
-
-    const hasReplayFailure = recordingState.failedStepId && recordingState.lastError;
-    const titleText = hasReplayFailure
-        ? getMessage('reportRecordingStateStopped', undefined, 'Replay stopped')
-        : (recordingState.steps.length > 0
-            ? getMessage('reportRecordingStateCaptured', undefined, 'Flow captured')
-            : getMessage('reportRecordingStateEmpty', undefined, 'No recorded flow'));
-    const bodyText = hasReplayFailure
-        ? recordingState.lastError
-        : (recordingState.steps.length > 0
-            ? getMessage('reportRecordingStateCapturedBody', undefined, 'Recorded actions are shown below and restored on import.')
-            : getMessage('reportRecordingStateEmptyBody', undefined, 'No recorder steps were available in the exported state.'));
-
-    recordingStateCard.innerHTML = `
-        <div class="state-card__header">
-            <div>
-                <p class="state-card__eyebrow">${escapeHtml(getMessage('reportRecordingStateEyebrow', undefined, 'Recorder snapshot'))}</p>
-                <h3 class="state-card__title">${titleText}</h3>
-            </div>
-            <span class="state-card__badge${recordingState.steps.length > 0 ? '' : ' is-muted'}">${escapeHtml(getPluralMessage('countStep', recordingState.steps.length, `${recordingState.steps.length} steps`))}</span>
-        </div>
-        <div class="state-metrics">
-            <div class="state-metric">
-                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricScreenshots', undefined, 'Screenshots'))}</span>
-                <span class="state-metric__value">${recordingState.screenshots.length}</span>
-            </div>
-            <div class="state-metric">
-                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricStarted', undefined, 'Started'))}</span>
-                <span class="state-metric__value">${recordingState.startedAt ? formatDateTime(recordingState.startedAt) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>
-            </div>
-            <div class="state-metric">
-                <span class="state-metric__label">${escapeHtml(getMessage('reportRecordingMetricStopped', undefined, 'Stopped'))}</span>
-                <span class="state-metric__value">${recordingState.stoppedAt ? formatDateTime(recordingState.stoppedAt) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>
-            </div>
-        </div>
-        <p class="state-card__body">${escapeHtml(bodyText)}</p>
-    `;
+function getAnnotationRecordingState(reportState, annotationId) {
+    return reportState?.annotationRecordingsById?.[annotationId] || {
+        steps: [],
+        screenshots: [],
+        lastError: '',
+        failedStepId: '',
+        startedAt: null,
+        stoppedAt: null
+    };
 }
 
-export function displayRecordingTimeline(recordingState) {
-    const recordingTimeline = document.getElementById('recordingTimeline');
-    if (!recordingTimeline) {
-        return;
-    }
+function getReplayEntries(reportState) {
+    return reportState.session.getAnnotations()
+        .map((annotation) => ({
+            annotation,
+            recordingState: getAnnotationRecordingState(reportState, annotation.getId())
+        }))
+        .filter(({ recordingState }) => Array.isArray(recordingState.steps) && recordingState.steps.length > 0);
+}
 
-    if (recordingState.steps.length === 0) {
-        recordingTimeline.innerHTML = `<div class="recording-empty-state">${escapeHtml(getMessage('reportRecordingEmpty', undefined, 'No recording steps available.'))}</div>`;
-        return;
-    }
-
+function renderRecordingTimelineMarkup(recordingState) {
     const screenshotByStepId = new Map(
         recordingState.screenshots.map((screenshotItem) => [screenshotItem.triggerStepId, screenshotItem])
     );
 
-    recordingTimeline.innerHTML = recordingState.steps.map((stepItem, stepIndex) => {
+    return recordingState.steps.map((stepItem, stepIndex) => {
         const linkedScreenshot = screenshotByStepId.get(stepItem.stepId);
         const isFailedStep = recordingState.failedStepId === stepItem.stepId;
         return `
@@ -245,9 +213,9 @@ export function createAnnotationsChart(session) {
 /**
  * Renders the annotations table filtered by the current filter.
  */
-export function displayAnnotationsTable(session, currentFilter) {
+export function displayAnnotationsTable(reportState, currentFilter) {
     const tableBody = document.getElementById('annotationsTableBody');
-    const annotations = session.getAnnotations();
+    const annotations = reportState.session.getAnnotations();
     const filtered = annotations.filter(
         a => currentFilter === 'all' || a.constructor.name === currentFilter
     );
@@ -265,6 +233,9 @@ export function displayAnnotationsTable(session, currentFilter) {
     tableBody.innerHTML = filtered.map((annotation) => {
         const type = annotation.constructor.name;
         const imageEntries = annotation.getImageEntries();
+        const recordingState = getAnnotationRecordingState(reportState, annotation.id);
+        const hasLinkedReplay = recordingState.steps.length > 0;
+        const replaySummaryText = `${getPluralMessage('countStep', recordingState.steps.length, `${recordingState.steps.length} steps`)} · ${getPluralMessage('countScreenshot', recordingState.screenshots.length, `${recordingState.screenshots.length} screenshots`)}`;
         return `
         <tr class="annotation-row annotation-row--${type.toLowerCase()}">
             <td class="annotation-type-cell">
@@ -319,7 +290,20 @@ export function displayAnnotationsTable(session, currentFilter) {
                     </button>
                 </div>
             </td>
-        </tr>`;
+        </tr>${hasLinkedReplay ? `
+        <tr class="annotation-replay-row">
+            <td colspan="6" class="annotation-replay-row__cell">
+                <details class="annotation-replay-details">
+                    <summary class="annotation-replay-details__summary">
+                        <span class="annotation-replay-details__title">${escapeHtml(getMessage('reportAnnotationReplayTitle', undefined, 'Replay'))}</span>
+                        <span class="annotation-replay-details__meta">${escapeHtml(replaySummaryText)}</span>
+                    </summary>
+                    <div class="annotation-replay-details__body">
+                        ${renderRecordingTimelineMarkup(recordingState)}
+                    </div>
+                </details>
+            </td>
+        </tr>` : ''}`;
     }).join('');
 }
 

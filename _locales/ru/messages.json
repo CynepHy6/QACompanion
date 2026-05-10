@@ -48,6 +48,22 @@
     "popupClearDraftTitle": { "message": "Очистить черновик" },
     "popupClearDraftLabel": { "message": "Очистить черновик" },
     "popupNoScreenshotsYet": { "message": "Скриншотов пока нет." },
+    "popupDraftReplayAria": { "message": "Повтор для текущего черновика" },
+    "popupDraftReplayTitle": { "message": "Повтор для текущего шага" },
+    "popupDraftReplayCaption": {
+        "message": "Запиши действия для этого черновика до сохранения шага."
+    },
+    "popupDraftReplayEmpty": { "message": "Для этого черновика запись пока не связана." },
+    "popupDraftReplayControlsAria": { "message": "Управление повтором черновика" },
+    "popupOpenReplayDetails": { "message": "Подробнее" },
+    "popupSavedStepsReplayAria": { "message": "Повторы сохраненных шагов" },
+    "popupSavedStepsReplayTitle": { "message": "Сохраненные шаги" },
+    "popupSavedStepsReplayCaption": {
+        "message": "У каждого сохраненного бага или заметки может быть свой repeat."
+    },
+    "popupNoSavedStepsYet": { "message": "Сохраненных шагов пока нет." },
+    "popupSavedReplayCaption": { "message": "Повтор записан для сохраненного шага." },
+    "popupSavedReplayDetailsTitle": { "message": "Повтор сохраненного шага" },
     "popupRecorderModeAria": { "message": "Режим записи" },
     "popupRecordReplayAria": { "message": "Запись и воспроизведение действий" },
     "popupRecorderTitle": { "message": "Запись" },
@@ -84,7 +100,10 @@
     "popupRecorderStatusReplaying": {
         "message": "Повторяю последний записанный сценарий"
     },
-    "popupRecorderStatusReady": { "message": "Запись готова к повтору" },
+    "popupRecorderStatusReady": { "message": "Записанные шаги готовы" },
+    "popupRecorderReadyDescription": {
+        "message": "Записанные шаги можно воспроизвести на странице $1."
+    },
     "popupRecorderStatusIdle": { "message": "Запись в ожидании" },
     "popupRecorderNavigateTo": { "message": "Перейти на $1" },
     "popupRecorderClickText": { "message": "Клик по $1" },
@@ -195,9 +214,14 @@
     "reportRecordingStateCapturedBody": {
         "message": "Записанные действия показаны ниже и будут восстановлены при импорте."
     },
+    "reportRecordingPerAnnotationBody": {
+        "message": "Записанные действия привязаны к отдельным сохраненным шагам и входят в экспорт."
+    },
     "reportRecordingStateEmptyBody": {
         "message": "В экспортированном состоянии не было шагов Recorder."
     },
+    "reportRecordingMetricFlows": { "message": "Связанные повторы" },
+    "reportRecordingMetricAnnotations": { "message": "Записи" },
     "reportRecordingMetricScreenshots": { "message": "Скриншоты" },
     "reportRecordingMetricStarted": { "message": "Старт" },
     "reportRecordingMetricStopped": { "message": "Стоп" },
@@ -212,6 +236,8 @@
     "reportRecordingNavigatedTo": { "message": "Переход на $1" },
     "reportRecordingNavigationEvent": { "message": "Событие перехода" },
     "reportRecordingFallbackAction": { "message": "Записанное действие" },
+    "reportAnnotationReplayTitle": { "message": "Записанные действия" },
+    "reportNoReplayLinked": { "message": "Повтор не привязан." },
     "reportNoAnnotationsForFilter": {
         "message": "Для этого фильтра ничего не найдено."
     },
@@ -367,6 +393,10 @@
     "notificationActionSavedTitle": { "message": "Шаг сохранен" },
     "notificationActionSavedBody": {
         "message": "Запись \"$1\" успешно сохранена."
+    },
+    "notificationImportSuccessTitle": { "message": "Импорт завершен" },
+    "notificationImportSuccessBody": {
+        "message": "Данные сессии успешно импортированы."
     },
     "notificationSelectionUnavailableTitle": {
         "message": "Выделение недоступно"

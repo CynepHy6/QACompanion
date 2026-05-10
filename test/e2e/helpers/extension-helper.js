@@ -248,13 +248,41 @@ async function getSessionData(popupPage) {
   });
 }
 
-async function getRecordingData(popupPage) {
+async function getRecordingData(popupPage, target = 'draft') {
+  const emptyRecording = {
+    id: null,
+    status: 'idle',
+    startedAt: null,
+    stoppedAt: null,
+    tabId: null,
+    lastKnownUrl: '',
+    lastError: '',
+    activeStepId: '',
+    failedStepId: '',
+    steps: [],
+    screenshots: []
+  };
+
   return await popupPage.evaluate(() => {
     return new Promise((resolve) => {
       chrome.storage.local.get(['recording'], (result) => {
         resolve(result.recording || null);
       });
     });
+  }).then((recordingStore) => {
+    if (!recordingStore) {
+      return null;
+    }
+
+    if (Array.isArray(recordingStore.steps)) {
+      return recordingStore;
+    }
+
+    if (target === 'draft') {
+      return recordingStore.draftRecording || emptyRecording;
+    }
+
+    return recordingStore.annotationRecordingsById?.[target] || emptyRecording;
   });
 }
 

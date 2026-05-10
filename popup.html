@@ -99,8 +99,20 @@
                         </div>
                     </div>
 
-                    <div id="draftImages" class="draft-images draft-images--empty">
+                    <div id="draftImages" class="draft-images draft-images--empty" hidden>
                         <p class="draft-images__empty">__MSG_popupNoScreenshotsYet__</p>
+                    </div>
+                </section>
+
+                <section id="savedAnnotationsPanel" class="saved-annotations-panel" aria-label="__MSG_popupSavedStepsReplayAria__" hidden>
+                    <div class="recording-panel__header">
+                        <div>
+                            <h6 class="recording-title">__MSG_popupSavedStepsReplayTitle__</h6>
+                            <p class="recording-caption">__MSG_popupSavedStepsReplayCaption__</p>
+                        </div>
+                    </div>
+                    <div id="savedAnnotationsList" class="saved-annotations-list saved-annotations-list--empty">
+                        <p class="recording-steps-list__empty">__MSG_popupNoSavedStepsYet__</p>
                     </div>
                 </section>
             </section>
@@ -109,18 +121,19 @@
                 <section class="recording-panel" aria-label="__MSG_popupRecordReplayAria__">
                     <div class="recording-panel__header">
                         <div>
+                            <p id="selectedRecordingCaption" class="recording-caption">__MSG_popupDraftReplayCaption__</p>
                             <h6 id="recordingStatus" class="recording-title">__MSG_popupRecorderIdle__</h6>
                         </div>
                         <span id="recordingStepCount" class="draft-counter">0</span>
                     </div>
-                    <p class="mode-description mode-description--compact">__MSG_popupRecorderDescription__</p>
+                    <p id="recordingDescription" class="mode-description mode-description--compact">__MSG_popupRecorderDescription__</p>
                     <div class="recording-toolbar" role="group" aria-label="__MSG_popupRecordingControlsAria__">
                         <button id="recordingToggleBtn" class="btn recording-button recording-button--record" type="button"><span class="recording-button__icon" aria-hidden="true">●</span><span class="recording-button__label">__MSG_popupRecordButton__</span></button>
                         <button id="playRecordingBtn" class="btn recording-button recording-button--play" type="button"><span class="recording-button__icon" aria-hidden="true">▶</span><span class="recording-button__label">__MSG_popupPlayButton__</span></button>
                     </div>
                 </section>
 
-                <section class="recording-steps-panel" aria-label="__MSG_popupRecordedStepsAria__">
+                <section id="recordingStepsPanel" class="recording-steps-panel" aria-label="__MSG_popupRecordedStepsAria__" hidden>
                     <div class="recording-steps-panel__header">
                         <h6 class="recording-title">__MSG_popupRecordedStepsTitle__</h6>
                         <div class="recording-steps-panel__actions">
