@@ -755,7 +755,6 @@ body[data-type="note"] .toolbar-button--crop:hover {
 	box-shadow: var(--shadow-sm);
 }
 
-#exportCSVBtn,
 #exportJsonBtn,
 #importJsonBtn,
 #previewBtn {
@@ -771,12 +770,10 @@ body[data-type="note"] .toolbar-button--crop:hover {
 	transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-#exportCSVBtn { background-image: url("../images/003-csv.svg"); }
 #exportJsonBtn { background-image: url("../images/002-download.svg"); }
 #importJsonBtn { background-image: url("../images/004-up-arrow.svg"); }
 #previewBtn { background-image: url("../images/001-graphic.svg"); }
 
-#exportCSVBtn:hover,
 #exportJsonBtn:hover,
 #importJsonBtn:hover,
 #previewBtn:hover {

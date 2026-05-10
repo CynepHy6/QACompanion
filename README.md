@@ -10,7 +10,7 @@ QA Companion is a Chrome extension for exploratory testing sessions with notes, 
 - Edit saved descriptions in the report
 - Remove individual screenshots from saved steps
 - Export and import sessions
-- Export session data to JSON, CSV, or HTML
+- Export session data to JSON or HTML
 
 ## Origin
 

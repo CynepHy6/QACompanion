@@ -52,7 +52,6 @@ test.describe('Reports and Export Functionality', () => {
 
   test('should have export buttons visible', async () => {
     // Verify export buttons exist
-    await expect(popupPage.locator('#exportCSVBtn')).toBeVisible();
     await expect(popupPage.locator('#exportJsonBtn')).toBeVisible();
     await expect(popupPage.locator('#previewBtn')).toBeVisible();
     await expect(popupPage.locator('#resetBtn')).toBeVisible();

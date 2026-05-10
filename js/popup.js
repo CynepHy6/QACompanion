@@ -501,7 +501,6 @@ function renderRecordingControls() {
   descriptionField.disabled = isReplayActive;
   clearDraftButton.disabled = isReplayActive;
   document.getElementById('addCropScreenshotBtn').disabled = isReplayActive;
-  document.getElementById('exportCSVBtn').disabled = isReplayActive;
   document.getElementById('exportJsonBtn').disabled = isReplayActive;
   document.getElementById('importJsonBtn').disabled = isReplayActive;
   document.getElementById('previewBtn').disabled = isReplayActive;
@@ -754,10 +753,6 @@ function startRecordingStatePolling() {
   }, 1000);
 }
 
-async function exportSessionCSV() {
-  await sendRuntimeMessage({ type: 'exportSessionCSV' });
-}
-
 async function exportSessionJSON() {
   await sendRuntimeMessage({ type: 'exportSessionJSon' });
 }
@@ -891,10 +886,6 @@ function bindEvents() {
     }
 
     hidePopupHoverPreview();
-  });
-
-  document.getElementById('exportCSVBtn').addEventListener('click', () => {
-    exportSessionCSV().catch((error) => alert(error.message));
   });
 
   document.getElementById('exportJsonBtn').addEventListener('click', () => {

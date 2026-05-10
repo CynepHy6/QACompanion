@@ -2,19 +2,19 @@
 
 ## 1.0
 
-Первая версия `QA Companion` как самостоятельного форка.
+First release of `QA Companion` as a standalone fork.
 
-- Единый черновик в popup с явным сохранением шага через `Add new Bug` / `Add new Note`
-- Несколько скриншотов для одной аннотации вместо одного изображения
-- Редактирование описания уже сохраненной аннотации в HTML-отчете
-- Удаление отдельных скриншотов из сохраненной аннотации
-- Обновленный flow для crop screenshot с отдельным редактором аннотаций
-- Упрощение типов аннотаций до `Bug` и `Note`
-- запись и проигрывание действий на странице
+- Unified popup draft with explicit step saving for bugs and notes
+- Multiple screenshots per annotation instead of a single image
+- Editing the description of an already saved annotation in the HTML report
+- Removing individual screenshots from a saved annotation
+- Updated crop screenshot flow with a dedicated annotation editor
+- Simplified annotation types to `Bug` and `Note`
+- Recording and replaying actions on the page
 
-## Версии до 1.0
+## Versions Before 1.0
 
-Все версии до `1.0` относятся к исходному расширению `Exploratory Testing Chrome Extension`, от версии `4.1.1` которого был сделан этот форк.
+All versions before `1.0` belong to the original `Exploratory Testing Chrome Extension`. This fork was created from version `4.1.1`.
 
-- История до форка поддерживается в исходном проекте
-- `QA Companion` начинает собственную историю изменений с версии `1.0`
+- The pre-fork history is maintained in the original project
+- `QA Companion` starts its own changelog at version `1.0`

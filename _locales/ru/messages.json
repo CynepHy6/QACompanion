@@ -18,7 +18,6 @@
     },
     "popupSessionOptionsAria": { "message": "Действия с сессией" },
     "popupViewReportTitle": { "message": "Открыть отчет по сессии" },
-    "popupExportCsvTitle": { "message": "Экспортировать сессию в CSV" },
     "popupExportJsonTitle": { "message": "Экспортировать сессию в JSON" },
     "popupImportJsonTitle": { "message": "Импортировать сессию из JSON" },
     "popupSessionResetAria": { "message": "Сброс сессии" },

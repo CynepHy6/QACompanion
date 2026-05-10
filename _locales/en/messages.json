@@ -16,7 +16,6 @@
     "popupTitle": { "message": "Exploratory Testing Chrome Extension" },
     "popupSessionOptionsAria": { "message": "Session options" },
     "popupViewReportTitle": { "message": "Open session report" },
-    "popupExportCsvTitle": { "message": "Export session to CSV" },
     "popupExportJsonTitle": { "message": "Export session to JSON" },
     "popupImportJsonTitle": { "message": "Import session from JSON" },
     "popupSessionResetAria": { "message": "Reset session" },

@@ -1,185 +1,218 @@
-# E2E Tests con Playwright para la Extensión de Chrome
+# Playwright E2E Tests
 
-Este directorio contiene tests end-to-end (e2e) para la extensión de Chrome de Exploratory Testing, implementados con Playwright.
+This directory contains Playwright end-to-end tests for the `QA Companion` Chrome extension.
 
-## 🎯 Qué se prueba
+The suite covers the popup UI, action creation flow, crop flow, annotation editor, recorder/replay behavior, and report/export pages.
 
-### Tests Básicos (`basic-functionality.spec.js`)
-- ✅ Carga correcta del popup de la extensión
-- ✅ Contadores iniciales en cero
-- ✅ Añadir anotaciones (`Bug` y `Note`)
-- ✅ Actualización de contadores al añadir anotaciones
-- ✅ Persistencia del borrador hasta guardado explícito
-- ✅ Captura de URL de la página activa
+## Coverage
 
-### Tests de Capturas Recortadas (`crop-screenshot.spec.js`) ⭐ NUEVO
-- ✅ Botón de crop compartido para los tipos soportados
-- ✅ Alerta cuando falta descripción antes de crop
-- ✅ Inicio de selección de área de crop
-- ✅ Message passing correcto al background
+Current spec files:
 
-### Tests de Informes y Exportación (`reports-export.spec.js`)
-- ✅ Exportación a CSV
-- ✅ Exportación a JSON
-- ✅ Generación de informe HTML
-- ✅ Importación de sesión desde JSON
-- ✅ Limpiar sesión
-- ✅ Persistencia de datos al cerrar/abrir popup
-- ✅ Estadísticas correctas en contadores
+- `smoke.spec.js`: quick environment and extension boot checks
+- `basic-functionality.spec.js`: popup basics, counters, draft behavior, and saved annotations
+- `recording-replay.spec.js`: record/replay flow, navigation, and replay error handling
+- `annotation-editor.spec.js`: annotation editor structure, tools, keyboard shortcuts, save/cancel flow
+- `crop-screenshot.spec.js`: crop entry flow, content-script injection, and crop-related messaging
+- `reports-export.spec.js`: report actions, JSON export control visibility, HTML report generation, and persistence checks
 
-## 🚀 Instalación
+## Prerequisites
 
-Los paquetes necesarios ya están instalados si ejecutaste `npm install`. Si necesitas reinstalar:
+Install dependencies first:
 
 ```bash
-npm install --save-dev @playwright/test
-npx playwright install chromium
+npm install
 ```
 
-## 📝 Comandos Disponibles
+Playwright uses a local HTTP server for test pages on port `8000`.
 
-### Ejecutar todos los tests e2e
+By default:
+
+- tests run sequentially with a single worker
+- retries are enabled only in `CI`
+- screenshots and video are kept on failure
+- traces are collected on the first retry
+- headless mode is enabled by default via Chromium's modern headless mode
+
+## Available Commands
+
+Run the default smoke/basic/recording subset:
+
 ```bash
 npm run test:e2e
 ```
 
-### Ver tests ejecutándose (headed mode)
+Run the full E2E suite:
+
+```bash
+npm run test:e2e:all
+```
+
+Run the CI-oriented E2E suite:
+
+```bash
+npm run test:e2e:ci
+```
+
+Run the default subset in headed mode:
+
 ```bash
 npm run test:e2e:headed
 ```
 
-### UI Mode interactivo (recomendado para desarrollo)
+Run crop tests in headed mode:
+
+```bash
+npm run test:e2e:crop
+```
+
+Open Playwright UI mode:
+
 ```bash
 npm run test:e2e:ui
 ```
 
-### Debug mode (paso a paso)
+Run the smoke spec in debug mode:
+
 ```bash
 npm run test:e2e:debug
 ```
 
-### Ver último reporte HTML
+Open the last HTML report:
+
 ```bash
 npm run test:e2e:report
 ```
 
-### Ejecutar un archivo específico
-```bash
-npx playwright test basic-functionality.spec.js
-npx playwright test crop-screenshot.spec.js --headed
-npm run test:e2e:crop  # Atajo para crop tests
-```
+Run unit and E2E tests together:
 
-### Ejecutar todos los tests (unit + e2e)
 ```bash
 npm run test:all
 ```
 
-## ⚙️ Configuración
+Run a specific spec directly:
 
-La configuración de Playwright está en `playwright.config.js` en la raíz del proyecto. Características clave:
+```bash
+npx playwright test test/e2e/reports-export.spec.js
+npx playwright test test/e2e/recording-replay.spec.js --headed
+```
 
-- **Tests secuenciales**: Las extensiones de Chrome requieren ejecución secuencial
-- **Modo headful**: Las extensiones no funcionan en modo headless
-- **Servidor de desarrollo**: Inicia automáticamente `start_test_server.ps1` en puerto 8000
-- **Screenshots/videos**: Se capturan automáticamente en fallos
-- **Traces**: Se guardan en reintentos de tests fallidos
+## Configuration Notes
 
-## 🔧 Helper Functions
+The main configuration lives in `playwright.config.js`.
 
-El archivo `helpers/extension-helper.js` proporciona utilidades reutilizables:
+Important details:
+
+- `testDir` is `./test/e2e`
+- `workers` is set to `1`
+- `fullyParallel` is disabled
+- `baseURL` points to `http://localhost:8000/test/e2e/test-pages`
+- on Windows the local server starts with `start_test_server.ps1`
+- on non-Windows systems the local server starts with `python3 -m http.server 8000`
+
+## Helper Utilities
+
+Shared helpers live in `test/e2e/helpers/extension-helper.js`.
+
+Available helpers:
 
 ```javascript
 const {
-  launchBrowserWithExtension,  // Inicia Chrome con la extensión cargada
-  openExtensionPopup,           // Abre el popup de la extensión
-  clearExtensionStorage,        // Limpia el storage para tests limpios
-  getSessionData,               // Obtiene datos de la sesión actual
-  waitForStorageUpdate,         // Espera a que se actualice el storage
-  takeScreenshotWithExtension,  // Toma captura con la extensión
+  launchBrowserWithExtension,
+  openExtensionPopup,
+  clearExtensionStorage,
+  getSessionData,
+  getRecordingData,
+  waitForStorageUpdate,
+  takeScreenshotWithExtension,
+  injectContentScript,
 } = require('./helpers/extension-helper');
 ```
 
-## 📋 Estructura de un Test
+What they do:
 
-```javascript
-const { test, expect } = require('@playwright/test');
-const { launchBrowserWithExtension, openExtensionPopup } = require('./helpers/extension-helper');
+- `launchBrowserWithExtension()`: launches a persistent browser context with the unpacked extension loaded
+- `openExtensionPopup()`: opens `popup.html` directly through the resolved extension ID
+- `clearExtensionStorage()`: clears extension state and verifies storage cleanup
+- `getSessionData()`: reads the current saved session from `chrome.storage.local`
+- `getRecordingData()`: reads the current recorder state from `chrome.storage.local`
+- `waitForStorageUpdate()`: simple wait helper used after async extension actions
+- `takeScreenshotWithExtension()`: triggers the regular screenshot flow from the popup
+- `injectContentScript()`: injects `js/content_script.js` manually for crop-related tests
 
-test.describe('Mi Suite de Tests', () => {
-  let context, extensionId, popupPage;
+## Environment Variables
 
-  test.beforeAll(async () => {
-    const result = await launchBrowserWithExtension();
-    context = result.context;
-    extensionId = result.extensionId;
-  });
+The helper supports a few useful overrides:
 
-  test.beforeEach(async () => {
-    popupPage = await openExtensionPopup(context, extensionId);
-  });
+- `HEADED=true`: run the launched browser in headed mode
+- `PLAYWRIGHT_CHANNEL=<channel>`: force a browser channel
+- `EXTENSION_ID=<id>`: skip extension ID auto-detection and use a known ID
 
-  test('mi test', async () => {
-    // Tu código de test aquí
-    await popupPage.fill('#draftDescription', 'Test Bug');
-    await popupPage.click('#saveDraftBtn');
-  });
+On Linux, the helper prefers `msedge` if it is installed at `/opt/microsoft/msedge/msedge`; otherwise it falls back to `chromium`.
 
-  test.afterAll(async () => {
-    await context.close();
-  });
-});
+## Recommended Workflow
+
+For a quick sanity check:
+
+```bash
+npm run test:e2e
 ```
 
-## 🐛 Debugging
+Before merging UI or recorder changes:
 
-### Ver qué está pasando
-1. Usa `--headed` para ver el navegador
-2. Usa `--debug` para pausar y depurar paso a paso
-3. Usa UI Mode (`--ui`) para una experiencia visual completa
+```bash
+npm run test:e2e:all
+```
 
-### Problemas comunes
+When iterating on a specific area:
 
-**Error: Extension ID not found**
-- Asegúrate de que `manifest.json` es válido
-- Verifica que la ruta de la extensión es correcta
-- Comprueba que el service worker se carga correctamente
+```bash
+npx playwright test test/e2e/crop-screenshot.spec.js --headed
+npx playwright test test/e2e/annotation-editor.spec.js --headed
+```
 
-**Tests lentos o timeouts**
-- Las extensiones son más lentas que páginas normales
-- Aumenta timeouts si es necesario: `test.setTimeout(120000)`
-- Los screenshots toman tiempo, ajusta `waitForStorageUpdate`
+## Troubleshooting
 
-**El servidor no inicia**
-- Verifica que `start_test_server.ps1` funciona manualmente
-- Asegúrate de que el puerto 8000 está libre
-- Usa `reuseExistingServer: true` en desarrollo
+### Extension ID could not be resolved
 
-## 📊 Reportes
+Check the following:
 
-Después de ejecutar tests, puedes ver el reporte HTML:
+- `manifest.json` is valid
+- the extension loads cleanly without startup errors
+- `background.js` or the service worker does not crash on startup
+- the unpacked extension path still points to the repository root
+
+If auto-detection is flaky locally, set `EXTENSION_ID` explicitly and rerun the command.
+
+### Local server does not start
+
+Check the following:
+
+- port `8000` is free
+- `python3` is available on non-Windows systems
+- `start_test_server.ps1` works on Windows
+
+### Tests are slow or flaky
+
+Common reasons:
+
+- extension startup needs extra time
+- storage writes need a short wait before assertions
+- crop and recorder flows are more timing-sensitive than plain popup assertions
+
+Prefer targeted spec runs while debugging instead of running the full suite every time.
+
+## Reports
+
+After a run, open the Playwright report with:
 
 ```bash
 npm run test:e2e:report
 ```
 
-El reporte incluye:
-- ✅ Tests pasados/fallados
-- 📸 Screenshots de fallos
-- 🎬 Videos de ejecución (en fallos)
-- 📋 Traces para debugging
-- ⏱️ Tiempos de ejecución
+The report includes failed-step screenshots, retained failure videos, retry traces, and timing data.
 
-## 🎓 Recursos
+## References
 
-- [Playwright Documentation](https://playwright.dev/)
-- [Testing Chrome Extensions](https://playwright.dev/docs/chrome-extensions)
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
-
-## 💡 Tips
-
-1. **Usa UI Mode durante desarrollo**: Es la forma más rápida de iterar
-2. **Tests pequeños y enfocados**: Cada test debe probar una funcionalidad específica
-3. **Limpia el estado**: Usa `clearExtensionStorage()` antes de cada test
-4. **Espera adecuadamente**: Usa `waitForStorageUpdate()` después de operaciones async
-5. **Selectores robustos**: Prefiere IDs o data-testids sobre clases CSS
+- [Playwright documentation](https://playwright.dev/)
+- [Chrome extension testing with Playwright](https://playwright.dev/docs/chrome-extensions)
+- [Playwright best practices](https://playwright.dev/docs/best-practices)

@@ -18,6 +18,7 @@
   },
   "scripts": {
     "test": "jest",
+    "build:webstore": "node ./scripts/build-webstore-zip.mjs",
     "test:e2e": "playwright test smoke.spec.js basic-functionality.spec.js recording-replay.spec.js",
     "test:e2e:all": "playwright test smoke.spec.js basic-functionality.spec.js recording-replay.spec.js annotation-editor.spec.js reports-export.spec.js crop-screenshot.spec.js",
     "test:e2e:headed": "cross-env HEADED=true playwright test smoke.spec.js basic-functionality.spec.js recording-replay.spec.js",

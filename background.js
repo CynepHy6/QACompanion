@@ -2,7 +2,6 @@ import { Session } from './src/Session.js';
 import { Bug, Note, normalizeImageEntries } from './src/Annotation.js';
 import { buildExtensionStatePayload, ExtensionStateService, hasDraftContent, hasExportableState } from './src/ExtensionStateService.js';
 import { createEmptyRecording, normalizeRecording } from './src/Recording.js';
-import { ExportSessionCSV } from './src/ExportSessionCSV.js';
 import { createBase64DataUrl } from './src/dataUrlEncoding.js';
 import { getSystemInfo } from './src/browserInfo.js';
 import { getMessage } from './src/i18n.js';
@@ -1023,29 +1022,6 @@ async function deleteAnnotation(annotationId) {
     await saveSession();
 }
 
-async function exportSessionCSV() {
-    await ensureStateReady();
-
-    if (session.getAnnotations().length === 0) {
-        return false;
-    }
-
-    const exportService = new ExportSessionCSV(session);
-    const csvData = exportService.getCSVData();
-    const browserInfo = session.getBrowserInfo();
-    const browserInfoString = `${browserInfo.browser}_${browserInfo.browserVersion}`;
-    const fileName = `ExploratorySession_${browserInfoString}_${formatExportTimestamp(session.StartDateTime)}.csv`;
-    const dataUrl = createBase64DataUrl('text/csv', csvData);
-
-    await chrome.downloads.download({
-        url: dataUrl,
-        filename: fileName,
-        saveAs: true
-    });
-
-    return true;
-}
-
 async function exportSessionJSON() {
     await ensureStateReady();
 
@@ -1279,8 +1255,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             case 'deleteAnnotation':
                 await deleteAnnotation(request.annotationId || request.annotationID);
                 return { status: 'ok' };
-            case 'exportSessionCSV':
-                return { status: await exportSessionCSV() ? 'ok' : 'nothing to export' };
             case 'exportSessionJSon':
                 return { status: await exportSessionJSON() ? 'ok' : 'nothing to export' };
             case 'importSessionJSonStoredChunks':

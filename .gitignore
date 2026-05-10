@@ -55,6 +55,7 @@ fabric.properties
 *.zip
 .DS_Store
 node_modules/
+dist/
 .claude/settings.local.json
 playwright-report/
 test/e2e/.chrome-profile/
