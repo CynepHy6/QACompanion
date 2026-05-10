@@ -107,7 +107,7 @@ export function displayStats(reportState) {
         <div class="chart-legend__item chart-legend__item--${stat.type.toLowerCase()}">
             <div class="chart-legend__icon">
                 ${stat.icon
-            ? `<img src="${stat.icon}" alt="${escapeHtml(getAnnotationTypeLabel(stat.type))}" class="annotation-icon">`
+            ? `<img src="${stat.icon}" alt="${escapeHtml(getAnnotationTypeLabel(stat.type))}" class="annotation-icon" data-annotation-type="${escapeHtml(stat.type)}">`
             : `<span class="chart-legend__glyph">${escapeHtml(stat.label.slice(0, 1))}</span>`}
             </div>
             <div class="chart-legend__content">
@@ -246,7 +246,7 @@ export function displayAnnotationsTable(reportState, currentFilter) {
         <tr class="annotation-row annotation-row--${type.toLowerCase()}">
             <td class="annotation-type-cell">
                 <span class="type-icon-chip type-icon-chip--${type.toLowerCase()}" title="${escapeHtml(getAnnotationTypeLabel(type))}" aria-label="${escapeHtml(getAnnotationTypeLabel(type))}">
-                    <img src="${ANNOTATION_ICONS[type] || ''}" alt="${escapeHtml(getAnnotationTypeLabel(type))}" class="annotation-icon">
+                    <img src="${ANNOTATION_ICONS[type] || ''}" alt="${escapeHtml(getAnnotationTypeLabel(type))}" class="annotation-icon" data-annotation-type="${escapeHtml(type)}">
                 </span>
             </td>
             <td class="annotation-description">

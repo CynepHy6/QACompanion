@@ -179,9 +179,11 @@ function removeInteractiveElements(container) {
         headerRow.lastElementChild.remove();
     }
 
-    // Remove delete column from each row
-    container.querySelectorAll('tbody tr').forEach(row => {
-        if (row.lastElementChild) row.lastElementChild.remove();
+    // Remove delete column only from primary annotation rows.
+    container.querySelectorAll('tbody tr.annotation-row').forEach((row) => {
+        if (row.lastElementChild) {
+            row.lastElementChild.remove();
+        }
     });
 
     container.querySelectorAll('.description-editor').forEach((editor) => {
@@ -230,8 +232,8 @@ async function loadSvgIconsAsBase64() {
 }
 
 function replaceSvgIcons(container, icons) {
-    container.querySelectorAll('.annotation-icon').forEach(icon => {
-        const type = icon.alt;
+    container.querySelectorAll('.annotation-icon').forEach((icon) => {
+        const type = icon.dataset.annotationType || icon.alt;
         if (icons[type]) {
             icon.src = icons[type];
         }
