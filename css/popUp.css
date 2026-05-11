@@ -301,6 +301,17 @@ button:focus-visible,
 	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
+.saved-annotation-card--inactive {
+	cursor: default;
+	opacity: 0.72;
+}
+
+.saved-annotation-card--inactive:hover {
+	border-color: var(--color-border);
+	box-shadow: none;
+	transform: none;
+}
+
 .saved-annotation-card__meta {
 	display: flex;
 	flex-direction: row;
@@ -371,8 +382,6 @@ button:focus-visible,
 .recording-steps-list {
 	display: grid;
 	gap: 8px;
-	max-height: 280px;
-	overflow-y: auto;
 }
 
 .recording-steps-list--empty {

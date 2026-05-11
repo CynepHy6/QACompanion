@@ -7,6 +7,27 @@ const {
   waitForStorageUpdate,
 } = require('./helpers/extension-helper');
 
+async function sendRuntimeMessage(popupPage, message) {
+  return popupPage.evaluate((payload) => {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(payload, (response) => resolve(response));
+    });
+  }, message);
+}
+
+async function getReportPage(context) {
+  const pages = context.pages();
+
+  for (const page of pages) {
+    const url = page.url();
+    if (url.includes('preview.html') || url.includes('HTMLReport')) {
+      return page;
+    }
+  }
+
+  return null;
+}
+
 test.describe('Reports and Export Functionality', () => {
   let context;
   let extensionId;
@@ -64,17 +85,7 @@ test.describe('Reports and Export Functionality', () => {
     // Wait for report page to open
     await waitForStorageUpdate(popupPage, 2000);
 
-    // Find the report page
-    const pages = context.pages();
-    let reportPage = null;
-
-    for (const page of pages) {
-      const url = page.url();
-      if (url.includes('preview.html') || url.includes('HTMLReport')) {
-        reportPage = page;
-        break;
-      }
-    }
+    const reportPage = await getReportPage(context);
 
     if (reportPage) {
       await reportPage.waitForLoadState('domcontentloaded');
@@ -90,7 +101,43 @@ test.describe('Reports and Export Functionality', () => {
     }
   });
 
-  test('should include unsaved draft as a regular action in HTML report', async () => {
+  test('should hide screenshot placeholder for navigation replay steps in HTML report', async () => {
+    await clearExtensionStorage(popupPage);
+    await popupPage.reload();
+    await popupPage.waitForLoadState('domcontentloaded');
+
+    await popupPage.fill('#draftDescription', 'Bug with navigation replay');
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await testPage.click('button:has-text("Go to page 1")');
+    await testPage.waitForURL('**/page1.html');
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'syncRecordingNavigation' });
+    await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.bringToFront();
+    await popupPage.click('#actionTabBtn');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.click('#previewBtn');
+    await waitForStorageUpdate(popupPage, 2000);
+
+    const reportPage = await getReportPage(context);
+    expect(reportPage).toBeTruthy();
+
+    await reportPage.waitForLoadState('domcontentloaded');
+    await expect(reportPage.locator('.recording-step[data-step-type="navigation"]')).toHaveCount(1);
+    await expect(reportPage.locator('.recording-step[data-step-type="navigation"] .recording-step__shot')).toHaveCount(0);
+    await expect(reportPage.locator('.recording-step[data-step-type="navigation"] .recording-step__shot-placeholder')).toHaveCount(0);
+    await expect(reportPage.locator('.recording-step[data-step-type="navigation"] .recording-step__url')).toHaveCount(0);
+    await reportPage.close();
+  });
+
+  test('should disable HTML report button when there are no saved annotations, even with draft content', async () => {
     await clearExtensionStorage(popupPage);
     await popupPage.reload();
     await popupPage.waitForLoadState('domcontentloaded');
@@ -99,20 +146,33 @@ test.describe('Reports and Export Functionality', () => {
     await popupPage.fill('#draftDescription', 'Draft promoted to action');
     await waitForStorageUpdate(popupPage, 400);
 
-    await popupPage.click('#previewBtn');
-    await waitForStorageUpdate(popupPage, 2000);
+    await expect(popupPage.locator('#previewBtn')).toBeDisabled();
+  });
 
-    const pages = context.pages();
-    const reportPage = pages.find((page) => page.url().includes('preview.html') || page.url().includes('HTMLReport'));
+  test('should disable HTML report button when there is only draft replay', async () => {
+    await clearExtensionStorage(popupPage);
+    await popupPage.reload();
+    await popupPage.waitForLoadState('domcontentloaded');
 
-    expect(reportPage).toBeTruthy();
-    await reportPage.waitForLoadState('domcontentloaded');
+    await testPage.bringToFront();
+    await popupPage.evaluate(() => {
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'startRecordingFlow' }, (response) => resolve(response));
+      });
+    });
+    await testPage.fill('#testInput', 'Draft replay only');
+    await waitForStorageUpdate(popupPage, 700);
+    await popupPage.evaluate(() => {
+      return new Promise((resolve) => {
+        chrome.runtime.sendMessage({
+          type: 'stopRecordingFlow',
+          options: { suppressSyntheticNavigationOnStop: true }
+        }, (response) => resolve(response));
+      });
+    });
+    await waitForStorageUpdate(popupPage, 700);
 
-    const reportContent = await reportPage.content();
-    expect(reportContent).toContain('Draft promoted to action');
-    expect(reportContent).not.toContain('Draft Snapshot');
-
-    await reportPage.close();
+    await expect(popupPage.locator('#previewBtn')).toBeDisabled();
   });
 
   test('should maintain session data across popup closes', async () => {

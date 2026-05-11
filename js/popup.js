@@ -150,6 +150,36 @@ function getRecordingTargetKey(recordingTarget) {
   return isDraftTarget(recordingTarget) ? 'draft' : recordingTarget.annotationId;
 }
 
+function getAnnotationSummaryById(annotationId) {
+  if (typeof annotationId !== 'string' || annotationId === '') {
+    return null;
+  }
+
+  return currentAnnotations.find((annotationItem) => annotationItem.id === annotationId) || null;
+}
+
+function canSelectAnnotationRecordingTarget(recordingTarget) {
+  if (isDraftTarget(recordingTarget)) {
+    return true;
+  }
+
+  const annotationSummary = getAnnotationSummaryById(recordingTarget.annotationId);
+  return Boolean(annotationSummary?.recording?.hasRecording);
+}
+
+function normalizeSelectedRecordingTarget() {
+  if (currentRecording.status !== 'idle') {
+    return;
+  }
+
+  if (canSelectAnnotationRecordingTarget(currentSelectedRecordingTarget)) {
+    return;
+  }
+
+  currentSelectedRecordingTarget = createDraftTarget();
+  currentRecording = currentDraftRecording;
+}
+
 function getPopupStateSignature(popupState) {
   return JSON.stringify({
     draft: popupState?.draft || null,
@@ -211,6 +241,7 @@ function getElements() {
     clearDraftButton: document.getElementById('clearDraftBtn'),
     clearRecordingButton: document.getElementById('clearRecordingBtn'),
     descriptionField: document.getElementById('draftDescription'),
+    draftPanel: document.getElementById('draftPanel'),
     titleLabel: document.getElementById('draftTitle'),
     counterLabel: document.getElementById('draftImageCount'),
     imagesContainer: document.getElementById('draftImages'),
@@ -541,16 +572,20 @@ function renderSavedAnnotationsList() {
   savedAnnotationsPanel.hidden = false;
   savedAnnotationsList.className = 'saved-annotations-list';
   savedAnnotationsList.innerHTML = currentAnnotations.map((annotationItem) => {
-    const isSelected = getRecordingTargetKey(currentSelectedRecordingTarget) === annotationItem.id;
+    const hasLinkedReplay = Boolean(annotationItem.recording?.hasRecording);
+    const isSelected = hasLinkedReplay && getRecordingTargetKey(currentSelectedRecordingTarget) === annotationItem.id;
     const previewImage = Array.isArray(annotationItem.imageEntries) && annotationItem.imageEntries.length > 0
       ? annotationItem.imageEntries[0].imageURL
       : '';
-    const replaySummary = annotationItem.recording.hasRecording
+    const replaySummary = hasLinkedReplay
       ? `${formatStepCount(annotationItem.recording.stepCount)}`
       : getMessage('reportNoReplayLinked', undefined, 'No replay linked.');
 
     return `
-      <article class="saved-annotation-card${isSelected ? ' is-selected' : ''}" data-annotation-id="${escapeHtml(annotationItem.id)}">
+      <article
+        class="saved-annotation-card${isSelected ? ' is-selected' : ''}${hasLinkedReplay ? '' : ' saved-annotation-card--inactive'}"
+        ${hasLinkedReplay ? `data-annotation-id="${escapeHtml(annotationItem.id)}"` : 'aria-disabled="true"'}
+      >
         <div class="saved-annotation-card__meta">
           <div>
             <span class="saved-annotation-card__type saved-annotation-card__type--${escapeHtml(annotationItem.type.toLowerCase())}">${escapeHtml(getAnnotationTypeLabel(annotationItem.type))}</span>
@@ -641,16 +676,21 @@ function renderRecordingControls() {
   } = getElements();
   const isRecordingActive = currentRecording.status === 'recording';
   const isReplayActive = currentRecording.status === 'replaying';
+  const hasRecording = currentRecording.hasRecording;
   const isDraftTargetSelected = isDraftTarget(currentSelectedRecordingTarget);
+  const hasSavedAnnotations = (currentSummary?.annotationsCount || 0) > 0;
+  const shouldShowRecordButton = isDraftTargetSelected && (isRecordingActive || (!hasRecording && !isReplayActive));
+  const shouldShowPlayButton = !isRecordingActive && (isReplayActive || hasRecording);
 
   renderRecordingButtonMarkup(recordingToggleButton, isRecordingActive ? 'stop' : 'record');
   recordingToggleButton.classList.toggle('is-recording', isRecordingActive);
-  recordingToggleButton.hidden = !isDraftTargetSelected;
-  recordingToggleButton.disabled = isReplayActive || !isDraftTargetSelected;
+  recordingToggleButton.hidden = !shouldShowRecordButton;
+  recordingToggleButton.disabled = !shouldShowRecordButton;
 
   playRecordingButton.classList.toggle('is-replaying', isReplayActive);
   renderRecordingButtonMarkup(playRecordingButton, isReplayActive ? 'stop' : 'play');
-  playRecordingButton.disabled = (!currentRecording.canPlay && !isReplayActive) || isRecordingActive;
+  playRecordingButton.hidden = !shouldShowPlayButton;
+  playRecordingButton.disabled = !shouldShowPlayButton || (!currentRecording.canPlay && !isReplayActive);
 
   if (recordingSelectionCaption) {
     recordingSelectionCaption.textContent = getRecordingTargetSubtitle(currentSelectedRecordingTarget);
@@ -674,12 +714,12 @@ function renderRecordingControls() {
   document.getElementById('addCropScreenshotBtn').disabled = isReplayActive;
   document.getElementById('exportJsonBtn').disabled = isReplayActive;
   document.getElementById('importJsonBtn').disabled = isReplayActive;
-  document.getElementById('previewBtn').disabled = isReplayActive;
+  document.getElementById('previewBtn').disabled = isReplayActive || !hasSavedAnnotations;
   document.getElementById('resetBtn').disabled = isReplayActive;
 
   addScreenshotButton.disabled = isReplayActive || screenshotCooldownTimer !== null;
-  clearRecordingButton.hidden = !isDraftTargetSelected;
-  clearRecordingButton.disabled = isReplayActive || isRecordingActive || !isDraftTargetSelected;
+  clearRecordingButton.hidden = !hasRecording;
+  clearRecordingButton.disabled = isReplayActive || isRecordingActive || !hasRecording;
 }
 
 function renderDraft() {
@@ -760,11 +800,11 @@ function applyPopupState(popupState) {
   currentRecording = popupState?.selectedRecording || currentRecording;
   currentAnnotations = Array.isArray(popupState?.annotations) ? popupState.annotations : [];
   currentSummary = popupState?.summary || currentSummary;
+  normalizeSelectedRecordingTarget();
 
   if (
     currentRecording.status === 'recording'
     || currentRecording.status === 'replaying'
-    || currentRecording.failedStepId
   ) {
     setPopupMode('recorder', { render: false });
   }
@@ -929,6 +969,10 @@ async function playRecording(options = {}) {
 }
 
 async function selectRecordingTarget(recordingTarget, options = {}) {
+  if (!canSelectAnnotationRecordingTarget(recordingTarget)) {
+    return;
+  }
+
   setClearRecordingArmed(false);
   const response = await sendRuntimeMessage({
     type: 'setSelectedRecordingTarget',
@@ -939,6 +983,14 @@ async function selectRecordingTarget(recordingTarget, options = {}) {
     setPopupMode('recorder', { render: false });
     renderRecordingControls();
   }
+}
+
+async function selectDraftRecordingTarget(options = {}) {
+  if (currentRecording.status !== 'idle' || isDraftTarget(currentSelectedRecordingTarget)) {
+    return;
+  }
+
+  await selectRecordingTarget(createDraftTarget(), options);
 }
 
 function startRecordingStatePolling() {
@@ -954,7 +1006,7 @@ async function exportSessionJSON() {
 
 async function openPreviewReport() {
   const summary = await sendRuntimeMessage({ type: 'getSessionData' });
-  if (!summary?.hasExportableState) {
+  if ((summary?.annotationsCount || 0) === 0) {
     return;
   }
 
@@ -1011,9 +1063,7 @@ function bindEvents() {
   });
 
   elements.descriptionField.addEventListener('focus', () => {
-    if (!isDraftTarget(currentSelectedRecordingTarget)) {
-      selectRecordingTarget(createDraftTarget()).catch(() => {});
-    }
+    selectDraftRecordingTarget().catch(() => {});
   });
 
   elements.descriptionField.addEventListener('keydown', (event) => {
@@ -1136,6 +1186,10 @@ function bindEvents() {
     const annotationId = annotationCard.dataset.annotationId || '';
     const annotationTarget = createAnnotationTarget(annotationId);
     selectRecordingTarget(annotationTarget, { openRecorder: true }).catch((error) => alert(error.message));
+  });
+
+  elements.draftPanel.addEventListener('click', () => {
+    selectDraftRecordingTarget().catch(() => {});
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {

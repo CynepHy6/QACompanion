@@ -9,7 +9,13 @@ const ADD_METHODS = { Bug: 'addBug', Note: 'addNote' };
 function buildReportState(rawPayload) {
     const rawSession = rawPayload?.session || {};
     const session = new Session(rawSession.startDateTime, rawSession.browserInfo);
-    const rawAnnotations = Array.isArray(rawSession.annotations) ? rawSession.annotations : [];
+    const draftAnnotationId = typeof rawPayload?.draftAnnotationId === 'string' ? rawPayload.draftAnnotationId : '';
+    const rawAnnotations = (Array.isArray(rawSession.annotations) ? rawSession.annotations : [])
+        .filter((annotation) => annotation?.id !== draftAnnotationId);
+    const annotationRecordingsById = normalizeRecordingMap(rawPayload?.annotationRecordingsById || {});
+    if (draftAnnotationId !== '') {
+        delete annotationRecordingsById[draftAnnotationId];
+    }
 
     rawAnnotations.forEach((annotation) => {
         const AnnotationConstructor = ANNOTATION_CONSTRUCTORS[annotation.type];
@@ -35,9 +41,9 @@ function buildReportState(rawPayload) {
             imageEntries: [],
             imageURLs: []
         },
-        draftRecording: normalizeRecording(rawPayload?.draftRecording || {}),
-        annotationRecordingsById: normalizeRecordingMap(rawPayload?.annotationRecordingsById || {}),
-        draftAnnotationId: typeof rawPayload?.draftAnnotationId === 'string' ? rawPayload.draftAnnotationId : '',
+        draftRecording: createEmptyRecording(),
+        annotationRecordingsById,
+        draftAnnotationId,
         selectedRecordingTarget: rawPayload?.selectedRecordingTarget || { kind: 'draft', annotationId: '' }
     };
 }
@@ -48,7 +54,7 @@ function buildReportState(rawPayload) {
  */
 export async function loadReportState() {
     const response = await chrome.runtime.sendMessage({ type: "getSessionData" });
-    if (!response || !response.hasExportableState) {
+    if (!response || (response.annotationsCount || 0) === 0) {
         return null;
     }
 

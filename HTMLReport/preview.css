@@ -549,6 +549,10 @@ body {
     align-items: start;
 }
 
+.recording-step__body--without-shot {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .recording-step__header {
     display: flex;
     flex-wrap: wrap;

@@ -4,6 +4,10 @@
 - `QACompanion` is a Chrome extension (Manifest V3) for exploratory testing.
 - The project started as a fork of the original Exploratory Testing Chrome Extension and has been substantially extended.
 - The codebase is plain JavaScript and HTML/CSS, without TypeScript.
+- High-level expected product behavior lives in `LOGIC.md`.
+- When code and `LOGIC.md` diverge, the divergence SHOULD be resolved explicitly:
+  - update `LOGIC.md` if the intended behavior changed
+  - or fix the code if implementation drifted away from the intended logic
 
 ## Main User Flows
 
@@ -27,7 +31,10 @@
   - `navigation`
 - Replay is currently limited to one tab with navigation support.
 - Recorder can be attached either to the current draft or to a saved annotation.
-- Recorder shows a list of recorded steps, linked screenshots, and a selectable list of saved annotations with their own replays.
+- Recorder shows a list of recorded steps, linked screenshots, and a selectable list of saved annotations that already have their own replays.
+- Navigation steps are recorded immediately on URL change and do not create recording screenshots.
+- Recorder toolbar exposes only one primary action at a time: record, stop, or replay.
+- Existing recording must be cleared before a new recording can be started for the same target.
 - During replay:
   - the active step is highlighted in the popup
   - the popup scrolls to the active step when open
@@ -132,6 +139,9 @@
 
 ## Reports and Export
 - HTML preview/report already includes replay data for saved annotations.
+- HTML preview/report shows only explicitly saved annotations.
+- Unsaved draft content and standalone draft recording are not shown in the HTML report.
+- The popup report button should be unavailable when there are no saved annotations.
 - Replay timelines render recorded steps, linked recording screenshots, and replay failures when present.
 - Export/import is driven by `ExtensionStateService`, which can include:
   - session annotations
@@ -166,4 +176,4 @@
 - This section is a temporary reminder list of planned improvements.
 - Remove or update items from this list as soon as they are implemented in code, so `AGENTS.md` does not drift away from reality.
 - Pending ideas:
-  - публикация в chrome web store
+  - publish to Chrome Web Store (register new account in Russia, currently restricted for russian banks)

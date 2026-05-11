@@ -138,6 +138,10 @@ function getReplayEntries(reportState) {
         .filter(({ recordingState }) => Array.isArray(recordingState.steps) && recordingState.steps.length > 0);
 }
 
+function stepExpectsRecordingScreenshot(stepItem) {
+    return stepItem?.type === 'click' || stepItem?.type === 'submit';
+}
+
 function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
     const screenshotByStepId = new Map(
         recordingState.screenshots.map((screenshotItem) => [screenshotItem.triggerStepId, screenshotItem])
@@ -145,24 +149,28 @@ function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
 
     return recordingState.steps.map((stepItem, stepIndex) => {
         const linkedScreenshot = screenshotByStepId.get(stepItem.stepId);
+        const shouldRenderScreenshotSlot = Boolean(linkedScreenshot) || stepExpectsRecordingScreenshot(stepItem);
         const isFailedStep = recordingState.failedStepId === stepItem.stepId;
+        const recordingDatasetAttributes = annotationIdentifier
+            ? `data-recording-annotation-id="${annotationIdentifier}" data-recording-step-id="${stepItem.stepId}"`
+            : `data-draft-recording-step-id="${stepItem.stepId}"`;
         return `
-            <article class="recording-step${isFailedStep ? ' is-failed' : ''}">
+            <article class="recording-step${isFailedStep ? ' is-failed' : ''}" data-step-type="${escapeHtml(stepItem.type)}">
                 <div class="recording-step__header">
                     <span class="recording-step__index">${escapeHtml(getMessage('popupStepLabel', [String(stepIndex + 1)], `Step ${stepIndex + 1}`))}</span>
                     <span class="recording-step__type">${escapeHtml(getRecorderStepTypeLabel(stepItem.type))}</span>
                     <span class="recording-step__time">${formatDateTime(stepItem.timestamp)}</span>
                 </div>
-                <div class="recording-step__body">
-                    <div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
+                <div class="recording-step__body${shouldRenderScreenshotSlot ? '' : ' recording-step__body--without-shot'}">
+                    ${shouldRenderScreenshotSlot ? `<div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
                         ${linkedScreenshot
-                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" data-recording-annotation-id="${annotationIdentifier}" data-recording-step-id="${stepItem.stepId}" alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
+                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" ${recordingDatasetAttributes} alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
                 : `<div class="recording-step__shot-placeholder">${escapeHtml(getMessage('reportRecordingNoScreenshot', undefined, 'No screenshot'))}</div>`}
-                    </div>
+                    </div>` : ''}
                     <div class="recording-step__content">
                         <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
                         ${isFailedStep && recordingState.lastError ? `<p class="recording-step__error">${escapeHtml(recordingState.lastError)}</p>` : ''}
-                        ${stepItem.url ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
+                        ${stepItem.url && stepItem.type !== 'navigation' ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
                         ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
                     </div>
                 </div>

@@ -344,6 +344,9 @@
         "message": "Сначала останови запись, потом запускай повтор."
     },
     "errorNoRecordingToReplay": { "message": "Нечего воспроизводить." },
+    "errorRecordingAlreadyExists": {
+        "message": "Сначала удали существующую запись, потом начинай новую."
+    },
     "errorNoActiveTabForRecording": {
         "message": "Не нашел активную вкладку для записи."
     },
@@ -393,6 +396,16 @@
     "notificationActionSavedTitle": { "message": "Шаг сохранен" },
     "notificationActionSavedBody": {
         "message": "Запись \"$1\" успешно сохранена."
+    },
+    "notificationReplayDraftTarget": { "message": "текущего черновика" },
+    "notificationReplaySavedTarget": { "message": "сохраненного шага" },
+    "notificationReplayCompletedTitle": { "message": "Повтор завершен" },
+    "notificationReplayCompletedBody": {
+        "message": "Повтор для $1 успешно дошел до конца."
+    },
+    "notificationReplayFailedTitle": { "message": "Повтор остановлен" },
+    "notificationReplayFailedBody": {
+        "message": "Повтор для $1 остановился с ошибкой: $2"
     },
     "notificationImportSuccessTitle": { "message": "Импорт завершен" },
     "notificationImportSuccessBody": {

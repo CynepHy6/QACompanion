@@ -29,6 +29,7 @@ const STORED_SCREENSHOT_MIME_TYPE = 'image/webp';
 const STORED_SCREENSHOT_QUALITY = 0.82;
 const PLAYBACK_DELAY_MIN_MS = 150;
 const PLAYBACK_DELAY_MAX_MS = 2000;
+const PLAYBACK_TARGET_NOT_FOUND_RETRY_DELAY_MS = 1000;
 
 const VALID_ANNOTATION_TYPES = ['Bug', 'Note'];
 
@@ -276,7 +277,7 @@ function clearReplayFailureState(recordingState) {
 }
 
 function shouldCaptureRecordingScreenshot(stepType) {
-    return stepType === 'click' || stepType === 'submit' || stepType === 'navigation';
+    return stepType === 'click' || stepType === 'submit';
 }
 
 function getActiveRecordingState() {
@@ -294,6 +295,21 @@ function getRecordingTargetLabel(recordingTarget) {
     }
 
     return resolvedTarget.annotationId;
+}
+
+function getRecordingTargetDisplayName(recordingTarget) {
+    const resolvedTarget = resolveRecordingTarget(recordingTarget);
+    if (!isAnnotationRecordingTarget(resolvedTarget)) {
+        return getMessage('notificationReplayDraftTarget', undefined, 'current draft');
+    }
+
+    const annotation = session.getAnnotationById(resolvedTarget.annotationId);
+    const annotationName = annotation?.getName?.() || '';
+    if (typeof annotationName === 'string' && annotationName.trim() !== '') {
+        return annotationName.trim();
+    }
+
+    return getMessage('notificationReplaySavedTarget', undefined, 'saved step');
 }
 
 async function ensureContentScriptReady(tabId) {
@@ -829,6 +845,10 @@ async function startRecordingFlow(recordingTarget = null) {
         throw new Error(getMessage('errorReplayAlreadyRunning', undefined, 'Replay is already running.'));
     }
 
+    if (Array.isArray(recordingState.steps) && recordingState.steps.length > 0) {
+        throw new Error(getMessage('errorRecordingAlreadyExists', undefined, 'Clear the existing recording before starting a new one.'));
+    }
+
     const activeTab = await getActiveTab();
     if (!activeTab || activeTab.id == null) {
         throw new Error(getMessage('errorNoActiveTabForRecording', undefined, 'No active tab found for recording.'));
@@ -905,7 +925,7 @@ async function stopRecordingFlow(options = {}) {
                     inputType: '',
                     tagName: '',
                     text: '',
-                    screenshotRef: await captureRecordingScreenshot(stepId, currentTabId)
+                    screenshotRef: ''
                 });
                 recordingState.lastKnownUrl = currentTab.url;
             }
@@ -937,7 +957,7 @@ async function clearRecordingData(recordingTarget = null) {
         setActiveRecordingTarget(createDraftRecordingTarget());
     }
     if (getRecordingTargetLabel(selectedRecordingTarget) === getRecordingTargetLabel(targetToClear)) {
-        setSelectedRecordingTarget(targetToClear);
+        setSelectedRecordingTarget(createDraftRecordingTarget());
     }
     await saveRecording();
     return createRecordingPayload(targetToClear);
@@ -981,13 +1001,15 @@ async function appendRecordedStep(rawStep, senderTab) {
         return createRecordingPayload(activeRecordingTarget);
     }
 
-    if (shouldCaptureRecordingScreenshot(stepItem.type)) {
-        stepItem.screenshotRef = await captureRecordingScreenshot(stepId, senderTab.id);
-    }
-
     recordingState.steps.push(stepItem);
     recordingState.lastKnownUrl = stepItem.url;
     await saveRecording();
+
+    if (shouldCaptureRecordingScreenshot(stepItem.type)) {
+        stepItem.screenshotRef = await captureRecordingScreenshot(stepId, senderTab.id);
+        await saveRecording();
+    }
+
     return createRecordingPayload(activeRecordingTarget);
 }
 
@@ -1012,7 +1034,7 @@ async function appendNavigationStep(tabId, nextUrl) {
         inputType: '',
         tagName: '',
         text: '',
-        screenshotRef: await captureRecordingScreenshot(stepId, tabId)
+        screenshotRef: ''
     };
 
     recordingState.steps.push(stepItem);
@@ -1027,6 +1049,17 @@ async function playRecordedStepOnTab(tabId, stepItem) {
     });
 }
 
+async function playRecordedStepWithSingleRetry(tabId, stepItem) {
+    const firstPlaybackResponse = await playRecordedStepOnTab(tabId, stepItem);
+    if (firstPlaybackResponse?.success === true || firstPlaybackResponse?.reason !== 'target-not-found') {
+        return firstPlaybackResponse;
+    }
+
+    await waitForDuration(PLAYBACK_TARGET_NOT_FOUND_RETRY_DELAY_MS);
+    await waitForTabComplete(tabId);
+    return playRecordedStepOnTab(tabId, stepItem);
+}
+
 async function playRecordingFlow(recordingTarget = null) {
     await ensureStateReady();
 
@@ -1034,6 +1067,7 @@ async function playRecordingFlow(recordingTarget = null) {
     setSelectedRecordingTarget(targetToUse);
     setActiveRecordingTarget(targetToUse);
     const recordingState = getActiveRecordingState();
+    const replayTargetDisplayName = getRecordingTargetDisplayName(targetToUse);
 
     if (recordingState.status === 'recording') {
         throw new Error(getMessage('errorStopRecordingBeforeReplay', undefined, 'Stop recording before starting replay.'));
@@ -1090,7 +1124,7 @@ async function playRecordingFlow(recordingTarget = null) {
                     await ensureContentScriptReady(activeTab.id);
                 } else {
                     await waitForTabComplete(activeTab.id);
-                    const playbackResponse = await playRecordedStepOnTab(activeTab.id, stepItem);
+                    const playbackResponse = await playRecordedStepWithSingleRetry(activeTab.id, stepItem);
                     if (!playbackResponse || playbackResponse.success !== true) {
                         throw createReplayStepError(stepItem, stepIndex, playbackResponse);
                     }
@@ -1110,6 +1144,14 @@ async function playRecordingFlow(recordingTarget = null) {
         clearReplayFailureState(recordingState);
         await saveRecording();
         clearPlaybackToken();
+        showNotification(
+            getMessage('notificationReplayCompletedTitle', undefined, 'Replay completed'),
+            getMessage(
+                'notificationReplayCompletedBody',
+                [replayTargetDisplayName],
+                `Replay finished for ${replayTargetDisplayName}.`
+            )
+        );
         return createRecordingPayload(targetToUse);
     } catch (error) {
         recordingState.failedStepId = typeof error?.failedStepId === 'string' ? error.failedStepId : '';
@@ -1117,6 +1159,17 @@ async function playRecordingFlow(recordingTarget = null) {
         markRecordingStopped(recordingState);
         await saveRecording();
         clearPlaybackToken();
+        if ((error?.message || '') !== getMessage('errorReplayCancelled', undefined, 'Replay cancelled.')) {
+            showNotification(
+                getMessage('notificationReplayFailedTitle', undefined, 'Replay stopped'),
+                getMessage(
+                    'notificationReplayFailedBody',
+                    [replayTargetDisplayName, error.message || getMessage('errorReplayActionFailed', ['?'], 'Replay failed.')],
+                    `Replay stopped for ${replayTargetDisplayName}: ${error.message || 'Replay failed.'}`
+                ),
+                7000
+            );
+        }
         throw error;
     }
 }
@@ -1175,7 +1228,7 @@ async function syncRecordingNavigationFromActiveTab() {
         inputType: '',
         tagName: '',
         text: '',
-        screenshotRef: await captureRecordingScreenshot(stepId, activeTab.id)
+        screenshotRef: ''
     });
     recordingState.lastKnownUrl = activeTab.url;
     await saveRecording();

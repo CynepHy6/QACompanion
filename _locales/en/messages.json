@@ -338,6 +338,9 @@
     "errorNoRecordingToReplay": {
         "message": "There is no recording to replay."
     },
+    "errorRecordingAlreadyExists": {
+        "message": "Clear the existing recording before starting a new one."
+    },
     "errorNoActiveTabForRecording": {
         "message": "No active tab found for recording."
     },
@@ -385,6 +388,16 @@
     "notificationActionSavedTitle": { "message": "Step saved" },
     "notificationActionSavedBody": {
         "message": "\"$1\" was saved successfully."
+    },
+    "notificationReplayDraftTarget": { "message": "current draft" },
+    "notificationReplaySavedTarget": { "message": "saved step" },
+    "notificationReplayCompletedTitle": { "message": "Replay completed" },
+    "notificationReplayCompletedBody": {
+        "message": "Replay finished for $1."
+    },
+    "notificationReplayFailedTitle": { "message": "Replay stopped" },
+    "notificationReplayFailedBody": {
+        "message": "Replay stopped for $1: $2"
     },
     "notificationImportSuccessTitle": { "message": "Import completed" },
     "notificationImportSuccessBody": {

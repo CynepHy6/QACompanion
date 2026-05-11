@@ -10,8 +10,10 @@ const {
 
 const RECORD_LABEL = /Record|Запись/;
 const STOP_LABEL = /Stop|Стоп/;
+const PLAY_LABEL = /Play|Повтор/;
 const NO_RECORDED_STEPS_LABEL = /No recorded steps yet\.|Записанных шагов пока нет\./;
 const REPLAY_TARGET_NOT_FOUND_MESSAGE = /Step 1 failed: target element not found\.|Шаг 1: целевой элемент не найден\./;
+const RECORDING_ALREADY_EXISTS_MESSAGE = /Clear the existing recording before starting a new one\.|Сначала удали существующую запись, потом начинай новую\./;
 
 async function installReplayProbe(page) {
   await page.evaluate(() => {
@@ -90,6 +92,15 @@ test.describe('Recording and Replay', () => {
     expect(recordingData.steps.some((stepItem) => stepItem.type === 'input' || stepItem.type === 'change')).toBeTruthy();
     expect(recordingData.steps.some((stepItem) => stepItem.type === 'click')).toBeTruthy();
     expect(recordingData.steps.some((stepItem) => stepItem.type === 'navigation')).toBeTruthy();
+    const clickStepIndex = recordingData.steps.findIndex((stepItem) => stepItem.type === 'click');
+    const navigationStepIndex = recordingData.steps.findIndex((stepItem) => stepItem.type === 'navigation');
+    expect(clickStepIndex).toBeGreaterThanOrEqual(0);
+    expect(navigationStepIndex).toBeGreaterThan(clickStepIndex);
+    expect(
+      recordingData.steps
+        .filter((stepItem) => stepItem.type === 'navigation')
+        .every((stepItem) => !stepItem.screenshotRef)
+    ).toBeTruthy();
 
     await testPage.goto('http://localhost:8000/test/e2e/test-pages/index.html');
     await installReplayProbe(testPage);
@@ -184,6 +195,11 @@ test.describe('Recording and Replay', () => {
       timeout: 4000
     });
     await expect(popupPage.locator('#recordingStepsList .recording-step-card.is-failed')).toHaveCount(1);
+
+    await popupPage.click('#actionTabBtn');
+    await expect(popupPage.locator('#actionTabBtn')).toHaveAttribute('aria-selected', 'true');
+    await popupPage.waitForTimeout(1300);
+    await expect(popupPage.locator('#actionTabBtn')).toHaveAttribute('aria-selected', 'true');
   });
 
   test('should require confirmation before clearing recorded steps', async () => {
@@ -224,6 +240,82 @@ test.describe('Recording and Replay', () => {
     await expect(popupPage.locator('#recordingStepsList')).toContainText(NO_RECORDED_STEPS_LABEL);
   });
 
+  test('should expose a single primary recorder action and keep saved steps without replay inactive', async () => {
+    await popupPage.click('#recorderTabBtn');
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeVisible();
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(RECORD_LABEL);
+    await expect(popupPage.locator('#playRecordingBtn')).toBeHidden();
+    await expect(popupPage.locator('#clearRecordingBtn')).toBeHidden();
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 500);
+    await popupPage.bringToFront();
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeVisible();
+    await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(STOP_LABEL);
+    await expect(popupPage.locator('#playRecordingBtn')).toBeHidden();
+
+    await testPage.bringToFront();
+    await testPage.fill('#testInput', 'Single primary action');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.bringToFront();
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+    await waitForStorageUpdate(popupPage, 700);
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeHidden();
+    await expect(popupPage.locator('#playRecordingBtn')).toBeVisible();
+    await expect(popupPage.locator('#playRecordingBtn')).toHaveText(PLAY_LABEL);
+    await expect(popupPage.locator('#clearRecordingBtn')).toBeVisible();
+
+    const duplicateDraftRecordingResponse = await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
+    expect(duplicateDraftRecordingResponse.status).toBe('error');
+    expect(duplicateDraftRecordingResponse.error).toMatch(RECORDING_ALREADY_EXISTS_MESSAGE);
+
+    await popupPage.click('#actionTabBtn');
+    await popupPage.fill('#draftDescription', 'Saved with replay');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.fill('#draftDescription', 'Saved without replay');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.click('#recorderTabBtn');
+    const replayableAnnotationCard = popupPage.locator('[data-annotation-id]').filter({ hasText: 'Saved with replay' });
+    const inactiveAnnotationCard = popupPage.locator('.saved-annotation-card--inactive').filter({ hasText: 'Saved without replay' });
+
+    await expect(replayableAnnotationCard).toHaveCount(1);
+    await expect(inactiveAnnotationCard).toHaveCount(1);
+
+    await replayableAnnotationCard.evaluate((element) => element.click());
+    await expect(replayableAnnotationCard).toHaveClass(/is-selected/);
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeHidden();
+    await expect(popupPage.locator('#playRecordingBtn')).toBeVisible();
+    await expect(popupPage.locator('#clearRecordingBtn')).toBeVisible();
+
+    const selectedCaptionBeforeInactiveClick = await popupPage.locator('#selectedRecordingCaption').textContent();
+    await inactiveAnnotationCard.evaluate((element) => element.click());
+    await expect(replayableAnnotationCard).toHaveClass(/is-selected/);
+    await expect(popupPage.locator('#selectedRecordingCaption')).toHaveText(selectedCaptionBeforeInactiveClick || '');
+
+    const sessionData = await getSessionData(popupPage);
+    const replayableAnnotation = sessionData.annotations.find((annotationItem) => annotationItem.name === 'Saved with replay');
+    expect(replayableAnnotation).toBeTruthy();
+
+    const duplicateAnnotationRecordingResponse = await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'annotation', annotationId: replayableAnnotation.id }
+    });
+    expect(duplicateAnnotationRecordingResponse.status).toBe('error');
+    expect(duplicateAnnotationRecordingResponse.error).toMatch(RECORDING_ALREADY_EXISTS_MESSAGE);
+  });
+
   test('should capture environment info when recording starts without actions', async () => {
     await testPage.goto('http://localhost:8000/test/e2e/test-pages/index.html');
     await testPage.bringToFront();
@@ -253,6 +345,7 @@ test.describe('Recording and Replay', () => {
       options: { suppressSyntheticNavigationOnStop: true }
     });
 
+    await popupPage.click('#actionTabBtn');
     await popupPage.fill('#draftDescription', 'Bug with replay');
     await popupPage.click('#BugBtn');
     await waitForStorageUpdate(popupPage, 700);
@@ -267,6 +360,42 @@ test.describe('Recording and Replay', () => {
     const annotationRecordingData = await getRecordingData(popupPage, savedAnnotation.id);
     expect(annotationRecordingData.steps.length).toBeGreaterThan(0);
     expect(annotationRecordingData.steps.some((stepItem) => stepItem.type === 'input' || stepItem.type === 'change')).toBeTruthy();
+  });
+
+  test('should switch replay target back to draft when clicking the draft panel', async () => {
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+    await testPage.fill('#testInput', 'Replay linked to saved bug');
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+
+    await popupPage.click('#actionTabBtn');
+    await popupPage.fill('#draftDescription', 'Saved bug with replay');
+    await popupPage.click('#BugBtn');
+    await waitForStorageUpdate(popupPage, 700);
+
+    await popupPage.click('#recorderTabBtn');
+    const replayableAnnotationCard = popupPage.locator('[data-annotation-id]').filter({ hasText: 'Saved bug with replay' });
+    await replayableAnnotationCard.evaluate((element) => element.click());
+    await expect(replayableAnnotationCard).toHaveClass(/is-selected/);
+    await expect(popupPage.locator('#playRecordingBtn')).toBeVisible();
+
+    await popupPage.click('#actionTabBtn');
+    await popupPage.click('#draftPanel');
+
+    await expect(replayableAnnotationCard).not.toHaveClass(/is-selected/);
+    const popupStateResponse = await sendRuntimeMessage(popupPage, { type: 'getPopupState' });
+    expect(popupStateResponse.popupState.selectedRecordingTarget).toEqual({
+      kind: 'draft',
+      annotationId: ''
+    });
+
+    await popupPage.click('#recorderTabBtn');
+    await expect(popupPage.locator('#recordingToggleBtn')).toBeVisible();
+    await expect(popupPage.locator('#playRecordingBtn')).toBeHidden();
   });
 
   test('should keep separate recordings for different saved annotations', async () => {
