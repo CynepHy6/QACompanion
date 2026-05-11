@@ -831,19 +831,11 @@ body {
 }
 
 .report-table__col--description {
-    width: 32%;
-}
-
-.report-table__col--url {
-    width: 18%;
-}
-
-.report-table__col--date {
-    width: 12%;
+    width: 30%;
 }
 
 .report-table__col--screenshots {
-    width: 28%;
+    width: 70%;
 }
 
 .report-table__col--actions {
@@ -882,6 +874,20 @@ body {
 
 .annotation-row:hover {
     background-color: #f8fafc;
+}
+
+.annotation-title-row td {
+    padding: 14px 16px 8px;
+    border-bottom: none;
+    background: #ffffff;
+}
+
+.annotation-title-row--bug td {
+    border-left: 3px solid var(--color-bug);
+}
+
+.annotation-title-row--note td {
+    border-left: 3px solid var(--color-note);
 }
 
 .annotation-row--bug td:first-child { border-left: 3px solid var(--color-bug); }
@@ -969,6 +975,31 @@ body {
 /* Table cell styles */
 .annotation-description {
     min-width: 0;
+    vertical-align: top;
+}
+
+.annotation-title-cell {
+    min-width: 0;
+}
+
+.annotation-title-link {
+    display: block;
+    min-width: 0;
+    color: var(--color-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.annotation-title-link:hover {
+    text-decoration: underline;
+}
+
+.annotation-title-link--muted {
+    color: var(--color-text-secondary);
 }
 
 .description-editor,
@@ -1007,29 +1038,6 @@ body {
 
 .annotation-description-text {
     min-height: auto;
-}
-
-.annotation-url {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-.annotation-url a {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-size: 0.85rem;
-}
-
-.annotation-url a:hover {
-    text-decoration: underline;
-}
-
-.annotation-time {
-    white-space: nowrap;
-    color: var(--color-text-secondary);
-    font-size: 0.85rem;
-    vertical-align: top;
 }
 
 .annotation-actions-cell {

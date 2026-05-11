@@ -1,4 +1,5 @@
 import { serializeReportState } from './reportData.js';
+import { updateReportHeaderSubtitle } from './reportUI.js';
 import { formatDateTimeLocalized, getMessage, getUiLocale } from '../../src/i18n.js';
 
 function getImageExtensionFromDataUrl(imageUrl) {
@@ -117,6 +118,7 @@ const SVG_PATHS = {
  */
 export async function downloadCompleteReport(reportState) {
     const reportContent = document.getElementById('report').cloneNode(true);
+    updateReportHeaderSubtitle(reportState, Date.now(), reportContent);
 
     // Remove interactive-only elements from download
     removeInteractiveElements(reportContent);
@@ -180,10 +182,22 @@ function removeInteractiveElements(container) {
         headerRow.lastElementChild.remove();
     }
 
+    const colGroup = container.querySelector('.report-table colgroup');
+    if (colGroup && colGroup.lastElementChild) {
+        colGroup.lastElementChild.remove();
+    }
+
     // Remove delete column only from primary annotation rows.
     container.querySelectorAll('tbody tr.annotation-row').forEach((row) => {
         if (row.lastElementChild) {
             row.lastElementChild.remove();
+        }
+    });
+
+    container.querySelectorAll('tbody td[colspan]').forEach((cellElement) => {
+        const currentSpanValue = Number.parseInt(cellElement.getAttribute('colspan') || '', 10);
+        if (Number.isInteger(currentSpanValue) && currentSpanValue > 1) {
+            cellElement.setAttribute('colspan', String(currentSpanValue - 1));
         }
     });
 
@@ -283,8 +297,8 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
                     </button>
                 </div>`;
     const standaloneReportHtml = reportHtml.replace(
-        /<p class="report-header__subtitle">([\s\S]*?)<\/p>/,
-        `<div class="standalone-header-meta"><p class="report-header__subtitle">$1</p>${standaloneHeaderButtonMarkup}</div>`
+        /<p[^>]*id="reportHeaderSubtitle"[^>]*class="report-header__subtitle"[^>]*>([\s\S]*?)<\/p>/,
+        `<div class="standalone-header-meta"><p id="reportHeaderSubtitle" class="report-header__subtitle">$1</p>${standaloneHeaderButtonMarkup}</div>`
     );
     return `<!DOCTYPE html>
 <html lang="${getUiLocale()}">
@@ -557,12 +571,10 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
                 document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 const type = this.dataset.type;
-                document.querySelectorAll('.annotation-row').forEach(row => {
-                    if (type === 'all') {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = row.classList.contains('annotation-row--' + type.toLowerCase()) ? '' : 'none';
-                    }
+                document.querySelectorAll('.annotation-title-row, .annotation-row, .annotation-replay-row').forEach(row => {
+                    const rowType = row.dataset.annotationType || '';
+                    const shouldShow = type === 'all' || rowType === type;
+                    row.style.display = shouldShow ? '' : 'none';
                 });
             });
         });

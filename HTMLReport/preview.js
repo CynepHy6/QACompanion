@@ -1,5 +1,5 @@
 import { loadReportState } from './modules/reportData.js';
-import { displaySessionInfo, displayStats, createAnnotationsChart, displayAnnotationsTable } from './modules/reportUI.js';
+import { displaySessionInfo, displayStats, createAnnotationsChart, displayAnnotationsTable, updateReportHeaderSubtitle } from './modules/reportUI.js';
 import { setupAllListeners, getCurrentFilter, rebindTableListeners } from './modules/reportEvents.js';
 import { getMessage } from '../src/i18n.js';
 
@@ -16,6 +16,7 @@ async function initReport() {
             return;
         }
 
+        updateReportHeaderSubtitle(reportState);
         displaySessionInfo(reportState.session);
         displayStats(reportState);
         createAnnotationsChart(reportState.session);

@@ -86,6 +86,17 @@ export function displaySessionInfo(session) {
     `).join('');
 }
 
+export function updateReportHeaderSubtitle(reportState, generatedAtValue = Date.now(), rootElement = document) {
+    const subtitleElement = typeof rootElement?.getElementById === 'function'
+        ? rootElement.getElementById('reportHeaderSubtitle')
+        : rootElement?.querySelector?.('#reportHeaderSubtitle');
+    if (!subtitleElement) {
+        return;
+    }
+
+    subtitleElement.textContent = buildReportHeaderSubtitle(reportState, generatedAtValue);
+}
+
 /**
  * Renders the summary stat cards.
  */
@@ -237,7 +248,7 @@ export function displayAnnotationsTable(reportState, currentFilter) {
     if (filtered.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="empty-state">
+                <td colspan="4" class="empty-state">
                     ${escapeHtml(getMessage('reportNoAnnotationsForFilter', undefined, 'No annotations found for this filter.'))}
                 </td>
             </tr>`;
@@ -251,7 +262,14 @@ export function displayAnnotationsTable(reportState, currentFilter) {
         const hasLinkedReplay = recordingState.steps.length > 0;
         const replaySummaryText = `${getPluralMessage('countStep', recordingState.steps.length, `${recordingState.steps.length} steps`)} · ${getPluralMessage('countScreenshot', recordingState.screenshots.length, `${recordingState.screenshots.length} screenshots`)}`;
         return `
-        <tr class="annotation-row annotation-row--${type.toLowerCase()}">
+        <tr class="annotation-title-row annotation-title-row--${type.toLowerCase()}" data-annotation-type="${escapeHtml(type)}">
+            <td colspan="4" class="annotation-title-cell">
+                ${annotation.url
+                ? `<a class="annotation-title-link" href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener" title="${escapeHtml(annotation.url)}">${escapeHtml(annotation.url)}</a>`
+                : `<span class="annotation-title-link annotation-title-link--muted">${escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>`}
+            </td>
+        </tr>
+        <tr class="annotation-row annotation-row--${type.toLowerCase()}" data-annotation-type="${escapeHtml(type)}">
             <td class="annotation-type-cell">
                 <span class="type-icon-chip type-icon-chip--${type.toLowerCase()}" title="${escapeHtml(getAnnotationTypeLabel(type))}" aria-label="${escapeHtml(getAnnotationTypeLabel(type))}">
                     <img src="${ANNOTATION_ICONS[type] || ''}" alt="${escapeHtml(getAnnotationTypeLabel(type))}" class="annotation-icon" data-annotation-type="${escapeHtml(type)}">
@@ -264,10 +282,6 @@ export function displayAnnotationsTable(reportState, currentFilter) {
                     data-saved-value="${escapeHtml(annotation.name)}"
                     rows="4">${escapeHtml(annotation.name)}</textarea>
             </td>
-            <td class="annotation-url">
-                ${annotation.url ? `<a href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener">${truncateUrl(annotation.url)}</a>` : `<span class="text-muted">${escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>`}
-            </td>
-            <td class="annotation-time">${annotation.timestamp ? formatDate(annotation.timestamp) : escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</td>
             <td class="screenshot-cell">
                 ${imageEntries.length > 0
                 ? `<div class="screenshot-gallery">
@@ -305,8 +319,8 @@ export function displayAnnotationsTable(reportState, currentFilter) {
                 </div>
             </td>
         </tr>${hasLinkedReplay ? `
-        <tr class="annotation-replay-row">
-            <td colspan="6" class="annotation-replay-row__cell">
+        <tr class="annotation-replay-row" data-annotation-type="${escapeHtml(type)}">
+            <td colspan="4" class="annotation-replay-row__cell">
                 <details class="annotation-replay-details">
                     <summary class="annotation-replay-details__summary">
                         <span class="annotation-replay-details__title">${escapeHtml(getMessage('reportAnnotationReplayTitle', undefined, 'Replay'))}</span>
@@ -335,6 +349,36 @@ function truncateUrl(url) {
     } catch {
         return url.length > 50 ? url.substring(0, 47) + '...' : url;
     }
+}
+
+function buildReportHeaderSubtitle(reportState, generatedAtValue = Date.now()) {
+    const subtitleLabel = getMessage('reportHeaderSubtitle', undefined, 'Session Summary');
+    const firstEventTimestamp = getFirstReportEventTimestamp(reportState);
+    const generationDateLabel = formatDate(generatedAtValue);
+    if (!firstEventTimestamp) {
+        return `${subtitleLabel} ${generationDateLabel}`;
+    }
+
+    const firstEventDateLabel = formatDate(firstEventTimestamp);
+    if (firstEventDateLabel === generationDateLabel) {
+        return `${subtitleLabel} ${firstEventDateLabel}`;
+    }
+
+    return `${subtitleLabel} ${firstEventDateLabel} - ${generationDateLabel}`;
+}
+
+function getFirstReportEventTimestamp(reportState) {
+    const annotationTimestamps = reportState?.session?.getAnnotations?.()
+        .map((annotationItem) => annotationItem?.getTimeStamp?.()?.getTime?.())
+        .filter((timestampValue) => Number.isFinite(timestampValue)) || [];
+
+    if (annotationTimestamps.length > 0) {
+        return Math.min(...annotationTimestamps);
+    }
+
+    const sessionStartDate = reportState?.session?.getStartDateTime?.();
+    const sessionStartTimestamp = sessionStartDate instanceof Date ? sessionStartDate.getTime() : new Date(sessionStartDate).getTime();
+    return Number.isFinite(sessionStartTimestamp) ? sessionStartTimestamp : null;
 }
 
 function formatBrowserInfo(browserInfo) {
