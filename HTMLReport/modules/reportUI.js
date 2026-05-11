@@ -18,6 +18,8 @@ const ANNOTATION_COLORS = {
     Note: '#22c55e'
 };
 
+const EMPTY_DISPLAY_VALUE = '--';
+
 /**
  * Renders session information in the header area.
  */
@@ -38,37 +40,42 @@ export function displaySessionInfo(session) {
         },
         {
             label: getMessage('reportEnvironmentOs', undefined, 'Operating system'),
-            value: browserInfo.osDisplay || browserInfo.os || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.osDisplay || browserInfo.os),
             hint: getMessage('reportEnvironmentOsHint', undefined, 'Detected operating system and CPU architecture.')
         },
         {
-            label: getMessage('reportEnvironmentLocale', undefined, 'Locale'),
-            value: browserInfo.pageLanguage || browserInfo.language || getMessage('reportNotAvailable', undefined, 'N/A'),
-            hint: getMessage('reportEnvironmentLocaleHint', undefined, 'Language used by the page or browser for translations, formats, and content.')
+            label: getMessage('reportEnvironmentPageLanguage', undefined, 'Page language'),
+            value: getDisplayValue(browserInfo.pageLanguage),
+            hint: getMessage('reportEnvironmentPageLanguageHint', undefined, 'Language declared by the page in the HTML lang attribute.')
+        },
+        {
+            label: getMessage('reportEnvironmentBrowserLanguage', undefined, 'Browser language'),
+            value: getDisplayValue(browserInfo.language),
+            hint: getMessage('reportEnvironmentBrowserLanguageHint', undefined, 'Primary browser UI and formatting language reported by navigator.language.')
         },
         {
             label: getMessage('reportEnvironmentTimezone', undefined, 'Timezone'),
-            value: browserInfo.timezone || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.timezone),
             hint: getMessage('reportEnvironmentTimezoneHint', undefined, 'Browser timezone used to format dates and times.')
         },
         {
             label: getMessage('reportEnvironmentViewport', undefined, 'Viewport'),
-            value: browserInfo.viewport || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.viewport),
             hint: getMessage('reportEnvironmentViewportHint', undefined, 'Visible page area size in CSS pixels.')
         },
         {
             label: getMessage('reportEnvironmentScreen', undefined, 'Screen'),
-            value: browserInfo.screenResolution || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.screenResolution),
             hint: getMessage('reportEnvironmentScreenHint', undefined, 'Reported screen resolution in physical pixels.')
         },
         {
             label: getMessage('reportEnvironmentDpr', undefined, 'DPR'),
-            value: browserInfo.devicePixelRatio || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.devicePixelRatio),
             hint: getMessage('reportEnvironmentDprHint', undefined, 'Device Pixel Ratio. Shows how many physical pixels are used for one CSS pixel. Useful for zoom, screenshots, and sharpness issues.')
         },
         {
             label: getMessage('reportEnvironmentPageTitle', undefined, 'Page title'),
-            value: browserInfo.pageTitle || getMessage('reportNotAvailable', undefined, 'N/A'),
+            value: getDisplayValue(browserInfo.pageTitle),
             hint: getMessage('reportEnvironmentPageTitleHint', undefined, 'Current document title of the tested page.')
         }
     ];
@@ -266,7 +273,7 @@ export function displayAnnotationsTable(reportState, currentFilter) {
             <td colspan="4" class="annotation-title-cell">
                 ${annotation.url
                 ? `<a class="annotation-title-link" href="${escapeHtml(annotation.url)}" target="_blank" rel="noopener" title="${escapeHtml(annotation.url)}">${escapeHtml(annotation.url)}</a>`
-                : `<span class="annotation-title-link annotation-title-link--muted">${escapeHtml(getMessage('reportNotAvailable', undefined, 'N/A'))}</span>`}
+                : `<span class="annotation-title-link annotation-title-link--muted">${escapeHtml(EMPTY_DISPLAY_VALUE)}</span>`}
             </td>
         </tr>
         <tr class="annotation-row annotation-row--${type.toLowerCase()}" data-annotation-type="${escapeHtml(type)}">
@@ -307,7 +314,7 @@ export function displayAnnotationsTable(reportState, currentFilter) {
                         </div>
                     `).join('')}
                 </div>`
-                : '<span class="text-muted">--</span>'}
+                : `<span class="text-muted">${escapeHtml(EMPTY_DISPLAY_VALUE)}</span>`}
             </td>
             <td class="annotation-actions-cell">
                 <div class="row-actions">
@@ -383,7 +390,7 @@ function getFirstReportEventTimestamp(reportState) {
 
 function formatBrowserInfo(browserInfo) {
     if (!browserInfo) {
-        return getMessage('reportNotAvailable', undefined, 'N/A');
+        return EMPTY_DISPLAY_VALUE;
     }
 
     if (browserInfo.browserDisplayName) {
@@ -392,7 +399,20 @@ function formatBrowserInfo(browserInfo) {
 
     const browserName = typeof browserInfo.browser === 'string' ? browserInfo.browser : '';
     const browserVersion = typeof browserInfo.browserVersion === 'string' ? browserInfo.browserVersion : '';
-    return [browserName, browserVersion].filter(Boolean).join(' ') || getMessage('reportNotAvailable', undefined, 'N/A');
+    return [browserName, browserVersion].filter(Boolean).join(' ') || EMPTY_DISPLAY_VALUE;
+}
+
+function getDisplayValue(rawValue) {
+    if (typeof rawValue === 'string') {
+        const trimmedValue = rawValue.trim();
+        return trimmedValue === '' ? EMPTY_DISPLAY_VALUE : trimmedValue;
+    }
+
+    if (rawValue === null || rawValue === undefined) {
+        return EMPTY_DISPLAY_VALUE;
+    }
+
+    return String(rawValue);
 }
 
 function formatDate(timestampValue) {

@@ -586,7 +586,7 @@ async function getEnhancedSystemInfo(activeTab = null) {
         viewport: pageInfo.viewport,
         screenResolution: pageInfo.screenResolution,
         devicePixelRatio: pageInfo.devicePixelRatio,
-        pageLanguage: pageInfo.pageLanguage || baseSystemInfo.language,
+        pageLanguage: pageInfo.pageLanguage,
         colorScheme: pageInfo.colorScheme,
         reducedMotion: pageInfo.reducedMotion
     };

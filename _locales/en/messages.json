@@ -170,9 +170,13 @@
     "reportEnvironmentOsHint": {
         "message": "Detected operating system and CPU architecture."
     },
-    "reportEnvironmentLocale": { "message": "Locale" },
-    "reportEnvironmentLocaleHint": {
-        "message": "Language used by the page or browser for translations, formats, and content."
+    "reportEnvironmentPageLanguage": { "message": "Page language" },
+    "reportEnvironmentPageLanguageHint": {
+        "message": "Language declared by the page in the HTML lang attribute."
+    },
+    "reportEnvironmentBrowserLanguage": { "message": "Browser language" },
+    "reportEnvironmentBrowserLanguageHint": {
+        "message": "Primary browser UI and formatting language reported by navigator.language."
     },
     "reportEnvironmentTimezone": { "message": "Timezone" },
     "reportEnvironmentTimezoneHint": {

@@ -866,7 +866,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
                 screenWidth: window.screen?.width || 0,
                 screenHeight: window.screen?.height || 0,
                 devicePixelRatio: window.devicePixelRatio || 1,
-                pageLanguage: document.documentElement?.lang || navigator.language || '',
+                pageLanguage: document.documentElement?.lang || '',
                 colorScheme,
                 reducedMotion
             });

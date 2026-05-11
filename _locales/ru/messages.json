@@ -178,9 +178,13 @@
     "reportEnvironmentOsHint": {
         "message": "Определенная ОС и архитектура процессора."
     },
-    "reportEnvironmentLocale": { "message": "Локаль" },
-    "reportEnvironmentLocaleHint": {
-        "message": "Язык страницы или браузера, который влияет на переводы и форматы."
+    "reportEnvironmentPageLanguage": { "message": "Язык страницы" },
+    "reportEnvironmentPageLanguageHint": {
+        "message": "Язык, объявленный страницей в атрибуте HTML lang."
+    },
+    "reportEnvironmentBrowserLanguage": { "message": "Язык браузера" },
+    "reportEnvironmentBrowserLanguageHint": {
+        "message": "Основной язык браузера для интерфейса и форматирования из navigator.language."
     },
     "reportEnvironmentTimezone": { "message": "Часовой пояс" },
     "reportEnvironmentTimezoneHint": {
