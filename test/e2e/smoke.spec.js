@@ -68,7 +68,8 @@ test.describe('Smoke Tests', () => {
     await expect(popupPage.locator('#recorderTabBtn')).toBeVisible();
     await popupPage.click('#recorderTabBtn');
     await expect(popupPage.locator('#recordingToggleBtn')).toBeVisible();
-    await expect(popupPage.locator('#playRecordingBtn')).toBeVisible();
+    await expect(popupPage.locator('#playRecordingBtn')).toBeHidden();
+    await expect(popupPage.locator('#recorderSettingsToggleBtn')).toBeVisible();
     await expect(popupPage.locator('#saveDraftBtn')).toHaveCount(0);
 
     console.log('✅ All required elements found');
