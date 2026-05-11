@@ -148,10 +148,18 @@ function removeInteractiveElements(container) {
 
             // Replace canvas with img element
             const img = document.createElement('img');
+            img.id = standaloneChartCanvas.id;
+            img.className = standaloneChartCanvas.className;
             img.src = chartImageData;
             img.alt = getMessage('reportDownloadChartAlt', undefined, 'Annotation distribution chart');
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
+            img.width = chartCanvas.width || 64;
+            img.height = chartCanvas.height || 64;
+            img.style.width = `${chartCanvas.width || 64}px`;
+            img.style.height = `${chartCanvas.height || 64}px`;
+            img.style.maxWidth = `${chartCanvas.width || 64}px`;
+            img.style.maxHeight = `${chartCanvas.height || 64}px`;
+            img.style.objectFit = 'contain';
+            img.style.display = 'block';
             standaloneChartCanvas.replaceWith(img);
         } catch (error) {
             console.error('Error converting chart to image:', error);
@@ -294,8 +302,8 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
                     </button>
                 </div>`;
     const standaloneReportHtml = reportHtml.replace(
-        /<p[^>]*id="reportHeaderSubtitle"[^>]*class="report-header__subtitle"[^>]*>([\s\S]*?)<\/p>/,
-        `<div class="standalone-header-meta"><p id="reportHeaderSubtitle" class="report-header__subtitle">$1</p>${standaloneHeaderButtonMarkup}</div>`
+        /(<div class="report-header__main">[\s\S]*?<\/div>)/,
+        `$1${standaloneHeaderButtonMarkup}`
     );
     return `<!DOCTYPE html>
 <html lang="${getUiLocale()}">
@@ -303,38 +311,28 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
     <meta charset="utf-8">
     <title>${getMessage('reportHtmlTitle', undefined, 'Exploratory Testing Report')}</title>
     <style>${styles}
-.standalone-header-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: 8px;
-}
-
-.standalone-header-meta .report-header__subtitle {
-    margin: 0;
-    min-width: 0;
-}
-
 .standalone-header-actions {
-    margin-left: auto;
+    position: absolute;
+    top: 50%;
+    right: 48px;
+    transform: translateY(-50%);
     display: flex;
     justify-content: flex-end;
     flex-shrink: 0;
+    z-index: 2;
+}
+
+.standalone-header-actions .btn-download {
+    white-space: nowrap;
+    padding: 8px 14px;
+    font-size: 0.78rem;
 }
 
 @media (max-width: 768px) {
-    .standalone-header-meta {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .standalone-header-meta .report-header__subtitle {
-        width: 100%;
-    }
-
     .standalone-header-actions {
-        margin-left: 0;
+        position: static;
+        transform: none;
+        margin-top: 12px;
         width: 100%;
         justify-content: flex-end;
     }

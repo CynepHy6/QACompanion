@@ -645,6 +645,55 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         return targetElement.value || '';
     }
 
+    const EXPLICIT_INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, label, summary, option, [role="button"], [contenteditable="true"], [tabindex], [onclick]';
+
+    function normalizeRecordedTextValue(textValue) {
+        return typeof textValue === 'string'
+            ? textValue.replace(/\s+/g, ' ').trim()
+            : '';
+    }
+
+    function getOwnTextContent(targetElement) {
+        return normalizeRecordedTextValue(
+            Array.from(targetElement.childNodes || [])
+                .filter((childNode) => childNode.nodeType === Node.TEXT_NODE)
+                .map((childNode) => childNode.textContent || '')
+                .join(' ')
+        );
+    }
+
+    function normalizeRecordedText(targetElement) {
+        const attributeCandidates = [
+            targetElement.getAttribute('aria-label'),
+            targetElement.getAttribute('title'),
+            targetElement.getAttribute('alt'),
+            targetElement.getAttribute('placeholder')
+        ];
+
+        for (const candidateText of attributeCandidates) {
+            const normalizedCandidate = normalizeRecordedTextValue(candidateText);
+            if (normalizedCandidate !== '') {
+                return normalizedCandidate.slice(0, 120);
+            }
+        }
+
+        const directTextContent = getOwnTextContent(targetElement);
+        if (directTextContent !== '') {
+            return directTextContent.slice(0, 120);
+        }
+
+        const visibleText = normalizeRecordedTextValue(targetElement.innerText || targetElement.textContent || '');
+        if (visibleText === '') {
+            return '';
+        }
+
+        if (targetElement.matches(EXPLICIT_INTERACTIVE_SELECTOR)) {
+            return visibleText.slice(0, 120);
+        }
+
+        return visibleText.length <= 80 ? visibleText : '';
+    }
+
     function createRecordedStep(stepType, targetElement, extraFields = {}) {
         const stepPayload = {
             type: stepType,
@@ -653,7 +702,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             value: normalizeRecordedValue(targetElement),
             inputType: targetElement.type || '',
             tagName: targetElement.tagName || '',
-            text: (targetElement.textContent || '').trim().slice(0, 120),
+            text: normalizeRecordedText(targetElement),
             shadowPath: buildShadowPath(targetElement),
             replayPolicy: 'auto',
             replayHint: ''
@@ -722,9 +771,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return null;
         }
 
-        const explicitInteractiveTarget = originalTarget.closest(
-            'button, a, input, textarea, select, label, summary, option, [role="button"], [contenteditable="true"], [tabindex], [onclick]'
-        );
+        const explicitInteractiveTarget = originalTarget.closest(EXPLICIT_INTERACTIVE_SELECTOR);
         if (explicitInteractiveTarget) {
             return explicitInteractiveTarget;
         }

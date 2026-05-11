@@ -75,15 +75,12 @@ const DEFAULT_TYPE = 'Bug';
 const POPUP_MODE_STORAGE_KEY = 'qaCompanion.popupMode';
 const RECORDING_BUTTON_LABELS = {
   record: {
-    icon: '●',
     label: getMessage('popupRecordButton', undefined, 'Record')
   },
   stop: {
-    icon: '■',
     label: getMessage('popupStopButton', undefined, 'Stop')
   },
   play: {
-    icon: '▶',
     label: getMessage('popupPlayButton', undefined, 'Play')
   }
 };
@@ -323,13 +320,29 @@ function getButtonDefaultLabel(typeName) {
   return TYPE_META[typeName]?.title || typeName;
 }
 
+function getRecordingButtonIconMarkup(buttonKey) {
+  if (buttonKey === 'record') {
+    return '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="4.25"></circle></svg>';
+  }
+
+  if (buttonKey === 'stop') {
+    return '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.5"></rect></svg>';
+  }
+
+  if (buttonKey === 'play') {
+    return '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 3.75c0-.61.67-.99 1.2-.67l6 3.75a.8.8 0 0 1 0 1.35l-6 3.75A.79.79 0 0 1 5 11.25v-7.5Z"></path></svg>';
+  }
+
+  return '';
+}
+
 function buildRecordingButtonMarkup(buttonKey) {
   const buttonMeta = RECORDING_BUTTON_LABELS[buttonKey];
   if (!buttonMeta) {
     return '';
   }
 
-  return `<span class="recording-button__icon" aria-hidden="true">${buttonMeta.icon}</span><span class="recording-button__label">${buttonMeta.label}</span>`;
+  return `<span class="recording-button__icon" aria-hidden="true">${getRecordingButtonIconMarkup(buttonKey)}</span><span class="recording-button__label">${buttonMeta.label}</span>`;
 }
 
 function renderRecordingButtonMarkup(buttonElement, buttonKey) {
