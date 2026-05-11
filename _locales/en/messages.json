@@ -159,6 +159,7 @@
     "reportHtmlTitle": { "message": "Exploratory Testing Report" },
     "reportHeaderTitle": { "message": "Exploratory Testing Report" },
     "reportHeaderSubtitle": { "message": "Session Summary" },
+    "reportRepoLinkTitle": { "message": "Open project repository" },
     "reportPageInfoTitle": { "message": "Page info" },
     "reportUserInfoTitle": { "message": "User info" },
     "reportChartTitle": { "message": "Distribution" },

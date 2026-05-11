@@ -31,13 +31,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/morvader/ExploratoryTestingChromeExtension.git"
+    "url": "git+https://github.com/CynepHy6/QACompanion.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/morvader/ExploratoryTestingChromeExtension/issues"
+    "url": "https://github.com/CynepHy6/QACompanion/issues"
   },
-  "homepage": "https://github.com/morvader/ExploratoryTestingChromeExtension#readme"
+  "homepage": "https://github.com/CynepHy6/QACompanion#readme"
 }

@@ -167,6 +167,7 @@
         "message": "Отчет по исследовательскому тестированию"
     },
     "reportHeaderSubtitle": { "message": "Сводка по сессии" },
+    "reportRepoLinkTitle": { "message": "Открыть репозиторий проекта" },
     "reportPageInfoTitle": { "message": "Информация о странице" },
     "reportUserInfoTitle": { "message": "Информация о пользователе" },
     "reportChartTitle": { "message": "Распределение" },
