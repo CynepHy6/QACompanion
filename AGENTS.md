@@ -25,6 +25,13 @@
 - The popup has a `Recorder` pseudo-tab for action recording and replay.
 - Recorder currently supports:
   - `click`
+  - `doubleClick`
+  - `contextMenu`
+  - `hoverEnter`
+  - `hoverLeave`
+  - `dragStart`
+  - `drop`
+  - `file`
   - `input`
   - `change`
   - `submit`
@@ -65,6 +72,7 @@
   - `session`: saved exploratory testing annotations
   - `draft`: current unsaved Action draft
   - `recording`: recorded replay flow state
+ - `recorderSettings`: global recorder preferences stored outside portable session data
 
 ### `session`
 - Contains exploratory testing session data:
@@ -94,6 +102,12 @@
   - `screenshots`
 - Steps store references such as `screenshotRef` instead of embedding screenshot data directly into each step.
 
+### `recorderSettings`
+- Contains global recorder preferences:
+  - `captureScreenshots`
+  - `stepToggles`
+- These settings are intentionally separate from portable session/export state.
+
 ## Architectural Notes
 - `background.js` is the main source of truth for extension state.
 - `content_script.js` already hosts two distinct flows:
@@ -106,6 +120,7 @@
 
 ## Current UX Patterns
 - Pseudo-tabs are used inside the popup instead of separate windows/panels.
+- Recorder settings open inside the popup from a toolbar icon near the full session reset action.
 - Destructive actions use two-step arm/confirm buttons:
   - draft clearing
   - recorded flow clearing
@@ -115,11 +130,11 @@
 
 ## Current Limitations
 - Replay is not multi-tab.
-- No support yet for drag-and-drop, canvas actions, or more advanced gestures.
-- No support yet for keyboard shortcut capture/replay (`keydown` / `keyup`), hover-only interactions, wheel/scroll gestures, touch gestures, double-click, or context-menu actions.
+- No support yet for keyboard shortcut capture/replay (`keydown` / `keyup`), wheel/scroll gestures, or touch gestures.
 - Replay locators are limited to `id`, `name`, first non-empty `data-*`, or generated CSS path in the top-level document.
-- No support yet for iframe targets, Shadow DOM targets, file input replay, or coordinate-sensitive interactions such as canvas/SVG/map hotspots.
-- No self-healing locator strategy.
+- No support yet for iframe targets or self-healing locator strategy.
+- File input replay remains manual.
+- Some coordinate-sensitive interactions such as canvas/SVG/map hotspots may still replay unreliably.
 - Recorder uses DOM-level `element.click()` / value assignment style replay, so behavior that depends on exact pointer coordinates or native browser dialogs may not replay reliably.
 - Navigation replay is supported, but it remains a sensitive area and should be validated carefully after changes.
 
@@ -173,7 +188,4 @@
 - Page highlighting during replay and popup step highlighting should stay in sync.
 
 ## Future Work Backlog
-- This section is a temporary reminder list of planned improvements.
-- Remove or update items from this list as soon as they are implemented in code, so `AGENTS.md` does not drift away from reality.
-- Pending ideas:
-  - publish to Chrome Web Store (register new account in Russia, currently restricted for russian banks)
+- Planned improvements and deferred ideas see in `BACKLOG.md`.

@@ -23,6 +23,13 @@
     "popupSessionResetAria": { "message": "Сброс сессии" },
     "popupResetAllTitle": { "message": "Сбросить все данные сессии" },
     "popupResetAllHidden": { "message": "Сбросить все данные сессии" },
+    "popupRecorderSettingsTitle": { "message": "Настройки рекордера" },
+    "popupRecorderSettingsHeading": { "message": "Настройки рекордера" },
+    "popupRecorderSettingsDescription": {
+        "message": "Выбери, какие действия логировать при записи. Эти настройки глобальные и не входят в экспортируемые данные сессии."
+    },
+    "popupRecorderCaptureScreenshots": { "message": "Делать скрины при записи действий" },
+    "popupRecorderStepTypesHeading": { "message": "Типы логируемых действий" },
     "popupDraftSubtitle": {
         "message": "Сначала собирай заметки и скриншоты, потом явно сохраняй шаг."
     },

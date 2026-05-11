@@ -152,6 +152,50 @@ test.describe('Recording and Replay', () => {
     expect(replayedInputValue).toBe('Replay target value');
   });
 
+  test('should apply recorder settings to logged step types and recording screenshots', async () => {
+    await popupPage.click('#recorderSettingsToggleBtn');
+    await expect(popupPage.locator('#recorderSettingsPanel')).toBeVisible();
+
+    await popupPage.uncheck('#recordingScreenshotsToggle');
+    await popupPage.uncheck('[data-step-type="click"]');
+    await popupPage.uncheck('[data-step-type="navigation"]');
+
+    await expect.poll(async () => {
+      return popupPage.evaluate(() => {
+        return new Promise((resolve) => {
+          chrome.storage.local.get(['recorderSettings'], (items) => resolve(items.recorderSettings || null));
+        });
+      });
+    }).toMatchObject({
+      captureScreenshots: false,
+      stepToggles: {
+        click: false,
+        navigation: false,
+      },
+    });
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, {
+      type: 'startRecordingFlow',
+      target: { kind: 'draft', annotationId: '' }
+    });
+
+    await testPage.fill('#testInput', 'Settings applied');
+    await testPage.click('button:has-text("Go to page 1")');
+    await testPage.waitForURL('**/page1.html');
+
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'syncRecordingNavigation' });
+    await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
+    await waitForStorageUpdate(popupPage, 700);
+
+    const recordingData = await getRecordingData(popupPage);
+    expect(recordingData.steps.some((stepItem) => stepItem.type === 'input' || stepItem.type === 'change')).toBeTruthy();
+    expect(recordingData.steps.some((stepItem) => stepItem.type === 'click')).toBeFalsy();
+    expect(recordingData.steps.some((stepItem) => stepItem.type === 'navigation')).toBeFalsy();
+    expect(recordingData.screenshots).toHaveLength(0);
+  });
+
   test('should record and replay clicks on custom clickable elements', async () => {
     await testPage.bringToFront();
     await sendRuntimeMessage(popupPage, {

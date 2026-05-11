@@ -87,6 +87,55 @@ const RECORDING_BUTTON_LABELS = {
     label: getMessage('popupPlayButton', undefined, 'Play')
   }
 };
+const RECORDER_STEP_SETTING_ORDER = [
+  'click',
+  'doubleClick',
+  'contextMenu',
+  'hoverEnter',
+  'hoverLeave',
+  'dragStart',
+  'drop',
+  'file',
+  'input',
+  'change',
+  'submit',
+  'navigation'
+];
+
+function createDefaultRecorderSettings() {
+  return {
+    captureScreenshots: true,
+    stepToggles: Object.fromEntries(
+      RECORDER_STEP_SETTING_ORDER.map((stepType) => [stepType, true])
+    )
+  };
+}
+
+function normalizeRecorderSettings(rawSettings = {}) {
+  const defaultSettings = createDefaultRecorderSettings();
+  const rawStepToggles = rawSettings?.stepToggles && typeof rawSettings.stepToggles === 'object'
+    ? rawSettings.stepToggles
+    : {};
+
+  return {
+    captureScreenshots: typeof rawSettings.captureScreenshots === 'boolean'
+      ? rawSettings.captureScreenshots
+      : defaultSettings.captureScreenshots,
+    stepToggles: Object.fromEntries(
+      RECORDER_STEP_SETTING_ORDER.map((stepType) => [
+        stepType,
+        typeof rawStepToggles[stepType] === 'boolean'
+          ? rawStepToggles[stepType]
+          : defaultSettings.stepToggles[stepType]
+      ])
+    )
+  };
+}
+
+function getRecorderStepLabel(stepType) {
+  const messageKey = `stepType${stepType.charAt(0).toUpperCase()}${stepType.slice(1)}`;
+  return getMessage(messageKey, undefined, stepType);
+}
 
 let currentDraft = {
   type: 'Bug',
@@ -98,9 +147,11 @@ let currentRecording = createEmptyRecordingState();
 let currentSelectedRecordingTarget = createDraftTarget();
 let currentActiveRecordingTarget = createDraftTarget();
 let currentAnnotations = [];
+let currentRecorderSettings = createDefaultRecorderSettings();
 let currentSummary = null;
 let currentPopupMode = loadStoredPopupMode();
 let lastScrolledReplayStepId = '';
+let recorderSettingsPanelOpen = false;
 
 let persistTimer = null;
 let clearDraftArmed = false;
@@ -184,6 +235,7 @@ function getPopupStateSignature(popupState) {
   return JSON.stringify({
     draft: popupState?.draft || null,
     draftRecording: popupState?.draftRecording || null,
+    recorderSettings: popupState?.recorderSettings || null,
     selectedRecordingTarget: popupState?.selectedRecordingTarget || null,
     selectedRecording: popupState?.selectedRecording || null,
     activeRecordingTarget: popupState?.activeRecordingTarget || null,
@@ -248,8 +300,12 @@ function getElements() {
     playRecordingButton: document.getElementById('playRecordingBtn'),
     popupHoverPreview: document.getElementById('popupImageHoverPreview'),
     recorderPanel: document.getElementById('recorderPanel'),
+    recorderSettingsPanel: document.getElementById('recorderSettingsPanel'),
+    recorderSettingsToggleButton: document.getElementById('recorderSettingsToggleBtn'),
     recorderTabButton: document.getElementById('recorderTabBtn'),
+    recorderStepSettingsList: document.getElementById('recorderStepSettingsList'),
     recordingScreenshotCountLabel: document.getElementById('recordingScreenshotCount'),
+    recordingScreenshotsToggle: document.getElementById('recordingScreenshotsToggle'),
     recordingDescriptionLabel: document.getElementById('recordingDescription'),
     recordingSelectionCaption: document.getElementById('selectedRecordingCaption'),
     recordingStatusLabel: document.getElementById('recordingStatus'),
@@ -356,6 +412,34 @@ function renderClearSessionButtonState() {
     : getMessage('popupResetAllTitle', undefined, 'Reset all session data');
   resetButton.title = nextTitle;
   resetButton.setAttribute('aria-label', nextTitle);
+}
+
+function renderRecorderSettings() {
+  const {
+    recorderSettingsPanel,
+    recorderSettingsToggleButton,
+    recorderStepSettingsList,
+    recordingScreenshotsToggle
+  } = getElements();
+  if (!recorderSettingsPanel || !recorderSettingsToggleButton || !recorderStepSettingsList || !recordingScreenshotsToggle) {
+    return;
+  }
+
+  recorderSettingsPanel.hidden = !recorderSettingsPanelOpen;
+  recorderSettingsToggleButton.classList.toggle('is-active', recorderSettingsPanelOpen);
+  recordingScreenshotsToggle.checked = Boolean(currentRecorderSettings.captureScreenshots);
+  recorderStepSettingsList.innerHTML = RECORDER_STEP_SETTING_ORDER.map((stepType) => `
+    <label class="recorder-settings-option recorder-settings-option--step" for="recorder-step-toggle-${escapeHtml(stepType)}">
+      <input
+        id="recorder-step-toggle-${escapeHtml(stepType)}"
+        class="recorder-settings-option__checkbox"
+        type="checkbox"
+        data-step-type="${escapeHtml(stepType)}"
+        ${currentRecorderSettings.stepToggles[stepType] ? 'checked' : ''}
+      >
+      <span class="recorder-settings-option__label">${escapeHtml(getRecorderStepLabel(stepType))}</span>
+    </label>
+  `).join('');
 }
 
 function setScreenshotButtonCooldown() {
@@ -761,6 +845,7 @@ function renderRecordingControls() {
   renderRecordingSteps();
   renderClearRecordingButtonState();
   renderSavedAnnotationsList();
+  renderRecorderSettings();
   renderClearSessionButtonState();
   renderModeTabs();
 
@@ -853,6 +938,7 @@ function renderCounters(summary) {
 function applyPopupState(popupState) {
   currentDraft = popupState?.draft || currentDraft;
   currentDraftRecording = popupState?.draftRecording || currentDraftRecording;
+  currentRecorderSettings = normalizeRecorderSettings(popupState?.recorderSettings || currentRecorderSettings);
   currentSelectedRecordingTarget = popupState?.selectedRecordingTarget || currentSelectedRecordingTarget;
   currentActiveRecordingTarget = popupState?.activeRecordingTarget || currentActiveRecordingTarget;
   currentRecording = popupState?.selectedRecording || currentRecording;
@@ -875,6 +961,14 @@ async function refreshPopupState() {
   const response = await sendRuntimeMessage({ type: 'getPopupState' });
   applyPopupState(response?.popupState || {});
   return response?.popupState || {};
+}
+
+async function updateRecorderSettings(nextSettings) {
+  const response = await sendRuntimeMessage({
+    type: 'updateRecorderSettings',
+    settings: nextSettings
+  });
+  applyPopupState(response?.popupState || { recorderSettings: response?.recorderSettings });
 }
 
 async function persistDraft() {
@@ -1211,6 +1305,53 @@ function bindEvents() {
 
   document.getElementById('previewBtn').addEventListener('click', () => {
     openPreviewReport().catch((error) => alert(error.message));
+  });
+
+  elements.recorderSettingsToggleButton.addEventListener('click', () => {
+    recorderSettingsPanelOpen = !recorderSettingsPanelOpen;
+    renderRecorderSettings();
+  });
+
+  elements.recorderSettingsPanel.addEventListener('change', (event) => {
+    const changedInput = event.target;
+    if (!(changedInput instanceof HTMLInputElement) || changedInput.type !== 'checkbox') {
+      return;
+    }
+
+    if (changedInput.id === 'recordingScreenshotsToggle') {
+      currentRecorderSettings = normalizeRecorderSettings({
+        ...currentRecorderSettings,
+        captureScreenshots: changedInput.checked
+      });
+      renderRecorderSettings();
+      updateRecorderSettings({ captureScreenshots: changedInput.checked }).catch((error) => {
+        refreshPopupState().catch(() => {});
+        alert(error.message);
+      });
+      return;
+    }
+
+    const stepType = changedInput.dataset.stepType || '';
+    if (stepType === '') {
+      return;
+    }
+
+    currentRecorderSettings = normalizeRecorderSettings({
+      ...currentRecorderSettings,
+      stepToggles: {
+        ...currentRecorderSettings.stepToggles,
+        [stepType]: changedInput.checked
+      }
+    });
+    renderRecorderSettings();
+    updateRecorderSettings({
+      stepToggles: {
+        [stepType]: changedInput.checked
+      }
+    }).catch((error) => {
+      refreshPopupState().catch(() => {});
+      alert(error.message);
+    });
   });
 
   elements.actionTabButton.addEventListener('click', () => {

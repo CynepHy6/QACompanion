@@ -282,10 +282,6 @@ function getReplayEntries(reportState) {
         .filter(({ recordingState }) => Array.isArray(recordingState.steps) && recordingState.steps.length > 0);
 }
 
-function stepExpectsRecordingScreenshot(stepItem) {
-    return stepItem?.type === 'click' || stepItem?.type === 'submit';
-}
-
 function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
     const screenshotByStepId = new Map(
         recordingState.screenshots.map((screenshotItem) => [screenshotItem.triggerStepId, screenshotItem])
@@ -293,7 +289,7 @@ function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
 
     return recordingState.steps.map((stepItem, stepIndex) => {
         const linkedScreenshot = screenshotByStepId.get(stepItem.stepId);
-        const shouldRenderScreenshotSlot = Boolean(linkedScreenshot) || stepExpectsRecordingScreenshot(stepItem);
+        const shouldRenderScreenshotSlot = Boolean(linkedScreenshot);
         const isFailedStep = recordingState.failedStepId === stepItem.stepId;
         const recordingDatasetAttributes = annotationIdentifier
             ? `data-recording-annotation-id="${annotationIdentifier}" data-recording-step-id="${stepItem.stepId}"`
@@ -306,10 +302,8 @@ function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
                     <span class="recording-step__time">${formatDateTime(stepItem.timestamp)}</span>
                 </div>
                 <div class="recording-step__body${shouldRenderScreenshotSlot ? '' : ' recording-step__body--without-shot'}">
-                    ${shouldRenderScreenshotSlot ? `<div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
-                        ${linkedScreenshot
-                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" data-preview-kind="recording-step" data-preview-title="${escapeHtml(getRecordingPreviewTitle(stepItem))}" data-preview-target="${escapeHtml(getRecordingPreviewTarget(stepItem))}" ${recordingDatasetAttributes} alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
-                : `<div class="recording-step__shot-placeholder">${escapeHtml(getMessage('reportRecordingNoScreenshot', undefined, 'No screenshot'))}</div>`}
+                    ${shouldRenderScreenshotSlot ? `<div class="recording-step__shot">
+                        <img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" data-preview-kind="recording-step" data-preview-title="${escapeHtml(getRecordingPreviewTitle(stepItem))}" data-preview-target="${escapeHtml(getRecordingPreviewTarget(stepItem))}" ${recordingDatasetAttributes} alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">
                     </div>` : ''}
                     <div class="recording-step__content">
                         <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>

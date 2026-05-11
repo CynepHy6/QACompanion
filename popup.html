@@ -25,6 +25,9 @@
                     </button>
                 </div>
                 <div class="btn-group btn-group-sm session-group session-group--right" role="group" aria-label="__MSG_popupSessionResetAria__">
+                    <button id="recorderSettingsToggleBtn" class="btn toolbar-button toolbar-button--icon toolbar-button--settings" title="__MSG_popupRecorderSettingsTitle__" aria-label="__MSG_popupRecorderSettingsTitle__" type="button">
+                        <span class="visually-hidden">__MSG_popupRecorderSettingsTitle__</span>
+                    </button>
                     <button id="resetBtn" class="btn btn-sm btn-outline-danger" title="__MSG_popupResetAllTitle__" aria-label="__MSG_popupResetAllTitle__">
                         <span class="visually-hidden">__MSG_popupResetAllHidden__</span>
                     </button>
@@ -34,6 +37,22 @@
         </div>
 
         <div class="card-body">
+            <section id="recorderSettingsPanel" class="recorder-settings-panel" aria-label="__MSG_popupRecorderSettingsTitle__" hidden>
+                <div class="recording-panel__header">
+                    <div>
+                        <h6 class="recording-title">__MSG_popupRecorderSettingsHeading__</h6>
+                        <p class="recording-caption">__MSG_popupRecorderSettingsDescription__</p>
+                    </div>
+                </div>
+                <label class="recorder-settings-option" for="recordingScreenshotsToggle">
+                    <input id="recordingScreenshotsToggle" class="recorder-settings-option__checkbox" type="checkbox">
+                    <span class="recorder-settings-option__label">__MSG_popupRecorderCaptureScreenshots__</span>
+                </label>
+                <div class="recorder-settings-group">
+                    <p class="recorder-settings-group__title">__MSG_popupRecorderStepTypesHeading__</p>
+                    <div id="recorderStepSettingsList" class="recorder-settings-grid"></div>
+                </div>
+            </section>
             <div class="mode-tabs" role="tablist" aria-label="__MSG_popupModesAria__">
                 <button id="actionTabBtn" class="mode-tab is-active" type="button" role="tab" aria-selected="true">__MSG_popupActionTab__</button>
                 <button id="recorderTabBtn" class="mode-tab" type="button" role="tab" aria-selected="false">__MSG_popupRecorderTab__</button>

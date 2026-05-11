@@ -20,7 +20,8 @@ import { getMessage } from './src/i18n.js';
 const STORAGE_KEYS = {
     session: 'session',
     draft: 'draft',
-    recording: 'recording'
+    recording: 'recording',
+    recorderSettings: 'recorderSettings'
 };
 
 const RECORDING_SCREENSHOT_DELAY_MS = 250;
@@ -32,6 +33,20 @@ const PLAYBACK_DELAY_MAX_MS = 2000;
 const PLAYBACK_TARGET_NOT_FOUND_RETRY_DELAY_MS = 1000;
 
 const VALID_ANNOTATION_TYPES = ['Bug', 'Note'];
+const RECORDER_STEP_TYPES = [
+    'click',
+    'doubleClick',
+    'contextMenu',
+    'hoverEnter',
+    'hoverLeave',
+    'dragStart',
+    'drop',
+    'file',
+    'input',
+    'change',
+    'submit',
+    'navigation'
+];
 
 const ANNOTATION_CONSTRUCTORS = {
     Bug,
@@ -44,6 +59,7 @@ let draftRecording = createEmptyRecording();
 let annotationRecordingsById = {};
 let selectedRecordingTarget = createDraftRecordingTarget();
 let activeRecordingTarget = createDraftRecordingTarget();
+let recorderSettings = createDefaultRecorderSettings();
 let stateReadyPromise = null;
 let playbackToken = null;
 
@@ -54,6 +70,61 @@ function createEmptyDraft(type = 'Bug') {
         imageEntries: [],
         imageURLs: []
     };
+}
+
+function createDefaultRecorderSettings() {
+    return {
+        captureScreenshots: true,
+        stepToggles: Object.fromEntries(
+            RECORDER_STEP_TYPES.map((stepType) => [stepType, true])
+        )
+    };
+}
+
+function cloneRecorderSettings(settings = recorderSettings) {
+    const normalizedSettings = normalizeRecorderSettings(settings);
+    return {
+        captureScreenshots: normalizedSettings.captureScreenshots,
+        stepToggles: { ...normalizedSettings.stepToggles }
+    };
+}
+
+function normalizeRecorderSettings(rawSettings = {}) {
+    const defaultSettings = createDefaultRecorderSettings();
+    const rawStepToggles = rawSettings?.stepToggles && typeof rawSettings.stepToggles === 'object'
+        ? rawSettings.stepToggles
+        : {};
+
+    return {
+        captureScreenshots: typeof rawSettings.captureScreenshots === 'boolean'
+            ? rawSettings.captureScreenshots
+            : defaultSettings.captureScreenshots,
+        stepToggles: Object.fromEntries(
+            RECORDER_STEP_TYPES.map((stepType) => [
+                stepType,
+                typeof rawStepToggles[stepType] === 'boolean'
+                    ? rawStepToggles[stepType]
+                    : defaultSettings.stepToggles[stepType]
+            ])
+        )
+    };
+}
+
+function mergeRecorderSettings(nextSettings = {}) {
+    recorderSettings = normalizeRecorderSettings({
+        ...recorderSettings,
+        ...nextSettings,
+        stepToggles: {
+            ...recorderSettings.stepToggles,
+            ...(nextSettings?.stepToggles && typeof nextSettings.stepToggles === 'object'
+                ? nextSettings.stepToggles
+                : {})
+        }
+    });
+}
+
+function isRecorderStepEnabled(stepType) {
+    return Boolean(recorderSettings.stepToggles?.[stepType]);
 }
 
 function normalizeDraft(rawDraft = {}) {
@@ -85,10 +156,16 @@ function createAnnotationFromStoredData(annotationData) {
 async function ensureStateReady() {
     if (!stateReadyPromise) {
         stateReadyPromise = (async () => {
-            const storedValues = await chrome.storage.local.get([STORAGE_KEYS.session, STORAGE_KEYS.draft, STORAGE_KEYS.recording]);
+            const storedValues = await chrome.storage.local.get([
+                STORAGE_KEYS.session,
+                STORAGE_KEYS.draft,
+                STORAGE_KEYS.recording,
+                STORAGE_KEYS.recorderSettings
+            ]);
             session = reconstructSession(storedValues[STORAGE_KEYS.session]);
             draft = normalizeDraft(storedValues[STORAGE_KEYS.draft]);
             hydrateRecordingStore(storedValues[STORAGE_KEYS.recording]);
+            recorderSettings = normalizeRecorderSettings(storedValues[STORAGE_KEYS.recorderSettings]);
         })();
     }
 
@@ -243,6 +320,7 @@ function createPopupStatePayload() {
     return {
         draft: getDraftPayload(),
         draftRecording: createRecordingPayload(createDraftRecordingTarget()),
+        recorderSettings: cloneRecorderSettings(),
         selectedRecordingTarget: { ...selectedRecordingTarget },
         selectedRecording: createRecordingPayload(selectedRecordingTarget),
         activeRecordingTarget: { ...activeRecordingTarget },
@@ -257,6 +335,12 @@ function createPopupStatePayload() {
 async function saveRecording() {
     await chrome.storage.local.set({
         [STORAGE_KEYS.recording]: saveableRecordingStore()
+    });
+}
+
+async function saveRecorderSettings() {
+    await chrome.storage.local.set({
+        [STORAGE_KEYS.recorderSettings]: cloneRecorderSettings()
     });
 }
 
@@ -277,11 +361,12 @@ function clearReplayFailureState(recordingState) {
 }
 
 function shouldCaptureRecordingScreenshot(stepType) {
-    return stepType === 'click'
+    return recorderSettings.captureScreenshots
+        && (stepType === 'click'
         || stepType === 'doubleClick'
         || stepType === 'contextMenu'
         || stepType === 'submit'
-        || stepType === 'drop';
+        || stepType === 'drop');
 }
 
 function getActiveRecordingState() {
@@ -1003,7 +1088,7 @@ async function stopRecordingFlow(options = {}) {
                     (!lastRecordedStep || lastRecordedStep.url !== currentTab.url || lastRecordedStep.type !== 'navigation')
                 );
 
-            if (shouldAppendFinalNavigation) {
+            if (shouldAppendFinalNavigation && isRecorderStepEnabled('navigation')) {
                 const stepId = createRuntimeId('recording-step');
                 recordingState.steps.push({
                     stepId,
@@ -1023,6 +1108,8 @@ async function stopRecordingFlow(options = {}) {
                     replayPolicy: 'auto',
                     replayHint: ''
                 });
+                recordingState.lastKnownUrl = currentTab.url;
+            } else if (currentTab && currentTab.url) {
                 recordingState.lastKnownUrl = currentTab.url;
             }
         } catch (error) {
@@ -1091,6 +1178,14 @@ async function appendRecordedStep(rawStep, senderTab) {
         replayHint: typeof rawStep.replayHint === 'string' ? rawStep.replayHint : ''
     };
 
+    if (!isRecorderStepEnabled(stepItem.type)) {
+        if (stepItem.type === 'navigation' && stepItem.url && stepItem.url !== recordingState.lastKnownUrl) {
+            recordingState.lastKnownUrl = stepItem.url;
+            await saveRecording();
+        }
+        return createRecordingPayload(activeRecordingTarget);
+    }
+
     const lastRecordedStep = recordingState.steps.length > 0
         ? recordingState.steps[recordingState.steps.length - 1]
         : null;
@@ -1122,6 +1217,12 @@ async function appendNavigationStep(tabId, nextUrl) {
     }
 
     if (!nextUrl || nextUrl === recordingState.lastKnownUrl) {
+        return;
+    }
+
+    if (!isRecorderStepEnabled('navigation')) {
+        recordingState.lastKnownUrl = nextUrl;
+        await saveRecording();
         return;
     }
 
@@ -1340,6 +1441,12 @@ async function syncRecordingNavigationFromActiveTab() {
         return createRecordingPayload(activeRecordingTarget);
     }
 
+    if (!isRecorderStepEnabled('navigation')) {
+        recordingState.lastKnownUrl = activeTab.url;
+        await saveRecording();
+        return createRecordingPayload(activeRecordingTarget);
+    }
+
     const stepId = createRuntimeId('recording-step');
     recordingState.steps.push({
         stepId,
@@ -1416,6 +1523,12 @@ async function createAnnotationFromDraft() {
         summary: getSessionSummaryPayload(),
         popupState: createPopupStatePayload()
     };
+}
+
+async function updateRecorderSettings(nextSettings = {}) {
+    mergeRecorderSettings(nextSettings);
+    await saveRecorderSettings();
+    return cloneRecorderSettings();
 }
 
 async function updateAnnotationName(annotationId, newName) {
@@ -1650,6 +1763,14 @@ async function handleProcessAnnotatedCrop(request) {
     await appendImagesToDraft(request.annotatedImageData);
 }
 
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local' || !changes[STORAGE_KEYS.recorderSettings]) {
+        return;
+    }
+
+    recorderSettings = normalizeRecorderSettings(changes[STORAGE_KEYS.recorderSettings].newValue);
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const runAsync = async () => {
         await ensureStateReady();
@@ -1677,6 +1798,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 setSelectedRecordingTarget(request.target || createDraftRecordingTarget());
                 await saveRecording();
                 return { status: 'ok', popupState: createPopupStatePayload() };
+            case 'updateRecorderSettings':
+                return {
+                    status: 'ok',
+                    recorderSettings: await updateRecorderSettings(request.settings || {}),
+                    popupState: createPopupStatePayload()
+                };
             case 'startRecordingFlow':
                 return { status: 'ok', recording: await startRecordingFlow(request.target || null), popupState: createPopupStatePayload() };
             case 'syncRecordingNavigation':

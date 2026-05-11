@@ -21,6 +21,13 @@
     "popupSessionResetAria": { "message": "Reset session" },
     "popupResetAllTitle": { "message": "Reset all session data" },
     "popupResetAllHidden": { "message": "Reset all session data" },
+    "popupRecorderSettingsTitle": { "message": "Recorder settings" },
+    "popupRecorderSettingsHeading": { "message": "Recorder settings" },
+    "popupRecorderSettingsDescription": {
+        "message": "Choose which actions are logged during recording. These settings are global and are not included in exported session data."
+    },
+    "popupRecorderCaptureScreenshots": { "message": "Capture screenshots while recording actions" },
+    "popupRecorderStepTypesHeading": { "message": "Logged action types" },
     "popupDraftSubtitle": {
         "message": "Collect notes and screenshots first, then save the step explicitly."
     },

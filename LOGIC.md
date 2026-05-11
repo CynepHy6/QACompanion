@@ -51,6 +51,13 @@ If the code diverges from this document, the divergence SHOULD be treated explic
 ### What Recorder Captures
 - Recorder currently captures these step types:
   - `click`
+  - `doubleClick`
+  - `contextMenu`
+  - `hoverEnter`
+  - `hoverLeave`
+  - `dragStart`
+  - `drop`
+  - `file`
   - `input`
   - `change`
   - `submit`
@@ -71,6 +78,14 @@ If the code diverges from this document, the divergence SHOULD be treated explic
 - Saved annotations can be selected as replay targets from the popup only when they already have an attached recording.
 - Saved annotations without an attached recording MUST NOT be selectable from the Recorder UI.
 - Starting a new recording for a target that already has a saved recording MUST require clearing the existing recording first.
+
+### Recorder Settings
+- The popup MUST expose recorder settings from a button near the full session reset action.
+- Recorder settings MUST open inside the popup instead of a separate browser options page.
+- Recorder settings are global and apply only to future recorded steps.
+- The user MAY disable screenshot capture during recording.
+- The user MAY enable or disable logging for any supported recorder step type.
+- All recorder setting toggles SHOULD default to enabled.
 
 ### Replay
 - Replay runs against the current active tab.
@@ -105,6 +120,7 @@ If the code diverges from this document, the divergence SHOULD be treated explic
   - draft recording
   - per-annotation recordings
 - This is intentional: JSON is a state transfer format, not just a presentation format.
+- Global recorder settings MUST NOT be included in JSON export/import payloads.
 
 ## Storage Model
 - `chrome.storage.local` is the main persistence layer.
@@ -112,6 +128,7 @@ If the code diverges from this document, the divergence SHOULD be treated explic
   - `session`: saved annotations and environment metadata
   - `draft`: unsaved Action draft
   - `recording`: draft recording, per-annotation recordings, and current recorder target state
+  - `recorderSettings`: global recorder logging and screenshot preferences kept outside portable session state
 
 ## Session Rules
 - A session contains saved annotations and environment metadata.
@@ -120,12 +137,14 @@ If the code diverges from this document, the divergence SHOULD be treated explic
   - saved annotations
   - draft
   - recordings
+- Resetting the whole session MUST NOT clear global recorder settings.
 
 ## Current Recorder Limitations
 - No multi-tab replay.
-- No drag-and-drop, canvas hotspots, or other coordinate-sensitive replay.
 - No keyboard shortcut capture/replay.
-- No iframe or Shadow DOM replay support.
+- No iframe replay support.
+- File upload replay still requires manual user action.
+- Some coordinate-sensitive hotspots outside the explicitly supported recorder steps remain unreliable.
 - No self-healing locator strategy.
 
 These are implementation limits, not intended supported behavior.
