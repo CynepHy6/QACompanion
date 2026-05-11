@@ -1,4 +1,4 @@
-# Changelog
+# c
 
 ## 1.0
 
@@ -11,6 +11,7 @@ First release of `QA Companion` as a standalone fork.
 - Updated crop screenshot flow with a dedicated annotation editor
 - Simplified annotation types to `Bug` and `Note`
 - Recording and replaying actions on the page
+- settings for recorder step types and screenshot captures
 
 ## Versions Before 1.0
 
