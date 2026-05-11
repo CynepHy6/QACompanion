@@ -410,6 +410,88 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
     let replayHighlightTimer = null;
     const pendingInputTimers = new Map();
 
+    function getCookieValue(cookieName) {
+        if (typeof cookieName !== 'string' || cookieName === '' || typeof document.cookie !== 'string') {
+            return '';
+        }
+
+        const cookiePrefix = `${cookieName}=`;
+        return document.cookie
+            .split(';')
+            .map((cookiePart) => cookiePart.trim())
+            .find((cookiePart) => cookiePart.startsWith(cookiePrefix))
+            ?.slice(cookiePrefix.length) || '';
+    }
+
+    function decodeBase64UrlSegment(base64UrlValue) {
+        if (typeof base64UrlValue !== 'string' || base64UrlValue === '') {
+            return '';
+        }
+
+        const normalizedValue = base64UrlValue
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+        const paddedValue = normalizedValue + '='.repeat((4 - (normalizedValue.length % 4)) % 4);
+        try {
+            return atob(paddedValue);
+        } catch {
+            return '';
+        }
+    }
+
+    function decodeJwtPayload(tokenValue) {
+        if (typeof tokenValue !== 'string' || tokenValue === '') {
+            return null;
+        }
+
+        const tokenParts = tokenValue.split('.');
+        if (tokenParts.length < 2) {
+            return null;
+        }
+
+        const payloadJson = decodeBase64UrlSegment(tokenParts[1]);
+        if (payloadJson === '') {
+            return null;
+        }
+
+        try {
+            return JSON.parse(payloadJson);
+        } catch {
+            return null;
+        }
+    }
+
+    function deriveCurrentUserInfoFromToken() {
+        const tokenValue = getCookieValue('token_global');
+        if (tokenValue === '') {
+            return null;
+        }
+
+        const payloadData = decodeJwtPayload(tokenValue);
+        if (!payloadData || typeof payloadData !== 'object') {
+            return null;
+        }
+
+        return {
+            userId: Number.isFinite(payloadData.userId) ? String(payloadData.userId) : '',
+            identity: typeof payloadData.identity === 'string' ? payloadData.identity : '',
+            identityLogin: typeof payloadData.identityLogin === 'string' ? payloadData.identityLogin : '',
+            identityEmail: typeof payloadData.identityEmail === 'string' ? payloadData.identityEmail : '',
+            identityPhone: typeof payloadData.identityPhone === 'string' ? payloadData.identityPhone : '',
+            name: typeof payloadData.name === 'string' ? payloadData.name : '',
+            surname: typeof payloadData.surname === 'string' ? payloadData.surname : '',
+            email: typeof payloadData.email === 'string' ? payloadData.email : '',
+            uiLanguage: typeof payloadData.uiLanguage === 'string' ? payloadData.uiLanguage : '',
+            locale: typeof payloadData.locale === 'string' ? payloadData.locale : '',
+            serviceLocale: typeof payloadData.serviceLocale === 'string' ? payloadData.serviceLocale : '',
+            avatarUrl: typeof payloadData.avatarUrl === 'string' ? payloadData.avatarUrl : '',
+            birthday: typeof payloadData.birthday === 'string' ? payloadData.birthday : '',
+            roles: Array.isArray(payloadData.roles)
+                ? payloadData.roles.filter((roleValue) => typeof roleValue === 'string' && roleValue !== '')
+                : []
+        };
+    }
+
     function buildCssPath(targetElement) {
         if (!targetElement || targetElement.nodeType !== Node.ELEMENT_NODE) {
             return '';
@@ -869,6 +951,14 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
                 pageLanguage: document.documentElement?.lang || '',
                 colorScheme,
                 reducedMotion
+            });
+            return true;
+        }
+
+        if (request.type === 'getCurrentUserInfo') {
+            sendResponse({
+                status: 'ok',
+                currentUser: deriveCurrentUserInfoFromToken()
             });
             return true;
         }

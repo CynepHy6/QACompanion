@@ -560,6 +560,82 @@ async function getPageEnvironmentInfo(activeTab) {
     }
 }
 
+function isSupportedCurrentUserHost(urlValue) {
+    if (typeof urlValue !== 'string' || urlValue === '' || isRestrictedPage(urlValue)) {
+        return false;
+    }
+
+    try {
+        const pageUrl = new URL(urlValue);
+        return pageUrl.hostname.includes('skyeng') || pageUrl.hostname.includes('skysmart');
+    } catch {
+        return false;
+    }
+}
+
+function normalizeCurrentUserInfo(rawCurrentUser = null) {
+    if (!rawCurrentUser || typeof rawCurrentUser !== 'object') {
+        return null;
+    }
+
+    const normalizedCurrentUser = {
+        userId: typeof rawCurrentUser.userId === 'string' ? rawCurrentUser.userId : '',
+        identity: typeof rawCurrentUser.identity === 'string' ? rawCurrentUser.identity : '',
+        identityLogin: typeof rawCurrentUser.identityLogin === 'string' ? rawCurrentUser.identityLogin : '',
+        identityEmail: typeof rawCurrentUser.identityEmail === 'string' ? rawCurrentUser.identityEmail : '',
+        identityPhone: typeof rawCurrentUser.identityPhone === 'string' ? rawCurrentUser.identityPhone : '',
+        name: typeof rawCurrentUser.name === 'string' ? rawCurrentUser.name : '',
+        surname: typeof rawCurrentUser.surname === 'string' ? rawCurrentUser.surname : '',
+        email: typeof rawCurrentUser.email === 'string' ? rawCurrentUser.email : '',
+        uiLanguage: typeof rawCurrentUser.uiLanguage === 'string' ? rawCurrentUser.uiLanguage : '',
+        locale: typeof rawCurrentUser.locale === 'string' ? rawCurrentUser.locale : '',
+        serviceLocale: typeof rawCurrentUser.serviceLocale === 'string' ? rawCurrentUser.serviceLocale : '',
+        avatarUrl: typeof rawCurrentUser.avatarUrl === 'string' ? rawCurrentUser.avatarUrl : '',
+        birthday: typeof rawCurrentUser.birthday === 'string' ? rawCurrentUser.birthday : '',
+        roles: Array.isArray(rawCurrentUser.roles)
+            ? rawCurrentUser.roles.filter((roleValue) => typeof roleValue === 'string' && roleValue !== '')
+            : []
+    };
+
+    const hasDerivedValue = Object.entries(normalizedCurrentUser).some(([fieldName, fieldValue]) => {
+        if (fieldName === 'roles') {
+            return fieldValue.length > 0;
+        }
+
+        return fieldValue !== '';
+    });
+
+    return hasDerivedValue ? normalizedCurrentUser : null;
+}
+
+async function getCurrentUserInfo(activeTab) {
+    if (!activeTab || typeof activeTab.id !== 'number' || !isSupportedCurrentUserHost(activeTab.url)) {
+        return null;
+    }
+
+    try {
+        const response = await sendMessageToTab(activeTab.id, { type: 'getCurrentUserInfo' });
+        return normalizeCurrentUserInfo(response?.currentUser || null);
+    } catch (error) {
+        console.log('Background: Current user snapshot unavailable.', error?.message || '');
+        return null;
+    }
+}
+
+async function enrichSessionWithCurrentUser(activeTab) {
+    const currentUserInfo = await getCurrentUserInfo(activeTab);
+    if (!currentUserInfo) {
+        return false;
+    }
+
+    const browserInfo = session.getBrowserInfo() || {};
+    session.BrowserInfo = {
+        ...browserInfo,
+        currentUser: currentUserInfo
+    };
+    return true;
+}
+
 async function getEnhancedSystemInfo(activeTab = null) {
     const baseSystemInfo = getSystemInfo();
     const pageInfo = await getPageEnvironmentInfo(activeTab);
@@ -1247,6 +1323,7 @@ async function createAnnotationFromDraft() {
 
     if (session.getAnnotations().length === 0) {
         await startSession(activeTab);
+        await enrichSessionWithCurrentUser(activeTab);
     }
     const currentUrl = activeTab && activeTab.url ? activeTab.url : 'N/A';
     const annotation = createAnnotationFromDraftData(

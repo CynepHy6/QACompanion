@@ -140,26 +140,23 @@ export async function downloadCompleteReport(reportState) {
 function removeInteractiveElements(container) {
     // Convert chart canvas to static image
     const chartCanvas = document.getElementById('annotationsChart');
-    const chartContainer = container.querySelector('#chartContainer');
-    if (chartCanvas && chartContainer) {
+    const standaloneChartCanvas = container.querySelector('#annotationsChart');
+    if (chartCanvas && standaloneChartCanvas) {
         try {
             // Get the canvas as base64 image
             const chartImageData = chartCanvas.toDataURL('image/png');
 
             // Replace canvas with img element
-            const canvas = chartContainer.querySelector('canvas');
-            if (canvas) {
-                const img = document.createElement('img');
-                img.src = chartImageData;
-                img.alt = getMessage('reportDownloadChartAlt', undefined, 'Annotation distribution chart');
-                img.style.maxWidth = '100%';
-                img.style.height = 'auto';
-                canvas.replaceWith(img);
-            }
+            const img = document.createElement('img');
+            img.src = chartImageData;
+            img.alt = getMessage('reportDownloadChartAlt', undefined, 'Annotation distribution chart');
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            standaloneChartCanvas.replaceWith(img);
         } catch (error) {
             console.error('Error converting chart to image:', error);
             // If conversion fails, remove the chart
-            if (chartContainer) chartContainer.remove();
+            if (standaloneChartCanvas) standaloneChartCanvas.remove();
         }
     }
 

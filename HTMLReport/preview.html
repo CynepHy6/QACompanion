@@ -22,16 +22,35 @@
             </div>
         </header>
 
-        <!-- Session Overview: Info + Stats + Chart -->
+        <!-- Session Overview: Page + User Info -->
         <section class="section section--overview">
-            <div id="sessionInfo" class="info-column"></div>
-            <div id="chartContainer" class="chart-column">
-                <h3 class="chart-card__title">__MSG_reportChartTitle__</h3>
-                <div class="chart-card__body">
-                    <div class="chart-card__visual">
-                        <canvas id="annotationsChart"></canvas>
+            <div id="overviewInfoGrid" class="overview-info-grid overview-info-grid--single">
+                <section id="pageInfoPanel" class="info-panel">
+                    <h3 class="info-panel__title">__MSG_reportPageInfoTitle__</h3>
+                    <div id="sessionInfo" class="info-column"></div>
+                </section>
+                <section id="userInfoPanel" class="info-panel" hidden>
+                    <h3 class="info-panel__title">__MSG_reportUserInfoTitle__</h3>
+                    <div id="userInfo" class="info-column"></div>
+                </section>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="toolbar-card toolbar-card--with-chart">
+                <div class="filter-section">
+                    <span class="filter-section__label">__MSG_reportFilterByType__</span>
+                    <div class="filter-pills">
+                        <button class="filter-pill active" data-type="all">__MSG_reportFilterAll__</button>
+                        <button class="filter-pill filter-pill--bug" data-type="Bug">__MSG_reportFilterBugs__</button>
+                        <button class="filter-pill filter-pill--note" data-type="Note">__MSG_reportFilterNotes__</button>
                     </div>
                 </div>
+                <canvas
+                    id="annotationsChart"
+                    class="chart-column chart-column--compact"
+                    title="__MSG_reportChartTitle__"
+                    aria-label="__MSG_reportChartTitle__"></canvas>
             </div>
         </section>
 
@@ -50,20 +69,6 @@
                         </svg>
                         __MSG_reportDownloadReport__
                     </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Filters -->
-        <section class="section">
-            <div class="toolbar-card">
-                <div class="filter-section">
-                    <span class="filter-section__label">__MSG_reportFilterByType__</span>
-                    <div class="filter-pills">
-                        <button class="filter-pill active" data-type="all">__MSG_reportFilterAll__</button>
-                        <button class="filter-pill filter-pill--bug" data-type="Bug">__MSG_reportFilterBugs__</button>
-                        <button class="filter-pill filter-pill--note" data-type="Note">__MSG_reportFilterNotes__</button>
-                    </div>
                 </div>
             </div>
         </section>

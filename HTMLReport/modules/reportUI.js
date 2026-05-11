@@ -19,6 +19,22 @@ const ANNOTATION_COLORS = {
 };
 
 const EMPTY_DISPLAY_VALUE = '--';
+const CURRENT_USER_FIELDS = [
+    'userId',
+    'identity',
+    'identityLogin',
+    'identityEmail',
+    'identityPhone',
+    'name',
+    'surname',
+    'email',
+    'uiLanguage',
+    'locale',
+    'serviceLocale',
+    'avatarUrl',
+    'birthday',
+    'roles'
+];
 
 /**
  * Renders session information in the header area.
@@ -80,17 +96,100 @@ export function displaySessionInfo(session) {
         }
     ];
 
-    sessionInfo.innerHTML = environmentItems.map((item) => `
-        <div class="info-item">
-            <span class="info-key">
-                <span
-                    class="info-label${item.hint ? ' info-label--hint' : ''}"
-                    ${item.hint ? `title="${escapeHtml(item.hint)}" aria-label="${escapeHtml(`${item.label}: ${item.hint}`)}"` : ''}
-                >${item.label}${item.hint ? '<span class="info-label__hint-marker" aria-hidden="true">?</span>' : ''}</span>
-            </span>
-            <span class="info-value">${escapeHtml(item.value)}</span>
-        </div>
-    `).join('');
+    renderInfoItems(sessionInfo, environmentItems);
+}
+
+export function displayUserInfo(session) {
+    const userInfoPanel = document.getElementById('userInfoPanel');
+    const userInfoContainer = document.getElementById('userInfo');
+    if (!userInfoPanel || !userInfoContainer) {
+        return;
+    }
+
+    const currentUser = getCurrentUserInfo(session.getBrowserInfo());
+    if (!currentUser) {
+        userInfoPanel.hidden = true;
+        userInfoContainer.innerHTML = '';
+        setOverviewLayoutState(false);
+        return;
+    }
+
+    const userItems = [
+        {
+            label: 'userId',
+            value: getDisplayValue(currentUser.userId),
+            rawLabel: true
+        },
+        {
+            label: 'identity',
+            value: getDisplayValue(currentUser.identity),
+            rawLabel: true
+        },
+        {
+            label: 'identityLogin',
+            value: getDisplayValue(currentUser.identityLogin),
+            rawLabel: true
+        },
+        {
+            label: 'identityEmail',
+            value: getDisplayValue(currentUser.identityEmail),
+            rawLabel: true
+        },
+        {
+            label: 'identityPhone',
+            value: getDisplayValue(currentUser.identityPhone),
+            rawLabel: true
+        },
+        {
+            label: 'name',
+            value: getDisplayValue(currentUser.name),
+            rawLabel: true
+        },
+        {
+            label: 'surname',
+            value: getDisplayValue(currentUser.surname),
+            rawLabel: true
+        },
+        {
+            label: 'email',
+            value: getDisplayValue(currentUser.email),
+            rawLabel: true
+        },
+        {
+            label: 'uiLanguage',
+            value: getDisplayValue(currentUser.uiLanguage),
+            rawLabel: true
+        },
+        {
+            label: 'locale',
+            value: getDisplayValue(currentUser.locale),
+            rawLabel: true
+        },
+        {
+            label: 'serviceLocale',
+            value: getDisplayValue(currentUser.serviceLocale),
+            rawLabel: true
+        },
+        {
+            label: 'avatarUrl',
+            value: getDisplayValue(currentUser.avatarUrl),
+            rawLabel: true
+        },
+        {
+            label: 'birthday',
+            value: getDisplayValue(currentUser.birthday),
+            rawLabel: true
+        },
+        {
+            label: 'roles',
+            value: formatRoles(currentUser.roles),
+            rawLabel: true
+        }
+    ];
+
+    renderInfoItems(userInfoContainer, userItems);
+    userInfoPanel.hidden = false;
+    setOverviewLayoutState(true);
 }
 
 export function updateReportHeaderSubtitle(reportState, generatedAtValue = Date.now(), rootElement = document) {
@@ -102,6 +201,33 @@ export function updateReportHeaderSubtitle(reportState, generatedAtValue = Date.
     }
 
     subtitleElement.textContent = buildReportHeaderSubtitle(reportState, generatedAtValue);
+}
+
+function renderInfoItems(containerElement, infoItems) {
+    if (!containerElement) {
+        return;
+    }
+
+    containerElement.innerHTML = infoItems.map((item) => `
+        <div class="info-item">
+            <span class="info-key">
+                <span
+                    class="info-label${item.rawLabel ? ' info-label--raw' : ''}${item.hint ? ' info-label--hint' : ''}"
+                    ${item.hint ? `title="${escapeHtml(item.hint)}" aria-label="${escapeHtml(`${item.label}: ${item.hint}`)}"` : ''}
+                >${item.label}${item.hint ? '<span class="info-label__hint-marker" aria-hidden="true">?</span>' : ''}</span>
+            </span>
+            <span class="info-value">${escapeHtml(item.value)}</span>
+        </div>
+    `).join('');
+}
+
+function setOverviewLayoutState(hasUserInfo) {
+    const overviewInfoGrid = document.getElementById('overviewInfoGrid');
+    if (!overviewInfoGrid) {
+        return;
+    }
+
+    overviewInfoGrid.classList.toggle('overview-info-grid--single', !hasUserInfo);
 }
 
 /**
@@ -205,14 +331,23 @@ export function createAnnotationsChart(session) {
         session.getBugs().length,
         session.getNotes().length
     ];
-
-    // Don't render chart if no annotations
-    if (data.every(d => d === 0)) {
-        document.getElementById('chartContainer').style.display = 'none';
+    const chartCanvas = document.getElementById('annotationsChart');
+    if (!chartCanvas) {
         return;
     }
 
-    const ctx = document.getElementById('annotationsChart').getContext('2d');
+    // Don't render chart if no annotations
+    if (data.every(d => d === 0)) {
+        chartCanvas.style.display = 'none';
+        return;
+    }
+
+    chartCanvas.style.display = '';
+    chartCanvas.width = 64;
+    chartCanvas.height = 64;
+    chartCanvas.style.width = '64px';
+    chartCanvas.style.height = '64px';
+    const ctx = chartCanvas.getContext('2d');
     new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -231,7 +366,7 @@ export function createAnnotationsChart(session) {
             }]
         },
         options: {
-            responsive: true,
+            responsive: false,
             cutout: '60%',
             plugins: {
                 legend: {
@@ -388,6 +523,23 @@ function getFirstReportEventTimestamp(reportState) {
     return Number.isFinite(sessionStartTimestamp) ? sessionStartTimestamp : null;
 }
 
+function getCurrentUserInfo(browserInfo) {
+    const currentUser = browserInfo?.currentUser;
+    if (!currentUser || typeof currentUser !== 'object') {
+        return null;
+    }
+
+    const hasVisibleValue = CURRENT_USER_FIELDS.some((fieldName) => {
+        if (fieldName === 'roles') {
+            return Array.isArray(currentUser.roles) && currentUser.roles.length > 0;
+        }
+
+        return typeof currentUser[fieldName] === 'string' && currentUser[fieldName].trim() !== '';
+    });
+
+    return hasVisibleValue ? currentUser : null;
+}
+
 function formatBrowserInfo(browserInfo) {
     if (!browserInfo) {
         return EMPTY_DISPLAY_VALUE;
@@ -400,6 +552,16 @@ function formatBrowserInfo(browserInfo) {
     const browserName = typeof browserInfo.browser === 'string' ? browserInfo.browser : '';
     const browserVersion = typeof browserInfo.browserVersion === 'string' ? browserInfo.browserVersion : '';
     return [browserName, browserVersion].filter(Boolean).join(' ') || EMPTY_DISPLAY_VALUE;
+}
+
+function formatRoles(rolesValue) {
+    if (!Array.isArray(rolesValue) || rolesValue.length === 0) {
+        return EMPTY_DISPLAY_VALUE;
+    }
+
+    return rolesValue
+        .filter((roleValue) => typeof roleValue === 'string' && roleValue.trim() !== '')
+        .join(', ') || EMPTY_DISPLAY_VALUE;
 }
 
 function getDisplayValue(rawValue) {

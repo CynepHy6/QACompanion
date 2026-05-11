@@ -137,6 +137,8 @@
         "message": "Отчет по исследовательскому тестированию"
     },
     "reportHeaderSubtitle": { "message": "Сводка по сессии" },
+    "reportPageInfoTitle": { "message": "Информация о странице" },
+    "reportUserInfoTitle": { "message": "Информация о пользователе" },
     "reportChartTitle": { "message": "Распределение" },
     "reportSectionsAria": { "message": "Разделы отчета" },
     "reportTabActions": { "message": "Шаги" },
@@ -206,6 +208,20 @@
     "reportEnvironmentPageTitleHint": {
         "message": "Текущий заголовок тестируемой страницы."
     },
+    "reportUserFieldUserId": { "message": "ID пользователя" },
+    "reportUserFieldIdentity": { "message": "Identity" },
+    "reportUserFieldIdentityLogin": { "message": "Логин identity" },
+    "reportUserFieldIdentityEmail": { "message": "Email identity" },
+    "reportUserFieldIdentityPhone": { "message": "Телефон identity" },
+    "reportUserFieldName": { "message": "Имя" },
+    "reportUserFieldSurname": { "message": "Фамилия" },
+    "reportUserFieldEmail": { "message": "Email" },
+    "reportUserFieldUiLanguage": { "message": "Язык интерфейса" },
+    "reportUserFieldLocale": { "message": "Локаль" },
+    "reportUserFieldServiceLocale": { "message": "Сервисная локаль" },
+    "reportUserFieldAvatarUrl": { "message": "URL аватара" },
+    "reportUserFieldBirthday": { "message": "Дата рождения" },
+    "reportUserFieldRoles": { "message": "Роли" },
     "reportNotAvailable": { "message": "N/A" },
 
     "reportStatsBugs": { "message": "Баги" },
