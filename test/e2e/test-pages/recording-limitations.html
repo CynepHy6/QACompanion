@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recorder Limitations Playground</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --page-background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #111827 100%);
+            --panel-background: rgba(15, 23, 42, 0.78);
+            --panel-border: rgba(148, 163, 184, 0.24);
+            --text-primary: #e5eefc;
+            --text-secondary: #bfd0ea;
+            --accent-color: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --warning-color: #f59e0b;
+            --danger-color: #f97316;
+            --success-color: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: var(--page-background);
+            color: var(--text-primary);
+        }
+
+        .page-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 24px auto 48px;
+        }
+
+        .hero-panel,
+        .playground-panel,
+        .log-panel {
+            background: var(--panel-background);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        .hero-panel {
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .playground-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .playground-panel {
+            padding: 18px;
+            min-height: 220px;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin-top: 0;
+        }
+
+        h1 {
+            font-size: 30px;
+            margin-bottom: 12px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            max-width: 820px;
+            line-height: 1.5;
+        }
+
+        .limitation-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            color: #0f172a;
+            background: var(--warning-color);
+        }
+
+        .control-button,
+        .control-link,
+        .control-file-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--text-primary);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .control-button:hover,
+        .control-link:hover,
+        .control-file-label:hover {
+            background: rgba(14, 165, 233, 0.25);
+        }
+
+        .status-box,
+        .hint-box {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(30, 41, 59, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .status-box strong,
+        .hint-box strong {
+            color: var(--text-primary);
+        }
+
+        .shortcut-target {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: rgba(15, 23, 42, 0.72);
+            color: var(--text-primary);
+            margin-top: 10px;
+        }
+
+        .drag-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .drag-card,
+        .drop-zone {
+            min-height: 120px;
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .drag-card {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px dashed rgba(56, 189, 248, 0.55);
+            cursor: grab;
+        }
+
+        .drop-zone {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px dashed rgba(34, 197, 94, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .drop-zone.is-over {
+            background: rgba(34, 197, 94, 0.18);
+            border-style: solid;
+        }
+
+        .gesture-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .gesture-target {
+            flex: 1 1 140px;
+            min-height: 110px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(15, 23, 42, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+            user-select: none;
+        }
+
+        .hover-card {
+            position: relative;
+            min-height: 112px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(15, 23, 42, 0.72);
+            padding: 14px;
+        }
+
+        .hover-reveal {
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            bottom: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(56, 189, 248, 0.16);
+            border: 1px solid rgba(56, 189, 248, 0.26);
+            display: none;
+        }
+
+        .hover-card:hover .hover-reveal {
+            display: block;
+        }
+
+        .scroll-box {
+            margin-top: 8px;
+            height: 150px;
+            overflow: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(15, 23, 42, 0.72);
+            padding: 12px;
+        }
+
+        .scroll-spacer {
+            height: 420px;
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.1), rgba(249, 115, 22, 0.12));
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .canvas-target {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: #020617;
+            display: block;
+        }
+
+        .embedded-frame {
+            width: 100%;
+            min-height: 180px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 14px;
+            background: #fff;
+        }
+
+        .shadow-host {
+            margin-top: 8px;
+            border-radius: 14px;
+            border: 1px dashed rgba(148, 163, 184, 0.32);
+            padding: 10px;
+            min-height: 120px;
+        }
+
+        .log-panel {
+            margin-top: 20px;
+            padding: 18px;
+        }
+
+        .log-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0 0;
+            display: grid;
+            gap: 8px;
+        }
+
+        .log-list li {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.74);
+            color: var(--text-secondary);
+            font-family: monospace;
+            overflow-wrap: anywhere;
+        }
+
+        .hidden-file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 760px) {
+            .drag-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-shell">
+        <section class="hero-panel">
+            <div class="limitation-badge">Recorder gap playground</div>
+            <h1>Recorder limitations test page</h1>
+            <p class="subtitle">
+                This page concentrates interactions that the current recorder does not capture at all or does not replay reliably.
+                Use it to validate future recorder work without mixing these scenarios into the basic happy-path test pages.
+            </p>
+            <div class="hero-actions">
+                <a class="control-link" href="./index.html">Back to main test page</a>
+                <button id="clearLogButton" class="control-button" type="button">Clear event log</button>
+            </div>
+            <div class="hint-box">
+                <strong>Current recorder scope:</strong> `click`, `input`, `change`, `submit`, and `navigation` on top-level document targets.
+            </div>
+        </section>
+
+        <section class="playground-grid">
+            <article class="playground-panel">
+                <div class="limitation-badge">Keyboard shortcuts</div>
+                <h2>Shortcut-only actions</h2>
+                <p class="subtitle">Focus the field and press <strong>Ctrl+Shift+K</strong> or <strong>Alt+Enter</strong>.</p>
+                <input id="shortcutInput" class="shortcut-target" placeholder="Focus here and trigger a shortcut">
+                <div id="shortcutStatus" class="status-box">Waiting for a shortcut.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Drag and drop</div>
+                <h2>HTML5 drag and drop</h2>
+                <p class="subtitle">Drag the card into the drop zone.</p>
+                <div class="drag-layout">
+                    <div id="dragCard" class="drag-card" draggable="true">
+                        Drag this card into the drop zone.
+                    </div>
+                    <div id="dropZone" class="drop-zone">
+                        Drop zone is empty.
+                    </div>
+                </div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Mouse gestures</div>
+                <h2>Double click and context menu</h2>
+                <p class="subtitle">These interactions depend on event type beyond a plain click.</p>
+                <div class="gesture-row">
+                    <div id="doubleClickTarget" class="gesture-target">
+                        Double click here
+                    </div>
+                    <div id="contextMenuTarget" class="gesture-target">
+                        Right click here
+                    </div>
+                </div>
+                <div id="gestureStatus" class="status-box">No advanced mouse gesture yet.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Hover state</div>
+                <h2>Hover-only UI</h2>
+                <p class="subtitle">Move the pointer into the card to reveal the hover panel.</p>
+                <div id="hoverCard" class="hover-card">
+                    Hover over this card to reveal the action.
+                    <div class="hover-reveal">Hover state revealed. Recorder does not currently capture this transition.</div>
+                </div>
+                <div id="hoverStatus" class="status-box">Hover panel is hidden.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Scroll and wheel</div>
+                <h2>Scrollable container</h2>
+                <p class="subtitle">Scroll the container and use the button at the bottom.</p>
+                <div id="scrollBox" class="scroll-box">
+                    <div class="scroll-spacer">
+                        Scroll down through this container.
+                        <div style="margin-top: 300px;">
+                            <button id="deepScrollButton" class="control-button" type="button">Bottom action</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="scrollStatus" class="status-box">Container has not been scrolled yet.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">File input</div>
+                <h2>Native file picker</h2>
+                <p class="subtitle">Choose a file to confirm current recorder behavior around file inputs.</p>
+                <label class="control-file-label" for="fileChooser">Choose a file</label>
+                <input id="fileChooser" class="hidden-file-input" type="file">
+                <div id="fileStatus" class="status-box">No file chosen.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Canvas coordinates</div>
+                <h2>Canvas hotspot</h2>
+                <p class="subtitle">Click inside the blue or orange hotspot. Canvas uses coordinates, not DOM locators.</p>
+                <canvas id="hotspotCanvas" class="canvas-target" width="320" height="180"></canvas>
+                <div id="canvasStatus" class="status-box">No hotspot clicked yet.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">iframe</div>
+                <h2>Embedded document</h2>
+                <p class="subtitle">Interact with controls inside the iframe.</p>
+                <iframe
+                    id="embeddedFrame"
+                    class="embedded-frame"
+                    title="Embedded interaction frame"
+                    srcdoc='<!DOCTYPE html><html lang="en"><body style="font-family:Arial,sans-serif;padding:16px;background:#f8fafc;color:#0f172a;"><p style="margin-top:0;"><strong>iframe content</strong></p><input id="frameInput" placeholder="Type inside iframe" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #cbd5e1;border-radius:8px;"><button id="frameButton" style="padding:10px 14px;border:none;border-radius:8px;background:#0ea5e9;color:#fff;cursor:pointer;">Click inside iframe</button><div id="frameOutput" style="margin-top:10px;font-size:14px;"></div><script>const outputElement=document.getElementById("frameOutput");document.getElementById("frameButton").addEventListener("click",()=>{outputElement.textContent="iframe button clicked at "+new Date().toLocaleTimeString();});document.getElementById("frameInput").addEventListener("input",(event)=>{outputElement.textContent="iframe input value: "+event.target.value;});</script></body></html>'>
+                </iframe>
+                <div class="status-box">Replay currently searches only the top-level document.</div>
+            </article>
+
+            <article class="playground-panel">
+                <div class="limitation-badge">Shadow DOM</div>
+                <h2>Shadow root controls</h2>
+                <p class="subtitle">Interact with controls rendered inside an open shadow root.</p>
+                <div id="shadowHost" class="shadow-host"></div>
+                <div id="shadowStatus" class="status-box">Shadow DOM interaction has not happened yet.</div>
+            </article>
+        </section>
+
+        <section class="log-panel">
+            <h2>Event log</h2>
+            <p class="subtitle">Every special interaction on this page appends a line here so you can verify whether recording and replay matched the intended behavior.</p>
+            <ul id="eventLog" class="log-list">
+                <li>Page initialized. Start exercising unsupported actions.</li>
+            </ul>
+        </section>
+    </div>
+
+    <script>
+        const logListElement = document.getElementById('eventLog');
+        const shortcutStatusElement = document.getElementById('shortcutStatus');
+        const gestureStatusElement = document.getElementById('gestureStatus');
+        const hoverStatusElement = document.getElementById('hoverStatus');
+        const scrollStatusElement = document.getElementById('scrollStatus');
+        const fileStatusElement = document.getElementById('fileStatus');
+        const canvasStatusElement = document.getElementById('canvasStatus');
+        const shadowStatusElement = document.getElementById('shadowStatus');
+        const dropZoneElement = document.getElementById('dropZone');
+        const dragCardElement = document.getElementById('dragCard');
+        const scrollBoxElement = document.getElementById('scrollBox');
+        const hotspotCanvasElement = document.getElementById('hotspotCanvas');
+        const hotspotCanvasContext = hotspotCanvasElement.getContext('2d');
+        const canvasHotspots = [
+            { name: 'blue hotspot', color: '#0ea5e9', x: 40, y: 40, width: 100, height: 60 },
+            { name: 'orange hotspot', color: '#f97316', x: 180, y: 90, width: 100, height: 60 }
+        ];
+
+        function appendEventLog(messageText) {
+            const nextLogItem = document.createElement('li');
+            const timeLabel = new Date().toLocaleTimeString();
+            nextLogItem.textContent = '[' + timeLabel + '] ' + messageText;
+            logListElement.prepend(nextLogItem);
+        }
+
+        function drawCanvasHotspots() {
+            hotspotCanvasContext.clearRect(0, 0, hotspotCanvasElement.width, hotspotCanvasElement.height);
+            hotspotCanvasContext.fillStyle = '#0f172a';
+            hotspotCanvasContext.fillRect(0, 0, hotspotCanvasElement.width, hotspotCanvasElement.height);
+            hotspotCanvasContext.fillStyle = '#e2e8f0';
+            hotspotCanvasContext.font = '16px Arial';
+            hotspotCanvasContext.fillText('Click a hotspot', 16, 24);
+
+            canvasHotspots.forEach((hotspot) => {
+                hotspotCanvasContext.fillStyle = hotspot.color;
+                hotspotCanvasContext.fillRect(hotspot.x, hotspot.y, hotspot.width, hotspot.height);
+                hotspotCanvasContext.fillStyle = '#0f172a';
+                hotspotCanvasContext.fillText(hotspot.name, hotspot.x + 10, hotspot.y + 34);
+            });
+        }
+
+        function getCanvasHotspot(pointerOffsetX, pointerOffsetY) {
+            return canvasHotspots.find((hotspot) => {
+                return pointerOffsetX >= hotspot.x
+                    && pointerOffsetX <= hotspot.x + hotspot.width
+                    && pointerOffsetY >= hotspot.y
+                    && pointerOffsetY <= hotspot.y + hotspot.height;
+            }) || null;
+        }
+
+        document.getElementById('clearLogButton').addEventListener('click', () => {
+            logListElement.innerHTML = '';
+            appendEventLog('Event log cleared.');
+        });
+
+        document.getElementById('shortcutInput').addEventListener('keydown', (keyboardEvent) => {
+            const shortcutLabel = [
+                keyboardEvent.ctrlKey ? 'Ctrl' : '',
+                keyboardEvent.shiftKey ? 'Shift' : '',
+                keyboardEvent.altKey ? 'Alt' : '',
+                keyboardEvent.key
+            ].filter(Boolean).join('+');
+
+            if (
+                (keyboardEvent.ctrlKey && keyboardEvent.shiftKey && keyboardEvent.key.toLowerCase() === 'k')
+                || (keyboardEvent.altKey && keyboardEvent.key === 'Enter')
+            ) {
+                shortcutStatusElement.textContent = 'Shortcut triggered: ' + shortcutLabel;
+                appendEventLog('Shortcut triggered: ' + shortcutLabel);
+                keyboardEvent.preventDefault();
+            }
+        });
+
+        dragCardElement.addEventListener('dragstart', (dragEvent) => {
+            dragEvent.dataTransfer.setData('text/plain', 'drag-card');
+            appendEventLog('Drag started.');
+        });
+
+        dropZoneElement.addEventListener('dragover', (dragEvent) => {
+            dragEvent.preventDefault();
+            dropZoneElement.classList.add('is-over');
+        });
+
+        dropZoneElement.addEventListener('dragleave', () => {
+            dropZoneElement.classList.remove('is-over');
+        });
+
+        dropZoneElement.addEventListener('drop', (dropEvent) => {
+            dropEvent.preventDefault();
+            dropZoneElement.classList.remove('is-over');
+            dropZoneElement.textContent = 'Card dropped successfully.';
+            appendEventLog('Drop completed.');
+        });
+
+        document.getElementById('doubleClickTarget').addEventListener('dblclick', () => {
+            gestureStatusElement.textContent = 'Double click detected.';
+            appendEventLog('Double click detected.');
+        });
+
+        document.getElementById('contextMenuTarget').addEventListener('contextmenu', (mouseEvent) => {
+            mouseEvent.preventDefault();
+            gestureStatusElement.textContent = 'Context menu gesture detected.';
+            appendEventLog('Context menu gesture detected.');
+        });
+
+        const hoverCardElement = document.getElementById('hoverCard');
+        hoverCardElement.addEventListener('mouseenter', () => {
+            hoverStatusElement.textContent = 'Hover state entered.';
+            appendEventLog('Hover state entered.');
+        });
+        hoverCardElement.addEventListener('mouseleave', () => {
+            hoverStatusElement.textContent = 'Hover state left.';
+            appendEventLog('Hover state left.');
+        });
+
+        scrollBoxElement.addEventListener('scroll', () => {
+            const scrollTopValue = Math.round(scrollBoxElement.scrollTop);
+            scrollStatusElement.textContent = 'Container scrollTop is ' + scrollTopValue + ' pixels.';
+        });
+
+        document.getElementById('deepScrollButton').addEventListener('click', () => {
+            appendEventLog('Bottom scroll action clicked.');
+        });
+
+        document.getElementById('fileChooser').addEventListener('change', (changeEvent) => {
+            const chosenFile = changeEvent.target.files && changeEvent.target.files[0];
+            if (!chosenFile) {
+                fileStatusElement.textContent = 'File chooser closed without selecting a file.';
+                appendEventLog('File chooser closed without selection.');
+                return;
+            }
+
+            fileStatusElement.textContent = 'Selected file: ' + chosenFile.name;
+            appendEventLog('File selected: ' + chosenFile.name);
+        });
+
+        hotspotCanvasElement.addEventListener('click', (mouseEvent) => {
+            const rectValue = hotspotCanvasElement.getBoundingClientRect();
+            const pointerOffsetX = mouseEvent.clientX - rectValue.left;
+            const pointerOffsetY = mouseEvent.clientY - rectValue.top;
+            const activeHotspot = getCanvasHotspot(pointerOffsetX, pointerOffsetY);
+            if (!activeHotspot) {
+                canvasStatusElement.textContent = 'Canvas clicked outside hotspots.';
+                appendEventLog('Canvas clicked outside hotspots at ' + Math.round(pointerOffsetX) + ',' + Math.round(pointerOffsetY) + '.');
+                return;
+            }
+
+            canvasStatusElement.textContent = 'Canvas hotspot clicked: ' + activeHotspot.name;
+            appendEventLog('Canvas hotspot clicked: ' + activeHotspot.name + ' at ' + Math.round(pointerOffsetX) + ',' + Math.round(pointerOffsetY) + '.');
+        });
+
+        const shadowHostElement = document.getElementById('shadowHost');
+        const shadowRootValue = shadowHostElement.attachShadow({ mode: 'open' });
+        shadowRootValue.innerHTML = `
+            <style>
+                .shadow-shell {
+                    font-family: Arial, sans-serif;
+                    background: #0f172a;
+                    color: #e2e8f0;
+                    border-radius: 10px;
+                    padding: 14px;
+                }
+                .shadow-shell input,
+                .shadow-shell button {
+                    margin-top: 8px;
+                    width: 100%;
+                    min-height: 40px;
+                    border-radius: 10px;
+                    border: 1px solid #334155;
+                    padding: 8px 10px;
+                }
+                .shadow-shell button {
+                    cursor: pointer;
+                    color: #fff;
+                    background: #0ea5e9;
+                    border: none;
+                    font-weight: bold;
+                }
+            </style>
+            <div class="shadow-shell">
+                <div>Shadow DOM controls</div>
+                <input id="shadowInput" placeholder="Type inside shadow root">
+                <button id="shadowButton" type="button">Click inside shadow root</button>
+            </div>
+        `;
+
+        shadowRootValue.getElementById('shadowInput').addEventListener('input', (inputEvent) => {
+            shadowStatusElement.textContent = 'Shadow input value: ' + inputEvent.target.value;
+            appendEventLog('Shadow input changed.');
+        });
+
+        shadowRootValue.getElementById('shadowButton').addEventListener('click', () => {
+            shadowStatusElement.textContent = 'Shadow button clicked.';
+            appendEventLog('Shadow button clicked.');
+        });
+
+        drawCanvasHotspots();
+        appendEventLog('Recorder limitations page loaded.');
+    </script>
+</body>
+</html>

@@ -76,7 +76,7 @@ test.describe('Recording and Replay', () => {
     await expect(popupPage.locator('#recordingToggleBtn')).toHaveText(STOP_LABEL);
 
     await testPage.fill('#testInput', 'Replay target value');
-    await testPage.click('button:has-text("Ir a Página 1")');
+    await testPage.click('button:has-text("Go to page 1")');
     await testPage.waitForURL('**/page1.html');
 
     await testPage.bringToFront();
@@ -125,7 +125,7 @@ test.describe('Recording and Replay', () => {
 
     expect(recordedClickStep).toBeTruthy();
     expect(recordedClickStep.tagName).toBe('DIV');
-    expect(recordedClickStep.text).toContain('Chip interactivo');
+    expect(recordedClickStep.text).toContain('Interactive chip');
 
     await testPage.evaluate(() => {
       const chipElement = document.getElementById('customChip');
@@ -193,7 +193,7 @@ test.describe('Recording and Replay', () => {
       target: { kind: 'draft', annotationId: '' }
     });
     await testPage.fill('#testInput', 'Disposable recording');
-    await testPage.click('button:has-text("Añadir Contenido")');
+    await testPage.click('button:has-text("Add content block")');
     await waitForStorageUpdate(popupPage, 700);
     await sendRuntimeMessage(popupPage, { type: 'stopRecordingFlow' });
     await waitForStorageUpdate(popupPage, 500);

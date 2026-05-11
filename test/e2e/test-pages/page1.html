@@ -1,55 +1,117 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Page 1</title>
+    <title>QA Companion Test Page 1</title>
     <style>
+        :root {
+            color-scheme: dark;
+            --page-background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #111827 100%);
+            --panel-background: rgba(15, 23, 42, 0.78);
+            --panel-border: rgba(148, 163, 184, 0.24);
+            --text-primary: #e5eefc;
+            --text-secondary: #bfd0ea;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
+            background: var(--page-background);
+            color: var(--text-primary);
         }
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
+
+        .page-shell {
+            width: min(920px, calc(100% - 32px));
+            margin: 24px auto 48px;
         }
+
+        .hero-panel,
+        .content-panel,
+        .info-panel {
+            background: var(--panel-background);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        }
+
+        .hero-panel,
+        .content-panel,
+        .info-panel {
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+
+        h1,
+        h2,
+        h3,
+        p,
+        ul {
+            margin-top: 0;
+        }
+
+        p,
+        ul {
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
         button {
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--text-primary);
             cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: rgba(14, 165, 233, 0.25);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📄 Página de Prueba 1</h1>
-        <p>Esta es la primera página de prueba. Tiene un diseño diferente para que las capturas de pantalla sean distintas.</p>
+    <div class="page-shell">
+        <section class="hero-panel">
+            <h1>Test page 1</h1>
+            <p>
+                This page is intentionally simple and stable. It is useful for navigation replay, screenshots,
+                and verifying that page-specific content changes after moving away from the main test page.
+            </p>
+        </section>
 
-        <h2>Características de esta página:</h2>
-        <ul>
-            <li>Fondo rosa/rojo</li>
-            <li>Contenido específico de la Página 1</li>
-            <li>URL única: /page1.html</li>
-        </ul>
+        <section class="content-panel">
+            <h2>Page characteristics</h2>
+            <ul>
+                <li>Dark unified theme matching the recorder limitations playground.</li>
+                <li>Dedicated page identity for navigation and screenshot assertions.</li>
+                <li>Stable URL: `/page1.html`.</li>
+            </ul>
+            <div class="button-row">
+                <button onclick="window.location.href='index.html'">Back to main page</button>
+                <button onclick="window.location.href='page2.html'">Go to page 2</button>
+            </div>
+        </section>
 
-        <button onclick="window.location.href='index.html'">← Volver al Inicio</button>
-        <button onclick="window.location.href='page2.html'">Ir a Página 2 →</button>
-
-        <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.2); border-radius: 5px;">
-            <h3>Información de Prueba</h3>
+        <section class="info-panel">
+            <h3>Page metadata</h3>
             <p><strong>Timestamp:</strong> <span id="timestamp"></span></p>
-            <p><strong>ID de Página:</strong> PAGE-001</p>
-        </div>
+            <p><strong>Page ID:</strong> PAGE-001</p>
+        </section>
     </div>
 
     <script>

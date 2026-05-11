@@ -1,147 +1,221 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Page - Exploratory Testing Extension</title>
+    <title>QA Companion Test Page</title>
     <style>
+        :root {
+            color-scheme: dark;
+            --page-background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #111827 100%);
+            --panel-background: rgba(15, 23, 42, 0.78);
+            --panel-border: rgba(148, 163, 184, 0.24);
+            --text-primary: #e5eefc;
+            --text-secondary: #bfd0ea;
+            --accent-color: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --success-color: #22c55e;
+            --danger-color: #fb7185;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--page-background);
+            color: var(--text-primary);
         }
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
+
+        .page-shell {
+            width: min(1100px, calc(100% - 32px));
+            margin: 24px auto 48px;
         }
-        h1 {
-            color: #fff;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .test-section {
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background: #45a049;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            border: none;
-            border-radius: 5px;
-        }
+
+        .hero-panel,
+        .test-section,
         .info-box {
-            background: rgba(255, 255, 255, 0.3);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
+            background: var(--panel-background);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
         }
+
+        .hero-panel {
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .info-box {
+            margin-bottom: 18px;
+            padding: 16px 18px;
+            color: var(--text-secondary);
+        }
+
+        .test-section {
+            margin-bottom: 18px;
+            padding: 20px;
+        }
+
+        h1,
+        h2,
+        p {
+            margin-top: 0;
+        }
+
+        h1 {
+            font-size: 30px;
+            margin-bottom: 12px;
+        }
+
+        .subtitle,
+        .section-copy,
+        ol,
+        ul {
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: rgba(14, 165, 233, 0.25);
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            margin: 6px 0 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: rgba(15, 23, 42, 0.72);
+            color: var(--text-primary);
+        }
+
         .custom-chip {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 10px 14px;
-            margin-top: 8px;
+            margin-top: 10px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.45);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
             cursor: pointer;
             user-select: none;
             transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
         }
+
         .custom-chip:hover {
             transform: translateY(-1px);
-            background: rgba(255, 255, 255, 0.28);
+            background: rgba(255, 255, 255, 0.14);
         }
+
         .custom-chip.is-selected {
-            background: rgba(34, 197, 94, 0.3);
-            border-color: #86efac;
+            background: rgba(34, 197, 94, 0.16);
+            border-color: rgba(34, 197, 94, 0.45);
         }
+
         #output {
-            min-height: 100px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
+            min-height: 120px;
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(15, 23, 42, 0.72);
+            color: var(--text-secondary);
             font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🧪 Test Page para Exploratory Testing Extension</h1>
+    <div class="page-shell">
+        <section class="hero-panel">
+            <h1>QA Companion test page</h1>
+            <p class="subtitle">
+                Use this page for the core Action and Recorder flows: text input, screenshots, button clicks,
+                custom clickable controls, navigation, and simple visual state changes.
+            </p>
+        </section>
 
-        <div class="info-box">
-            <p><strong>URL actual:</strong> <span id="currentUrl"></span></p>
-            <p><strong>Hora:</strong> <span id="currentTime"></span></p>
-        </div>
+        <section class="info-box">
+            <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+            <p><strong>Current time:</strong> <span id="currentTime"></span></p>
+        </section>
 
-        <div class="test-section">
-            <h2>Formulario de Prueba</h2>
-            <input type="text" id="testInput" placeholder="Escribe algo aquí...">
-            <textarea id="testTextarea" placeholder="Área de texto para pruebas..." rows="4"></textarea>
-            <button onclick="submitForm()">Enviar Formulario</button>
-            <button onclick="clearForm()">Limpiar</button>
-        </div>
+        <section class="test-section">
+            <h2>Test form</h2>
+            <p class="section-copy">Type into the controls below to exercise `input`, `change`, and save-to-annotation flows.</p>
+            <input type="text" id="testInput" placeholder="Type a value here...">
+            <textarea id="testTextarea" placeholder="Use this area for longer text..." rows="4"></textarea>
+            <div class="button-row">
+                <button onclick="submitForm()">Submit form</button>
+                <button onclick="clearForm()">Clear form</button>
+            </div>
+        </section>
 
-        <div class="test-section">
-            <h2>Acciones de Prueba</h2>
-            <button onclick="changeBackground()">Cambiar Color de Fondo</button>
-            <button onclick="addContent()">Añadir Contenido</button>
-            <button onclick="showAlert()">Mostrar Alerta</button>
-            <button onclick="simulateError()">Simular Error</button>
+        <section class="test-section">
+            <h2>Interactive actions</h2>
+            <p class="section-copy">These controls are useful for click replay, dynamic content changes, and screenshot comparisons.</p>
+            <div class="button-row">
+                <button onclick="changeBackground()">Change background theme</button>
+                <button onclick="addContent()">Add content block</button>
+                <button onclick="showAlert()">Show alert</button>
+                <button onclick="simulateError()">Simulate error</button>
+            </div>
             <div id="customChip" class="custom-chip" data-selected="false" onclick="toggleCustomChip()">
-                <span>Chip interactivo</span>
+                <span>Interactive chip</span>
                 <strong id="customChipState">OFF</strong>
             </div>
-        </div>
+        </section>
 
-        <div class="test-section">
-            <h2>Navegación</h2>
-            <button onclick="goToPage('page1')">Ir a Página 1</button>
-            <button onclick="goToPage('page2')">Ir a Página 2</button>
-            <button onclick="goToPage('screenshot-test')">Test de Screenshots</button>
-        </div>
+        <section class="test-section">
+            <h2>Navigation</h2>
+            <p class="section-copy">Use these buttons to validate navigation recording and replay across multiple pages.</p>
+            <div class="button-row">
+                <button onclick="goToPage('page1')">Go to page 1</button>
+                <button onclick="goToPage('page2')">Go to page 2</button>
+                <button onclick="goToPage('screenshot-test')">Open screenshot playground</button>
+                <button onclick="goToPage('recording-limitations')">Open recorder limitations playground</button>
+            </div>
+        </section>
 
-        <div class="test-section">
-            <h2>Output</h2>
-            <div id="output">Aquí se mostrarán los mensajes...</div>
-        </div>
+        <section class="test-section">
+            <h2>Output log</h2>
+            <div id="output">Messages will appear here.</div>
+        </section>
 
-        <div class="test-section">
-            <h2>Instrucciones para Testing</h2>
+        <section class="test-section">
+            <h2>Suggested checks</h2>
             <ol>
-                <li>Abre la extensión de Exploratory Testing</li>
-                <li>Prueba añadir anotaciones de tipo Bug y Note</li>
-                <li>Toma capturas de pantalla de esta página</li>
-                <li>Interactúa con los botones y formularios</li>
-                <li>Navega entre páginas y verifica que las URLs se capturan</li>
-                <li>Exporta los informes en diferentes formatos</li>
+                <li>Open the extension and create both `Bug` and `Note` annotations.</li>
+                <li>Capture screenshots from this page before and after UI changes.</li>
+                <li>Record and replay typing, button clicks, and navigation.</li>
+                <li>Open the recorder limitations playground for unsupported interactions.</li>
+                <li>Export JSON or open the HTML preview to confirm captured state.</li>
             </ol>
-        </div>
+        </section>
     </div>
 
     <script>
-        // Update current info
         function updateInfo() {
             document.getElementById('currentUrl').textContent = window.location.href;
             document.getElementById('currentTime').textContent = new Date().toLocaleString();
@@ -149,45 +223,48 @@
         updateInfo();
         setInterval(updateInfo, 1000);
 
-        // Form actions
+        const bodyThemes = [
+            'linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #111827 100%)',
+            'linear-gradient(160deg, #172554 0%, #1d4ed8 50%, #0f172a 100%)',
+            'linear-gradient(160deg, #1f2937 0%, #0f766e 48%, #111827 100%)',
+            'linear-gradient(160deg, #3f1d2e 0%, #7c3aed 48%, #111827 100%)'
+        ];
+        let colorIndex = 0;
+
         function submitForm() {
-            const input = document.getElementById('testInput').value;
-            const textarea = document.getElementById('testTextarea').value;
-            log(`Formulario enviado - Input: "${input}", Textarea: "${textarea}"`);
+            const inputValue = document.getElementById('testInput').value;
+            const textareaValue = document.getElementById('testTextarea').value;
+            log(`Form submitted. Input: "${inputValue}", Textarea: "${textareaValue}"`);
         }
 
         function clearForm() {
             document.getElementById('testInput').value = '';
             document.getElementById('testTextarea').value = '';
-            log('Formulario limpiado');
+            log('Form cleared.');
         }
 
-        // Test actions
-        const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a'];
-        let colorIndex = 0;
-
         function changeBackground() {
-            colorIndex = (colorIndex + 1) % colors.length;
-            document.body.style.background = `linear-gradient(135deg, ${colors[colorIndex]} 0%, ${colors[(colorIndex + 1) % colors.length]} 100%)`;
-            log(`Color de fondo cambiado a ${colors[colorIndex]}`);
+            colorIndex = (colorIndex + 1) % bodyThemes.length;
+            document.body.style.background = bodyThemes[colorIndex];
+            log('Background theme changed.');
         }
 
         function addContent() {
-            const newDiv = document.createElement('div');
-            newDiv.className = 'info-box';
-            newDiv.textContent = `Nuevo contenido añadido a las ${new Date().toLocaleTimeString()}`;
-            document.querySelector('.container').appendChild(newDiv);
-            log('Contenido dinámico añadido');
+            const contentBlock = document.createElement('section');
+            contentBlock.className = 'info-box';
+            contentBlock.textContent = 'Dynamic content added at ' + new Date().toLocaleTimeString();
+            document.querySelector('.page-shell').appendChild(contentBlock);
+            log('Dynamic content added.');
         }
 
         function showAlert() {
-            alert('¡Esta es una alerta de prueba!');
-            log('Alerta mostrada');
+            alert('This is a test alert.');
+            log('Alert displayed.');
         }
 
         function simulateError() {
-            log('⚠️ ERROR SIMULADO: Esto es un error de prueba');
-            console.error('Error simulado para testing');
+            log('Simulated error written to the log.');
+            console.error('Simulated test error');
         }
 
         function toggleCustomChip() {
@@ -199,23 +276,20 @@
             chipElement.dataset.selected = String(nextSelectedState);
             chipElement.classList.toggle('is-selected', nextSelectedState);
             chipStateElement.textContent = nextSelectedState ? 'ON' : 'OFF';
-            log(`Chip interactivo ${nextSelectedState ? 'activado' : 'desactivado'}`);
+            log('Interactive chip ' + (nextSelectedState ? 'enabled.' : 'disabled.'));
         }
 
-        // Navigation
         function goToPage(page) {
-            window.location.href = `./${page}.html`;
+            window.location.href = './' + page + '.html';
         }
 
-        // Logging
         function log(message) {
-            const output = document.getElementById('output');
-            const time = new Date().toLocaleTimeString();
-            output.innerHTML = `[${time}] ${message}<br>` + output.innerHTML;
+            const outputElement = document.getElementById('output');
+            const timeValue = new Date().toLocaleTimeString();
+            outputElement.innerHTML = '[' + timeValue + '] ' + message + '<br>' + outputElement.innerHTML;
         }
 
-        // Log page load
-        log('Página cargada correctamente');
+        log('Main test page loaded successfully.');
     </script>
 </body>
 </html>

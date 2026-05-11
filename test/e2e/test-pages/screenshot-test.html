@@ -1,120 +1,185 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screenshot Test Page</title>
+    <title>Screenshot Playground</title>
     <style>
+        :root {
+            color-scheme: dark;
+            --page-background: linear-gradient(160deg, #0f172a 0%, #1e293b 45%, #111827 100%);
+            --panel-background: rgba(15, 23, 42, 0.78);
+            --panel-border: rgba(148, 163, 184, 0.24);
+            --text-primary: #e5eefc;
+            --text-secondary: #bfd0ea;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            color: #333;
+            background: var(--page-background);
+            color: var(--text-primary);
         }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+        .page-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 24px auto 48px;
         }
-        .visual-section {
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px solid #43e97b;
-            border-radius: 10px;
+
+        .hero-panel,
+        .visual-section,
+        .guide-panel {
+            background: var(--panel-background);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+            padding: 22px;
+            margin-bottom: 18px;
         }
+
+        h1,
+        h2,
+        h3,
+        p,
+        ol {
+            margin-top: 0;
+        }
+
+        p,
+        ol {
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
         .color-boxes {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
         }
+
         .color-box {
             width: 100px;
             height: 100px;
-            border-radius: 10px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
         button {
-            background: #43e97b;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--text-primary);
             cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
         }
+
+        button:hover {
+            background: rgba(14, 165, 233, 0.25);
+        }
+
         .test-text {
-            font-size: 24px;
+            font-size: 30px;
             font-weight: bold;
             text-align: center;
-            padding: 20px;
-            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            padding: 24px;
+            background: linear-gradient(45deg, #38bdf8, #22c55e, #f97316);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
+        #markers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #markers p {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📸 Página de Prueba de Screenshots</h1>
-        <p>Esta página está diseñada específicamente para probar la funcionalidad de captura de pantallas.</p>
+    <div class="page-shell">
+        <section class="hero-panel">
+            <h1>Screenshot playground</h1>
+            <p>
+                This page is designed for screenshot capture tests. Use the controls below to create clearly visible
+                visual changes and confirm that different screenshots preserve the expected state.
+            </p>
+        </section>
 
-        <div class="visual-section">
-            <h2>Elementos Visuales Distintivos</h2>
+        <section class="visual-section">
+            <h2>Distinct color blocks</h2>
             <div class="color-boxes">
-                <div class="color-box" style="background: #ff6b6b;">Rojo</div>
+                <div class="color-box" style="background: #ff6b6b;">Red</div>
                 <div class="color-box" style="background: #4ecdc4;">Cyan</div>
-                <div class="color-box" style="background: #45b7d1;">Azul</div>
-                <div class="color-box" style="background: #f7b731;">Amarillo</div>
-                <div class="color-box" style="background: #5f27cd;">Púrpura</div>
-                <div class="color-box" style="background: #00d2d3;">Turquesa</div>
+                <div class="color-box" style="background: #45b7d1;">Blue</div>
+                <div class="color-box" style="background: #f7b731;">Yellow</div>
+                <div class="color-box" style="background: #5f27cd;">Purple</div>
+                <div class="color-box" style="background: #00d2d3;">Teal</div>
             </div>
-        </div>
+        </section>
 
-        <div class="visual-section">
-            <h2>Texto Grande para Identificación</h2>
+        <section class="visual-section">
+            <h2>Large identification text</h2>
             <div class="test-text">SCREENSHOT TEST PAGE</div>
             <p style="text-align: center; font-size: 18px;">
                 Timestamp: <strong id="timestamp"></strong>
             </p>
-        </div>
+        </section>
 
-        <div class="visual-section">
-            <h2>Acciones de Prueba</h2>
-            <button onclick="changeColors()">🎨 Cambiar Colores</button>
-            <button onclick="addMarker()">📍 Añadir Marcador</button>
-            <button onclick="highlightSection()">✨ Destacar Sección</button>
-            <button onclick="toggleAnimation()">🔄 Toggle Animación</button>
-        </div>
-
-        <div class="visual-section" id="markerSection">
-            <h3>Marcadores de Prueba</h3>
-            <div id="markers">
-                <p>Los marcadores aparecerán aquí...</p>
+        <section class="visual-section">
+            <h2>Visual state actions</h2>
+            <div class="button-row">
+                <button onclick="changeColors()">Change colors</button>
+                <button onclick="addMarker()">Add marker</button>
+                <button onclick="highlightSection()">Highlight section</button>
+                <button onclick="toggleAnimation()">Toggle animation</button>
             </div>
-        </div>
+        </section>
 
-        <div style="margin-top: 30px;">
-            <button onclick="window.location.href='index.html'">← Volver al Inicio</button>
-        </div>
+        <section class="visual-section" id="markerSection">
+            <h3>Markers</h3>
+            <div id="markers">
+                <p>Markers will appear here.</p>
+            </div>
+        </section>
 
-        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
-            <h3>Instrucciones:</h3>
+        <section class="visual-section">
+            <div class="button-row">
+                <button onclick="window.location.href='index.html'">Back to main page</button>
+            </div>
+        </section>
+
+        <section class="guide-panel">
+            <h3>Suggested checks</h3>
             <ol>
-                <li>Abre la extensión de Exploratory Testing</li>
-                <li>Toma capturas de pantalla en diferentes estados</li>
-                <li>Usa los botones para cambiar el estado visual</li>
-                <li>Verifica que las capturas muestran diferentes estados</li>
-                <li>Comprueba que se pueden anotar las capturas</li>
+                <li>Capture screenshots before and after each visual state change.</li>
+                <li>Use the buttons to create obvious UI differences.</li>
+                <li>Verify that screenshots preserve the changed state.</li>
+                <li>Confirm that annotation and crop flows still work on top of these visuals.</li>
             </ol>
-        </div>
+        </section>
     </div>
 
     <script>
@@ -128,47 +193,44 @@
 
         function changeColors() {
             const boxes = document.querySelectorAll('.color-box');
-            boxes.forEach(box => {
-                box.style.background = colors[Math.floor(Math.random() * colors.length)];
+            boxes.forEach((boxElement) => {
+                boxElement.style.background = colors[Math.floor(Math.random() * colors.length)];
             });
         }
 
         let markerCount = 0;
         function addMarker() {
-            markerCount++;
-            const marker = document.createElement('div');
-            marker.style.cssText = `
-                display: inline-block;
-                padding: 10px 15px;
-                margin: 5px;
-                background: ${colors[markerCount % colors.length]};
-                color: white;
-                border-radius: 5px;
-                font-weight: bold;
-            `;
-            marker.textContent = `Marcador #${markerCount} - ${new Date().toLocaleTimeString()}`;
-            document.getElementById('markers').appendChild(marker);
+            markerCount += 1;
+            const markerElement = document.createElement('div');
+            markerElement.style.cssText = [
+                'display: inline-block',
+                'padding: 10px 15px',
+                'background: ' + colors[markerCount % colors.length],
+                'color: white',
+                'border-radius: 10px',
+                'font-weight: bold'
+            ].join(';');
+            markerElement.textContent = 'Marker #' + markerCount + ' - ' + new Date().toLocaleTimeString();
+            document.getElementById('markers').appendChild(markerElement);
         }
 
         function highlightSection() {
-            const section = document.getElementById('markerSection');
-            section.style.background = colors[Math.floor(Math.random() * colors.length)];
-            section.style.color = 'white';
+            const sectionElement = document.getElementById('markerSection');
+            sectionElement.style.background = 'rgba(249, 115, 22, 0.20)';
+            sectionElement.style.borderColor = 'rgba(249, 115, 22, 0.48)';
             setTimeout(() => {
-                section.style.background = '';
-                section.style.color = '';
+                sectionElement.style.background = '';
+                sectionElement.style.borderColor = '';
             }, 2000);
         }
 
         let isAnimating = false;
         function toggleAnimation() {
             isAnimating = !isAnimating;
-            const boxes = document.querySelectorAll('.color-box');
-
             if (isAnimating) {
-                const interval = setInterval(() => {
+                const animationTimer = setInterval(() => {
                     if (!isAnimating) {
-                        clearInterval(interval);
+                        clearInterval(animationTimer);
                         return;
                     }
                     changeColors();

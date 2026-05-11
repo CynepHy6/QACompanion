@@ -26,7 +26,8 @@
   - `submit`
   - `navigation`
 - Replay is currently limited to one tab with navigation support.
-- Recorder shows a list of recorded steps and any linked screenshots.
+- Recorder can be attached either to the current draft or to a saved annotation.
+- Recorder shows a list of recorded steps, linked screenshots, and a selectable list of saved annotations with their own replays.
 - During replay:
   - the active step is highlighted in the popup
   - the popup scrolls to the active step when open
@@ -46,7 +47,8 @@
 - `css/popUp.css`: popup styling for Action and Recorder modes
 - `src/Session.js`: session model for exploratory testing annotations
 - `src/Annotation.js`: `Bug` / `Note` annotation models
-- `src/JSonSessionService.js`: JSON import/export for session data
+- `src/ExtensionStateService.js`: current import/export and preview/report state serialization
+- `src/JSonSessionService.js`: legacy JSON session serializer kept for compatibility/tests
 - `src/Recording.js`: recording state normalization and empty/default recording shape
 - `HTMLReport/`: report viewer and related report modules
 
@@ -70,11 +72,17 @@
   - `imageURLs`
 
 ### `recording`
-- Contains recorder state:
+- Contains recorder state store:
+  - `draftRecording`: replay attached to the unsaved draft
+  - `annotationRecordingsById`: replay state keyed by saved annotation id
+  - `selectedRecordingTarget`: currently selected replay target in the popup
+  - `activeRecordingTarget`: target currently being recorded or replayed
+- Each individual recording state contains:
   - ids and timestamps
   - `status`
   - `lastError`
   - `activeStepId`
+  - `failedStepId`
   - `steps`
   - `screenshots`
 - Steps store references such as `screenshotRef` instead of embedding screenshot data directly into each step.
@@ -86,6 +94,7 @@
   - recorder/replay flow
 - These flows should remain logically isolated even though they live in the same file.
 - Recorder replay communicates active-step progress back through persisted `recording` state, which the popup polls.
+- Recorder state is split between draft replay and per-annotation replay instead of one global recording.
 - Screenshots during recording are best-effort; if `captureVisibleTab` hits rate limits, the step should still be preserved without a screenshot.
 
 ## Current UX Patterns
@@ -93,13 +102,18 @@
 - Destructive actions use two-step arm/confirm buttons:
   - draft clearing
   - recorded flow clearing
+  - full session reset
 - Recorder controls should feel separate from Action controls, even though they live in the same popup.
+- Saved annotations are selectable as replay targets from the popup.
 
 ## Current Limitations
 - Replay is not multi-tab.
 - No support yet for drag-and-drop, canvas actions, or more advanced gestures.
+- No support yet for keyboard shortcut capture/replay (`keydown` / `keyup`), hover-only interactions, wheel/scroll gestures, touch gestures, double-click, or context-menu actions.
+- Replay locators are limited to `id`, `name`, first non-empty `data-*`, or generated CSS path in the top-level document.
+- No support yet for iframe targets, Shadow DOM targets, file input replay, or coordinate-sensitive interactions such as canvas/SVG/map hotspots.
 - No self-healing locator strategy.
-- Recorder data is not yet exported into the HTML report.
+- Recorder uses DOM-level `element.click()` / value assignment style replay, so behavior that depends on exact pointer coordinates or native browser dialogs may not replay reliably.
 - Navigation replay is supported, but it remains a sensitive area and should be validated carefully after changes.
 
 ## Test Setup
@@ -108,11 +122,22 @@
   - `smoke.spec.js`
   - `basic-functionality.spec.js`
   - `recording-replay.spec.js`
-  - other specs cover crop, annotation editor, reports, and exports
+  - `crop-screenshot.spec.js`
+  - `annotation-editor.spec.js`
+  - `reports-export.spec.js`
 - Useful commands:
   - `npm run test:e2e`
   - `npm run test:e2e:all`
   - `npx playwright test test/e2e/recording-replay.spec.js`
+
+## Reports and Export
+- HTML preview/report already includes replay data for saved annotations.
+- Replay timelines render recorded steps, linked recording screenshots, and replay failures when present.
+- Export/import is driven by `ExtensionStateService`, which can include:
+  - session annotations
+  - unsaved draft promoted into export payload
+  - draft replay
+  - per-annotation replay state
 ## Icons
 - PNG-icons
 ```
