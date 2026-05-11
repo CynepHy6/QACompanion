@@ -345,6 +345,7 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
     ${standaloneReportHtml}
     <div id="imagePreview" class="image-preview">
         <img src="" alt="${getMessage('reportImagePreviewAlt', undefined, 'Preview')}">
+        <div id="imagePreviewMeta" class="image-preview__meta" hidden></div>
     </div>
     <div id="imageHoverPreview" class="image-hover-preview">
         <img src="" alt="${getMessage('reportImageHoverPreviewAlt', undefined, 'Hover preview')}">
@@ -443,16 +444,34 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
             });
         }
 
-        function showImagePreview(src) {
+        function showImagePreview(src, metadata = {}) {
             const preview = document.getElementById('imagePreview');
             if (!preview) return;
             const previewImg = preview.querySelector('img');
+            const previewMeta = document.getElementById('imagePreviewMeta');
             if (!previewImg) return;
             previewImg.src = src;
+            const actionText = typeof metadata?.title === 'string' ? metadata.title.trim() : '';
+            const targetText = typeof metadata?.target === 'string' ? metadata.target.trim() : '';
+            if (previewMeta) {
+                const hasMetadata = actionText !== '' || targetText !== '';
+                previewMeta.hidden = !hasMetadata;
+                previewMeta.textContent = actionText && targetText
+                    ? actionText + ': ' + targetText
+                    : (actionText || targetText);
+            }
             preview.classList.add('active');
-            const close = () => { preview.classList.remove('active'); preview.removeEventListener('click', close); };
+            const close = () => {
+                preview.classList.remove('active');
+                if (previewMeta) {
+                    previewMeta.hidden = true;
+                    previewMeta.textContent = '';
+                }
+                preview.removeEventListener('click', close);
+            };
             preview.addEventListener('click', close);
             previewImg.addEventListener('click', e => e.stopPropagation());
+            previewMeta?.addEventListener('click', e => e.stopPropagation(), { once: true });
         }
 
         function positionHoverPreview(previewImage) {
@@ -492,7 +511,14 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
 
         function setupImageHover() {
             document.querySelectorAll('.preview-image').forEach(img => {
-                img.addEventListener('click', e => { e.preventDefault(); showImagePreview(img.src); });
+                img.addEventListener('click', e => {
+                    e.preventDefault();
+                    const isRecordingPreview = img.dataset.previewKind === 'recording-step';
+                    showImagePreview(img.src, isRecordingPreview ? {
+                        title: img.dataset.previewTitle || '',
+                        target: img.dataset.previewTarget || ''
+                    } : null);
+                });
                 img.addEventListener('mouseenter', () => {
                     const p = document.getElementById('imageHoverPreview');
                     if (!p) return;
@@ -562,6 +588,58 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
             });
         }
 
+        function setupReplayCopyButtons() {
+            const copyTitleLabel = ${JSON.stringify(getMessage('reportReplayCopyTitle', undefined, 'Copy recorded steps'))};
+            const copySuccessLabel = ${JSON.stringify(getMessage('reportReplayCopySuccess', undefined, 'Copied'))};
+            const copyFailedLabel = ${JSON.stringify(getMessage('reportReplayCopyFailed', undefined, 'Copy failed'))};
+            let replayCopyTooltipTimer = null;
+            function resetReplayCopyButtonsState() {
+                document.querySelectorAll('.annotation-replay-copy-btn.is-copied').forEach((buttonElement) => {
+                    buttonElement.classList.remove('is-copied');
+                    delete buttonElement.dataset.tooltip;
+                    buttonElement.setAttribute('aria-label', copyTitleLabel);
+                    buttonElement.title = copyTitleLabel;
+                });
+            }
+            document.addEventListener('click', async (event) => {
+                const copyButton = event.target.closest('.annotation-replay-copy-btn');
+                if (!copyButton) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const encodedCopyText = copyButton.dataset.copyText || '';
+                const copyText = encodedCopyText ? decodeURIComponent(encodedCopyText) : '';
+                if (!copyText) {
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(copyText);
+                    resetReplayCopyButtonsState();
+                    copyButton.classList.add('is-copied');
+                    const defaultLabel = copyButton.getAttribute('aria-label') || '';
+                    copyButton.dataset.defaultLabel = defaultLabel;
+                    copyButton.dataset.tooltip = copySuccessLabel;
+                    copyButton.setAttribute('aria-label', copySuccessLabel);
+                    copyButton.title = copySuccessLabel;
+                    if (replayCopyTooltipTimer) {
+                        window.clearTimeout(replayCopyTooltipTimer);
+                    }
+                    replayCopyTooltipTimer = window.setTimeout(() => {
+                        resetReplayCopyButtonsState();
+                        replayCopyTooltipTimer = null;
+                    }, 2000);
+                } catch (error) {
+                    delete copyButton.dataset.tooltip;
+                    copyButton.title = copyFailedLabel;
+                    copyButton.setAttribute('aria-label', copyFailedLabel);
+                }
+            });
+        }
+
         // Filter functionality for downloaded report
         document.querySelectorAll('.filter-pill').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -581,6 +659,7 @@ function buildStandaloneHtml(reportHtml, styles, sessionJSON) {
             setupReportTabs();
             setupImageHover();
             setupEmbeddedJsonDownload();
+            setupReplayCopyButtons();
         });
     <\/script>
 </body>

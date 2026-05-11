@@ -37,6 +37,39 @@ async function sendRuntimeMessage(popupPage, message) {
   }, message);
 }
 
+async function updateShadowInput(page, nextValue) {
+  await page.evaluate((value) => {
+    const shadowHost = document.getElementById('shadowHost');
+    const shadowInput = shadowHost?.shadowRoot?.getElementById('shadowInput');
+    if (!shadowInput) {
+      return;
+    }
+
+    shadowInput.focus();
+    shadowInput.value = value;
+    shadowInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+  }, nextValue);
+}
+
+async function clickShadowButton(page) {
+  await page.evaluate(() => {
+    const shadowHost = document.getElementById('shadowHost');
+    const shadowButton = shadowHost?.shadowRoot?.getElementById('shadowButton');
+    shadowButton?.click();
+  });
+}
+
+async function resetLimitationsPageState(page) {
+  await page.evaluate(() => {
+    document.getElementById('gestureStatus').textContent = 'No advanced mouse gesture yet.';
+    document.getElementById('hoverStatus').textContent = 'Hover panel is hidden.';
+    document.getElementById('dropZone').textContent = 'Drop zone is empty.';
+    document.getElementById('dropZone').classList.remove('is-over');
+    document.getElementById('canvasStatus').textContent = 'No hotspot clicked yet.';
+    document.getElementById('shadowStatus').textContent = 'Shadow DOM interaction has not happened yet.';
+  });
+}
+
 test.describe('Recording and Replay', () => {
   let context;
   let extensionId;
@@ -408,6 +441,7 @@ test.describe('Recording and Replay', () => {
       options: { suppressSyntheticNavigationOnStop: true }
     });
 
+    await popupPage.click('#actionTabBtn');
     await popupPage.fill('#draftDescription', 'First bug');
     await popupPage.click('#BugBtn');
     await waitForStorageUpdate(popupPage, 700);
@@ -448,5 +482,150 @@ test.describe('Recording and Replay', () => {
     const secondRecordingAfterClear = await getRecordingData(popupPage, secondAnnotation.id);
     expect(firstRecordingAfterClear.steps.length).toBeGreaterThan(0);
     expect(secondRecordingAfterClear.steps).toHaveLength(0);
+  });
+
+  test('should record advanced recorder step types on the limitations page', async () => {
+    await testPage.goto('http://localhost:8000/test/e2e/test-pages/recording-limitations.html');
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+
+    await testPage.dblclick('#doubleClickTarget');
+    await testPage.click('#contextMenuTarget', { button: 'right' });
+
+    const hoverCard = testPage.locator('#hoverCard');
+    await hoverCard.hover();
+    await testPage.locator('body').hover({ position: { x: 8, y: 8 } });
+
+    await testPage.dragAndDrop('#dragCard', '#dropZone');
+
+    await testPage.locator('#hotspotCanvas').click({ position: { x: 70, y: 70 } });
+
+    await testPage.setInputFiles('#fileChooser', {
+      name: 'manual-upload.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('manual upload')
+    });
+
+    await updateShadowInput(testPage, 'Shadow value');
+    await clickShadowButton(testPage);
+
+    await waitForStorageUpdate(popupPage, 900);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+    await waitForStorageUpdate(popupPage, 500);
+
+    const recordingData = await getRecordingData(popupPage);
+    const recordedStepTypes = recordingData.steps.map((stepItem) => stepItem.type);
+
+    expect(recordedStepTypes).toEqual(expect.arrayContaining([
+      'doubleClick',
+      'contextMenu',
+      'hoverEnter',
+      'dragStart',
+      'drop',
+      'file',
+      'click',
+      'input'
+    ]));
+
+    const fileStep = recordingData.steps.find((stepItem) => stepItem.type === 'file');
+    expect(fileStep).toMatchObject({
+      replayPolicy: 'manual'
+    });
+    expect(fileStep.replayHint).toBeTruthy();
+
+    const canvasClickStep = recordingData.steps.find((stepItem) => stepItem.tagName === 'CANVAS' && stepItem.type === 'click');
+    expect(canvasClickStep).toBeTruthy();
+    expect(canvasClickStep.pointer).toEqual(expect.objectContaining({
+      offsetX: expect.any(Number),
+      offsetY: expect.any(Number)
+    }));
+
+    const shadowSteps = recordingData.steps.filter((stepItem) => Array.isArray(stepItem.shadowPath) && stepItem.shadowPath.length > 0);
+    expect(shadowSteps.length).toBeGreaterThanOrEqual(2);
+    expect(shadowSteps.some((stepItem) => stepItem.type === 'input')).toBeTruthy();
+    expect(shadowSteps.some((stepItem) => stepItem.type === 'click')).toBeTruthy();
+  });
+
+  test('should replay supported advanced recorder steps and pause on manual file upload', async () => {
+    await testPage.goto('http://localhost:8000/test/e2e/test-pages/recording-limitations.html');
+    await testPage.bringToFront();
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+
+    await testPage.dblclick('#doubleClickTarget');
+    await testPage.click('#contextMenuTarget', { button: 'right' });
+
+    const hoverCard = testPage.locator('#hoverCard');
+    await hoverCard.hover();
+    await testPage.locator('body').hover({ position: { x: 8, y: 8 } });
+
+    await testPage.dragAndDrop('#dragCard', '#dropZone');
+
+    await testPage.locator('#hotspotCanvas').click({ position: { x: 70, y: 70 } });
+
+    await updateShadowInput(testPage, 'Replayable shadow value');
+    await clickShadowButton(testPage);
+
+    await waitForStorageUpdate(popupPage, 900);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+    await waitForStorageUpdate(popupPage, 500);
+
+    await resetLimitationsPageState(testPage);
+    await testPage.bringToFront();
+    const replayResponse = await sendRuntimeMessage(popupPage, { type: 'playRecordingFlow' });
+    expect(replayResponse.status).toBe('ok');
+
+    await expect(testPage.locator('#gestureStatus')).toContainText('Context menu gesture detected.');
+    await expect(testPage.locator('#hoverStatus')).toContainText(/Hover state (entered|left)\./);
+    await expect(testPage.locator('#dropZone')).toContainText('Card dropped successfully.');
+    await expect(testPage.locator('#canvasStatus')).toContainText('Canvas hotspot clicked: blue hotspot');
+    await expect(testPage.locator('#shadowStatus')).toContainText('Shadow button clicked.');
+
+    await sendRuntimeMessage(popupPage, { type: 'clearRecordingData' });
+    await waitForStorageUpdate(popupPage, 500);
+    await sendRuntimeMessage(popupPage, { type: 'startRecordingFlow' });
+
+    await testPage.setInputFiles('#fileChooser', {
+      name: 'paused-upload.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('pause on file')
+    });
+    await waitForStorageUpdate(popupPage, 700);
+    await sendRuntimeMessage(popupPage, {
+      type: 'stopRecordingFlow',
+      options: { suppressSyntheticNavigationOnStop: true }
+    });
+    await waitForStorageUpdate(popupPage, 500);
+
+    const manualRecording = await getRecordingData(popupPage);
+    const manualFileStep = manualRecording.steps.find((stepItem) => stepItem.type === 'file');
+    expect(manualFileStep).toBeTruthy();
+
+    await testPage.setInputFiles('#fileChooser', []);
+    await testPage.evaluate(() => {
+      document.getElementById('fileStatus').textContent = 'No file chosen.';
+    });
+
+    const manualReplayResponse = await sendRuntimeMessage(popupPage, { type: 'playRecordingFlow' });
+    expect(manualReplayResponse.status).toBe('ok');
+
+    await expect.poll(async () => {
+      const latestRecordingState = await sendRuntimeMessage(popupPage, { type: 'getRecordingState' });
+      return latestRecordingState.recording;
+    }).toMatchObject({
+      status: 'idle',
+      failedStepId: '',
+      lastError: '',
+      activeStepId: manualFileStep.stepId
+    });
+
+    await popupPage.click('#recorderTabBtn');
+    await expect(popupPage.locator(`#recordingStepsList .recording-step-card[data-step-id="${manualFileStep.stepId}"]`)).toHaveClass(/is-active/);
+    await expect(popupPage.locator(`#recordingStepsList .recording-step-card[data-step-id="${manualFileStep.stepId}"]`)).toContainText(/file|файл/i);
   });
 });

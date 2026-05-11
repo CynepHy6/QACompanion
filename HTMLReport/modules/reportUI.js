@@ -308,14 +308,16 @@ function renderRecordingTimelineMarkup(recordingState, annotationIdentifier) {
                 <div class="recording-step__body${shouldRenderScreenshotSlot ? '' : ' recording-step__body--without-shot'}">
                     ${shouldRenderScreenshotSlot ? `<div class="recording-step__shot${linkedScreenshot ? '' : ' recording-step__shot--empty'}">
                         ${linkedScreenshot
-                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" ${recordingDatasetAttributes} alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
+                ? `<img src="${linkedScreenshot.imageURL}" class="preview-image" data-preview="${linkedScreenshot.imageURL}" data-preview-kind="recording-step" data-preview-title="${escapeHtml(getRecordingPreviewTitle(stepItem))}" data-preview-target="${escapeHtml(getRecordingPreviewTarget(stepItem))}" ${recordingDatasetAttributes} alt="${escapeHtml(getMessage('reportRecordingScreenshotAlt', [String(stepIndex + 1)], `Recording screenshot for step ${stepIndex + 1}`))}">`
                 : `<div class="recording-step__shot-placeholder">${escapeHtml(getMessage('reportRecordingNoScreenshot', undefined, 'No screenshot'))}</div>`}
                     </div>` : ''}
                     <div class="recording-step__content">
                         <p class="recording-step__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
                         ${isFailedStep && recordingState.lastError ? `<p class="recording-step__error">${escapeHtml(recordingState.lastError)}</p>` : ''}
+                        ${stepItem.replayHint ? `<p class="recording-step__hint">${escapeHtml(stepItem.replayHint)}</p>` : ''}
                         ${stepItem.url && stepItem.type !== 'navigation' ? `<p class="recording-step__url">${escapeHtml(stepItem.url)}</p>` : ''}
                         ${stepItem.locator ? `<p class="recording-step__locator">${escapeHtml(formatLocator(stepItem.locator))}</p>` : ''}
+                        ${stepItem.sourceLocator ? `<p class="recording-step__locator">${escapeHtml(getMessage('reportRecordingSourceLocator', [formatLocator(stepItem.sourceLocator)], `Source: ${formatLocator(stepItem.sourceLocator)}`))}</p>` : ''}
                     </div>
                 </div>
             </article>
@@ -465,8 +467,21 @@ export function displayAnnotationsTable(reportState, currentFilter) {
             <td colspan="4" class="annotation-replay-row__cell">
                 <details class="annotation-replay-details">
                     <summary class="annotation-replay-details__summary">
-                        <span class="annotation-replay-details__title">${escapeHtml(getMessage('reportAnnotationReplayTitle', undefined, 'Replay'))}</span>
-                        <span class="annotation-replay-details__meta">${escapeHtml(replaySummaryText)}</span>
+                        <span class="annotation-replay-details__heading">
+                            <span class="annotation-replay-details__title">${escapeHtml(getMessage('reportAnnotationReplayTitle', undefined, 'Replay'))}</span>
+                            <span class="annotation-replay-details__meta">${escapeHtml(replaySummaryText)}</span>
+                        </span>
+                        <button
+                            type="button"
+                            class="annotation-replay-copy-btn"
+                            data-copy-text="${escapeHtml(encodeURIComponent(buildRecordingCopyText(annotation, recordingState)))}"
+                            title="${escapeHtml(getMessage('reportReplayCopyTitle', undefined, 'Copy recorded steps'))}"
+                            aria-label="${escapeHtml(getMessage('reportReplayCopyTitle', undefined, 'Copy recorded steps'))}">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M6 2.5h5.5A1.5 1.5 0 0 1 13 4v7.5A1.5 1.5 0 0 1 11.5 13H6A1.5 1.5 0 0 1 4.5 11.5V4A1.5 1.5 0 0 1 6 2.5Z" stroke="currentColor" stroke-width="1.2"/>
+                                <path d="M4.5 5H4A1.5 1.5 0 0 0 2.5 6.5V12A1.5 1.5 0 0 0 4 13.5h5.5A1.5 1.5 0 0 0 11 12v-.5" stroke="currentColor" stroke-width="1.2"/>
+                            </svg>
+                        </button>
                     </summary>
                     <div class="annotation-replay-details__body">
                         ${renderRecordingTimelineMarkup(recordingState, annotation.id)}
@@ -602,15 +617,159 @@ function formatLocator(locator) {
     return `${locator.strategy}: ${locator.value}${locatorName}`;
 }
 
+function formatPointer(stepItem) {
+    if (!stepItem?.pointer) {
+        return '';
+    }
+
+    const offsetX = typeof stepItem.pointer.offsetX === 'number' ? stepItem.pointer.offsetX : null;
+    const offsetY = typeof stepItem.pointer.offsetY === 'number' ? stepItem.pointer.offsetY : null;
+    if (offsetX == null || offsetY == null) {
+        return '';
+    }
+
+    return `${offsetX},${offsetY}`;
+}
+
+function formatReplayTarget(stepItem) {
+    if (stepItem?.type === 'navigation' && stepItem?.url) {
+        return stepItem.url;
+    }
+
+    if (stepItem?.tagName === 'CANVAS' && stepItem?.pointer) {
+        const pointerLabel = formatPointer(stepItem);
+        if (pointerLabel !== '') {
+            return `canvas (${pointerLabel})`;
+        }
+    }
+
+    if (stepItem?.text) {
+        return stepItem.text;
+    }
+
+    if (stepItem?.locator) {
+        return formatLocator(stepItem.locator);
+    }
+
+    return '';
+}
+
+function getRecordingPreviewTitle(stepItem) {
+    return getRecorderStepTypeLabel(stepItem?.type || 'unknown');
+}
+
+function getRecordingPreviewTarget(stepItem) {
+    const targetLabel = formatReplayTarget(stepItem);
+    if (targetLabel !== '') {
+        return targetLabel;
+    }
+
+    if (typeof stepItem?.value === 'string' && stepItem.value !== '') {
+        return stepItem.value;
+    }
+
+    return EMPTY_DISPLAY_VALUE;
+}
+
+function buildRecordingCopyText(annotation, recordingState) {
+    const recordingSteps = Array.isArray(recordingState?.steps) ? recordingState.steps : [];
+    const titleText = annotation?.name || getMessage('errorNoTitleAvailable', undefined, 'Untitled page');
+    const headerLines = [
+        `${getAnnotationTypeLabel(annotation?.type || '')}: ${titleText}`,
+        annotation?.url ? annotation.url : '',
+        getMessage('reportReplayCopyStepCount', [String(recordingSteps.length)], `Steps: ${recordingSteps.length}`)
+    ].filter(Boolean);
+
+    const stepLines = recordingSteps.map((stepItem, stepIndex) => {
+        const parts = [
+            `${stepIndex + 1}. ${getRecorderStepTypeLabel(stepItem.type)}`,
+            formatTime(stepItem.timestamp),
+            getRecordingStepSummary(stepItem)
+        ];
+        const locatorLabel = formatReplayTarget(stepItem);
+        if (locatorLabel) {
+            parts.push(locatorLabel);
+        }
+        if (stepItem.replayPolicy === 'manual') {
+            parts.push(getMessage('reportReplayCopyManual', undefined, 'manual step'));
+        }
+        if (stepItem.replayHint) {
+            parts.push(stepItem.replayHint);
+        }
+        return parts.join(' | ');
+    });
+
+    return [...headerLines, '', ...stepLines].join('\n');
+}
+
 function getRecordingStepSummary(stepItem) {
     if (stepItem.type === 'input' || stepItem.type === 'change') {
         return getMessage('reportRecordingValueChanged', [stepItem.value || ''], `Value changed to "${stepItem.value || ''}"`);
     }
 
-    if (stepItem.type === 'click' || stepItem.type === 'submit') {
+    if (stepItem.type === 'click') {
+        if (stepItem.tagName === 'CANVAS' && stepItem.pointer) {
+            return getMessage(
+                'reportRecordingCanvasClick',
+                [formatPointer(stepItem)],
+                `Canvas click at ${formatPointer(stepItem)}`
+            );
+        }
         return stepItem.text
             ? getMessage('reportRecordingTargetText', [stepItem.text], `Target text: ${stepItem.text}`)
             : getMessage('reportRecordingInteraction', undefined, 'Interaction with target element');
+    }
+
+    if (stepItem.type === 'doubleClick') {
+        return stepItem.text
+            ? getMessage('reportRecordingDoubleClick', [stepItem.text], `Double click: ${stepItem.text}`)
+            : getMessage('reportRecordingDoubleClickFallback', undefined, 'Double click');
+    }
+
+    if (stepItem.type === 'contextMenu') {
+        return stepItem.text
+            ? getMessage('reportRecordingContextMenu', [stepItem.text], `Context menu: ${stepItem.text}`)
+            : getMessage('reportRecordingContextMenuFallback', undefined, 'Context menu');
+    }
+
+    if (stepItem.type === 'hoverEnter' || stepItem.type === 'hoverLeave') {
+        const hoverTarget = formatReplayTarget(stepItem);
+        const fallbackText = stepItem.type === 'hoverEnter' ? 'Hover enter' : 'Hover leave';
+        return hoverTarget
+            ? getMessage(
+                stepItem.type === 'hoverEnter' ? 'reportRecordingHoverEnter' : 'reportRecordingHoverLeave',
+                [hoverTarget],
+                `${fallbackText}: ${hoverTarget}`
+            )
+            : getMessage(
+                stepItem.type === 'hoverEnter' ? 'reportRecordingHoverEnterFallback' : 'reportRecordingHoverLeaveFallback',
+                undefined,
+                fallbackText
+            );
+    }
+
+    if (stepItem.type === 'dragStart') {
+        return stepItem.text
+            ? getMessage('reportRecordingDragStart', [stepItem.text], `Drag start: ${stepItem.text}`)
+            : getMessage('reportRecordingDragStartFallback', undefined, 'Drag start');
+    }
+
+    if (stepItem.type === 'drop') {
+        return stepItem.text
+            ? getMessage('reportRecordingDrop', [stepItem.text], `Drop on: ${stepItem.text}`)
+            : getMessage('reportRecordingDropFallback', undefined, 'Drop');
+    }
+
+    if (stepItem.type === 'file') {
+        return getMessage(
+            'reportRecordingFileManual',
+            [stepItem.value || EMPTY_DISPLAY_VALUE],
+            `File input selected: ${stepItem.value || EMPTY_DISPLAY_VALUE}`
+        );
+    }
+
+    if (stepItem.type === 'submit') {
+        return getMessage('reportRecordingSubmit', undefined, 'Submit form');
     }
 
     if (stepItem.type === 'navigation') {

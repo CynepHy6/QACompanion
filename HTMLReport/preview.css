@@ -982,6 +982,14 @@ body {
     display: none;
 }
 
+.annotation-replay-details__heading {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
 .annotation-replay-details__title {
     font-size: 0.82rem;
     font-weight: 700;
@@ -993,10 +1001,63 @@ body {
     color: var(--color-text-secondary);
 }
 
+.annotation-replay-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.annotation-replay-copy-btn:hover {
+    color: var(--color-primary);
+    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.annotation-replay-copy-btn.is-copied {
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.25);
+    background: rgba(37, 99, 235, 0.08);
+}
+
+.annotation-replay-copy-btn.is-copied::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.94);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+    pointer-events: none;
+    z-index: 2;
+}
+
 .annotation-replay-details__body {
     padding: 0 14px 14px;
     display: grid;
     gap: 12px;
+}
+
+.recording-step__hint {
+    margin: 6px 0 0;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
 }
 
 .col-actions {
@@ -1372,6 +1433,27 @@ body {
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
 }
 
+.image-preview__meta {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: min(560px, calc(100vw - 120px));
+    max-width: min(760px, calc(100vw - 120px));
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+    cursor: default;
+    color: #ffffff;
+    font-size: 0.92rem;
+    line-height: 1.35;
+    font-weight: 700;
+    text-align: center;
+    word-break: break-word;
+}
+
 .image-preview::after {
     content: '\00d7';
     position: absolute;
@@ -1423,6 +1505,14 @@ body {
 
 .image-hover-preview.active {
     display: block;
+}
+
+@media (max-width: 768px) {
+    .image-preview__meta {
+        min-width: calc(100vw - 96px);
+        max-width: calc(100vw - 96px);
+        top: 18px;
+    }
 }
 
 .visually-hidden {

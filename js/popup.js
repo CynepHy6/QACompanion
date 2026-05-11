@@ -415,9 +415,62 @@ function getRecordingStepSummary(stepItem) {
   }
 
   if (stepItem.type === 'click') {
+    if (stepItem.pointer && stepItem.tagName === 'CANVAS') {
+      return getMessage(
+        'popupRecorderCanvasClick',
+        [String(stepItem.pointer.offsetX ?? '?'), String(stepItem.pointer.offsetY ?? '?')],
+        `Click canvas at ${stepItem.pointer.offsetX ?? '?'}:${stepItem.pointer.offsetY ?? '?'}`
+      );
+    }
     return stepItem.text
       ? getMessage('popupRecorderClickText', [stepItem.text], `Click ${stepItem.text}`)
       : getMessage('popupRecorderClickElement', undefined, 'Click element');
+  }
+
+  if (stepItem.type === 'doubleClick') {
+    return stepItem.text
+      ? getMessage('popupRecorderDoubleClickText', [stepItem.text], `Double click ${stepItem.text}`)
+      : getMessage('popupRecorderDoubleClickElement', undefined, 'Double click element');
+  }
+
+  if (stepItem.type === 'contextMenu') {
+    return stepItem.text
+      ? getMessage('popupRecorderContextMenuText', [stepItem.text], `Open context menu on ${stepItem.text}`)
+      : getMessage('popupRecorderContextMenuElement', undefined, 'Open context menu');
+  }
+
+  if (stepItem.type === 'hoverEnter' || stepItem.type === 'hoverLeave') {
+    const fallbackMessage = stepItem.type === 'hoverEnter'
+      ? 'Enter hover state'
+      : 'Leave hover state';
+    return stepItem.text
+      ? getMessage(
+        stepItem.type === 'hoverEnter' ? 'popupRecorderHoverEnterText' : 'popupRecorderHoverLeaveText',
+        [stepItem.text],
+        `${fallbackMessage}: ${stepItem.text}`
+      )
+      : getMessage(
+        stepItem.type === 'hoverEnter' ? 'popupRecorderHoverEnter' : 'popupRecorderHoverLeave',
+        undefined,
+        fallbackMessage
+      );
+  }
+
+  if (stepItem.type === 'dragStart') {
+    return stepItem.text
+      ? getMessage('popupRecorderDragStartText', [stepItem.text], `Start dragging ${stepItem.text}`)
+      : getMessage('popupRecorderDragStart', undefined, 'Start dragging');
+  }
+
+  if (stepItem.type === 'drop') {
+    return stepItem.text
+      ? getMessage('popupRecorderDropText', [stepItem.text], `Drop into ${stepItem.text}`)
+      : getMessage('popupRecorderDrop', undefined, 'Drop on target');
+  }
+
+  if (stepItem.type === 'file') {
+    const fileName = stepItem.value || getMessage('popupRecorderFileUnknown', undefined, 'selected file');
+    return getMessage('popupRecorderFileSelected', [fileName], `Choose file ${fileName}`);
   }
 
   if (stepItem.type === 'submit') {
@@ -487,11 +540,15 @@ function buildRecordingStepsMarkup(recordingState, options = {}) {
     className: options.listClassName || 'recording-steps-list',
     html: recordingState.steps.map((stepItem, stepIndex) => {
       const linkedScreenshot = stepItem.screenshotRef ? screenshotMap.get(stepItem.screenshotRef) : null;
-      const isActiveStep = recordingState.status === 'replaying' && recordingState.activeStepId === stepItem.stepId;
+      const isActiveStep = recordingState.activeStepId === stepItem.stepId;
       const isFailedStep = recordingState.failedStepId === stepItem.stepId;
-      const stepStateClassName = isFailedStep ? ' is-failed' : (isActiveStep ? ' is-active' : '');
+      const isManualStep = stepItem.replayPolicy === 'manual';
+      const stepStateClassName = `${isFailedStep ? ' is-failed' : ''}${isActiveStep ? ' is-active' : ''}${isManualStep ? ' is-manual' : ''}`;
       const failureDetailsMarkup = isFailedStep && recordingState.lastError
         ? `<p class="recording-step-card__error">${escapeHtml(recordingState.lastError)}</p>`
+        : '';
+      const hintDetailsMarkup = stepItem.replayHint
+        ? `<p class="recording-step-card__hint">${escapeHtml(stepItem.replayHint)}</p>`
         : '';
       return `
         <article class="recording-step-card${stepStateClassName}" data-step-id="${escapeHtml(stepItem.stepId)}">
@@ -502,6 +559,7 @@ function buildRecordingStepsMarkup(recordingState, options = {}) {
           ${linkedScreenshot ? `<img src="${linkedScreenshot.imageURL}" alt="${escapeHtml(getMessage('popupStepScreenshotAlt', [String(stepIndex + 1)], `Screenshot for step ${stepIndex + 1}`))}" class="recording-step-card__preview popup-preview-image" data-preview="${linkedScreenshot.imageURL}">` : ''}
           <p class="recording-step-card__summary">${escapeHtml(getRecordingStepSummary(stepItem))}</p>
           ${failureDetailsMarkup}
+          ${hintDetailsMarkup}
         </article>
       `;
     }).join('')

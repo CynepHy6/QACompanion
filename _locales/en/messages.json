@@ -104,6 +104,22 @@
     "popupRecorderNavigateTo": { "message": "Go to $1" },
     "popupRecorderClickText": { "message": "Click $1" },
     "popupRecorderClickElement": { "message": "Click element" },
+    "popupRecorderCanvasClick": { "message": "Click canvas at $1:$2" },
+    "popupRecorderDoubleClickText": { "message": "Double click $1" },
+    "popupRecorderDoubleClickElement": { "message": "Double click element" },
+    "popupRecorderContextMenuText": { "message": "Open context menu on $1" },
+    "popupRecorderContextMenuElement": { "message": "Open context menu" },
+    "popupRecorderHoverEnterText": { "message": "Enter hover on $1" },
+    "popupRecorderHoverEnter": { "message": "Enter hover state" },
+    "popupRecorderHoverLeaveText": { "message": "Leave hover on $1" },
+    "popupRecorderHoverLeave": { "message": "Leave hover state" },
+    "popupRecorderDragStartText": { "message": "Start dragging $1" },
+    "popupRecorderDragStart": { "message": "Start dragging" },
+    "popupRecorderDropText": { "message": "Drop into $1" },
+    "popupRecorderDrop": { "message": "Drop on target" },
+    "popupRecorderFileUnknown": { "message": "selected file" },
+    "popupRecorderFileSelected": { "message": "Choose file $1" },
+    "popupRecorderManualFileReplay": { "message": "Replay paused on file upload. Choose the file manually to continue." },
     "popupRecorderSubmitForm": { "message": "Submit form" },
     "popupRecorderTypeValue": { "message": "Type $1" },
     "popupRecorderUpdateField": { "message": "Update field" },
@@ -120,6 +136,13 @@
     "countSecond_many": { "message": "$1 seconds" },
 
     "stepTypeClick": { "message": "Click" },
+    "stepTypeDoubleClick": { "message": "Double click" },
+    "stepTypeContextMenu": { "message": "Context menu" },
+    "stepTypeHoverEnter": { "message": "Hover enter" },
+    "stepTypeHoverLeave": { "message": "Hover leave" },
+    "stepTypeDragStart": { "message": "Drag start" },
+    "stepTypeDrop": { "message": "Drop" },
+    "stepTypeFile": { "message": "File upload" },
     "stepTypeInput": { "message": "Input" },
     "stepTypeChange": { "message": "Change" },
     "stepTypeSubmit": { "message": "Submit" },
@@ -154,6 +177,8 @@
     },
     "reportImagePreviewAlt": { "message": "Preview" },
     "reportImageHoverPreviewAlt": { "message": "Hover preview" },
+    "reportPreviewActionLabel": { "message": "Action" },
+    "reportPreviewTargetLabel": { "message": "Target" },
     "reportNoExportedStateTitle": { "message": "No exported state available" },
     "reportNoExportedStateBody": {
         "message": "Add annotations, keep a draft, or record a flow to generate a report."
@@ -247,10 +272,31 @@
     "reportRecordingInteraction": {
         "message": "Interaction with target element"
     },
+    "reportRecordingCanvasClick": { "message": "Canvas click at $1" },
+    "reportRecordingDoubleClick": { "message": "Double click: $1" },
+    "reportRecordingDoubleClickFallback": { "message": "Double click" },
+    "reportRecordingContextMenu": { "message": "Context menu: $1" },
+    "reportRecordingContextMenuFallback": { "message": "Context menu" },
+    "reportRecordingHoverEnter": { "message": "Hover enter: $1" },
+    "reportRecordingHoverEnterFallback": { "message": "Hover enter" },
+    "reportRecordingHoverLeave": { "message": "Hover leave: $1" },
+    "reportRecordingHoverLeaveFallback": { "message": "Hover leave" },
+    "reportRecordingDragStart": { "message": "Drag start: $1" },
+    "reportRecordingDragStartFallback": { "message": "Drag start" },
+    "reportRecordingDrop": { "message": "Drop on: $1" },
+    "reportRecordingDropFallback": { "message": "Drop" },
+    "reportRecordingFileManual": { "message": "File selected: $1" },
+    "reportRecordingSubmit": { "message": "Submit form" },
     "reportRecordingNavigatedTo": { "message": "Navigated to $1" },
     "reportRecordingNavigationEvent": { "message": "Navigation event" },
     "reportRecordingFallbackAction": { "message": "Recorded action" },
+    "reportRecordingSourceLocator": { "message": "Source: $1" },
     "reportAnnotationReplayTitle": { "message": "Recorded actions" },
+    "reportReplayCopyTitle": { "message": "Copy recorded steps" },
+    "reportReplayCopySuccess": { "message": "Copied" },
+    "reportReplayCopyFailed": { "message": "Copy failed" },
+    "reportReplayCopyStepCount": { "message": "Steps: $1" },
+    "reportReplayCopyManual": { "message": "manual step" },
     "reportNoReplayLinked": { "message": "No replay linked." },
     "reportNoAnnotationsForFilter": {
         "message": "No annotations found for this filter."
@@ -418,6 +464,10 @@
     "notificationReplayFailedTitle": { "message": "Replay stopped" },
     "notificationReplayFailedBody": {
         "message": "Replay stopped for $1: $2"
+    },
+    "notificationReplayManualStepTitle": { "message": "Replay paused" },
+    "notificationReplayManualStepBody": {
+        "message": "Replay paused on a manual step. Complete it in the page to continue."
     },
     "notificationImportSuccessTitle": { "message": "Import completed" },
     "notificationImportSuccessBody": {

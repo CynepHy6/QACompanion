@@ -8,6 +8,7 @@ let hoverPreviewAnchorElement = null;
 let armedDeleteImageKey = '';
 let armedDeleteAnnotationId = '';
 const pendingDescriptionSaveById = new Map();
+let replayCopyTooltipTimer = null;
 
 /**
  * Returns the current active filter type.
@@ -24,6 +25,7 @@ export function setupAllListeners(reportState) {
     setupDownloadListener(reportState);
     setupTableActionListeners(reportState.session);
     setupPreviewImageListeners();
+    setupReplayCopyListeners();
 }
 
 /**
@@ -213,7 +215,11 @@ function setupPreviewImageListeners() {
             return;
         }
 
-        showImagePreview(previewImage.dataset.preview);
+        const isRecordingPreview = previewImage.dataset.previewKind === 'recording-step';
+        showImagePreview(previewImage.dataset.preview, isRecordingPreview ? {
+            title: previewImage.dataset.previewTitle || '',
+            target: previewImage.dataset.previewTarget || ''
+        } : null);
     });
 
     document.addEventListener('mouseover', (event) => {
@@ -241,6 +247,57 @@ function setupPreviewImageListeners() {
         }
 
         hideHoverPreview();
+    });
+}
+
+function setupReplayCopyListeners() {
+    function resetReplayCopyButtonsState() {
+        document.querySelectorAll('.annotation-replay-copy-btn.is-copied').forEach((buttonElement) => {
+            buttonElement.classList.remove('is-copied');
+            delete buttonElement.dataset.tooltip;
+            const defaultTitle = getMessage('reportReplayCopyTitle', undefined, 'Copy recorded steps');
+            buttonElement.title = defaultTitle;
+            buttonElement.setAttribute('aria-label', defaultTitle);
+        });
+    }
+
+    document.addEventListener('click', async (event) => {
+        const copyButton = event.target.closest('.annotation-replay-copy-btn');
+        if (!copyButton) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const encodedCopyText = copyButton.dataset.copyText || '';
+        const copyText = encodedCopyText ? decodeURIComponent(encodedCopyText) : '';
+        if (copyText === '') {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(copyText);
+            resetReplayCopyButtonsState();
+            copyButton.classList.add('is-copied');
+            const successTitle = getMessage('reportReplayCopySuccess', undefined, 'Copied');
+            copyButton.dataset.tooltip = successTitle;
+            copyButton.title = successTitle;
+            copyButton.setAttribute('aria-label', successTitle);
+            if (replayCopyTooltipTimer) {
+                window.clearTimeout(replayCopyTooltipTimer);
+            }
+            replayCopyTooltipTimer = window.setTimeout(() => {
+                resetReplayCopyButtonsState();
+                replayCopyTooltipTimer = null;
+            }, 2000);
+        } catch (error) {
+            console.error('Failed to copy recorded steps.', error);
+            const errorTitle = getMessage('reportReplayCopyFailed', undefined, 'Copy failed');
+            delete copyButton.dataset.tooltip;
+            copyButton.title = errorTitle;
+            copyButton.setAttribute('aria-label', errorTitle);
+        }
     });
 }
 
@@ -324,18 +381,33 @@ function updateDescriptionDirtyState(descriptionField) {
 
 // --- Image Preview ---
 
-function showImagePreview(src) {
+function showImagePreview(src, metadata = null) {
     const preview = document.getElementById('imagePreview');
     const previewImg = preview.querySelector('img');
+    const previewMeta = document.getElementById('imagePreviewMeta');
     previewImg.src = src;
+    const actionText = typeof metadata?.title === 'string' ? metadata.title.trim() : '';
+    const targetText = typeof metadata?.target === 'string' ? metadata.target.trim() : '';
+    if (previewMeta) {
+        const hasMetadata = actionText !== '' || targetText !== '';
+        previewMeta.hidden = !hasMetadata;
+        previewMeta.textContent = actionText && targetText
+            ? `${actionText}: ${targetText}`
+            : (actionText || targetText);
+    }
     preview.classList.add('active');
 
     const closePreview = () => {
         preview.classList.remove('active');
+        if (previewMeta) {
+            previewMeta.hidden = true;
+            previewMeta.textContent = '';
+        }
         preview.removeEventListener('click', closePreview);
     };
     preview.addEventListener('click', closePreview);
     previewImg.addEventListener('click', (e) => e.stopPropagation());
+    previewMeta?.addEventListener('click', (e) => e.stopPropagation(), { once: true });
 }
 
 function showHoverPreview(src, previewImage) {

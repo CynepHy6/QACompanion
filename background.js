@@ -277,7 +277,11 @@ function clearReplayFailureState(recordingState) {
 }
 
 function shouldCaptureRecordingScreenshot(stepType) {
-    return stepType === 'click' || stepType === 'submit';
+    return stepType === 'click'
+        || stepType === 'doubleClick'
+        || stepType === 'contextMenu'
+        || stepType === 'submit'
+        || stepType === 'drop';
 }
 
 function getActiveRecordingState() {
@@ -420,6 +424,16 @@ function createReplayStepError(stepItem, stepIndex, playbackResponse = null) {
     }
 
     return replayError;
+}
+
+function createManualReplayStopSignal(stepItem, playbackResponse = null) {
+    return {
+        manualStop: true,
+        stepId: stepItem?.stepId || '',
+        message: typeof playbackResponse?.notice === 'string' && playbackResponse.notice.trim() !== ''
+            ? playbackResponse.notice
+            : getMessage('notificationReplayManualStepBody', undefined, 'Replay paused. Complete the step manually to continue.')
+    };
 }
 
 function normalizeReplayStepError(stepItem, stepIndex, originalError) {
@@ -1001,7 +1015,13 @@ async function stopRecordingFlow(options = {}) {
                     inputType: '',
                     tagName: '',
                     text: '',
-                    screenshotRef: ''
+                    screenshotRef: '',
+                    pointer: null,
+                    shadowPath: [],
+                    sourceLocator: null,
+                    sourceShadowPath: [],
+                    replayPolicy: 'auto',
+                    replayHint: ''
                 });
                 recordingState.lastKnownUrl = currentTab.url;
             }
@@ -1062,7 +1082,13 @@ async function appendRecordedStep(rawStep, senderTab) {
         inputType: typeof rawStep.inputType === 'string' ? rawStep.inputType : '',
         tagName: typeof rawStep.tagName === 'string' ? rawStep.tagName : '',
         text: typeof rawStep.text === 'string' ? rawStep.text : '',
-        screenshotRef: ''
+        screenshotRef: '',
+        pointer: rawStep.pointer && typeof rawStep.pointer === 'object' ? rawStep.pointer : null,
+        shadowPath: Array.isArray(rawStep.shadowPath) ? rawStep.shadowPath : [],
+        sourceLocator: rawStep.sourceLocator && typeof rawStep.sourceLocator === 'object' ? rawStep.sourceLocator : null,
+        sourceShadowPath: Array.isArray(rawStep.sourceShadowPath) ? rawStep.sourceShadowPath : [],
+        replayPolicy: typeof rawStep.replayPolicy === 'string' ? rawStep.replayPolicy : 'auto',
+        replayHint: typeof rawStep.replayHint === 'string' ? rawStep.replayHint : ''
     };
 
     const lastRecordedStep = recordingState.steps.length > 0
@@ -1110,7 +1136,13 @@ async function appendNavigationStep(tabId, nextUrl) {
         inputType: '',
         tagName: '',
         text: '',
-        screenshotRef: ''
+        screenshotRef: '',
+        pointer: null,
+        shadowPath: [],
+        sourceLocator: null,
+        sourceShadowPath: [],
+        replayPolicy: 'auto',
+        replayHint: ''
     };
 
     recordingState.steps.push(stepItem);
@@ -1201,6 +1233,21 @@ async function playRecordingFlow(recordingTarget = null) {
                 } else {
                     await waitForTabComplete(activeTab.id);
                     const playbackResponse = await playRecordedStepWithSingleRetry(activeTab.id, stepItem);
+                    if (playbackResponse?.manualStop === true) {
+                        const manualReplayStop = createManualReplayStopSignal(stepItem, playbackResponse);
+                        updateRecordingStatus(recordingState, 'idle');
+                        markRecordingStopped(recordingState);
+                        clearReplayFailureState(recordingState);
+                        recordingState.activeStepId = manualReplayStop.stepId;
+                        await saveRecording();
+                        clearPlaybackToken();
+                        showNotification(
+                            getMessage('notificationReplayManualStepTitle', undefined, 'Replay paused'),
+                            manualReplayStop.message,
+                            7000
+                        );
+                        return createRecordingPayload(targetToUse);
+                    }
                     if (!playbackResponse || playbackResponse.success !== true) {
                         throw createReplayStepError(stepItem, stepIndex, playbackResponse);
                     }
@@ -1304,7 +1351,13 @@ async function syncRecordingNavigationFromActiveTab() {
         inputType: '',
         tagName: '',
         text: '',
-        screenshotRef: ''
+        screenshotRef: '',
+        pointer: null,
+        shadowPath: [],
+        sourceLocator: null,
+        sourceShadowPath: [],
+        replayPolicy: 'auto',
+        replayHint: ''
     });
     recordingState.lastKnownUrl = activeTab.url;
     await saveRecording();

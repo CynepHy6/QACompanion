@@ -85,6 +85,13 @@ export function getAnnotationTypeLabel(typeName) {
 export function getRecorderStepTypeLabel(stepType) {
     const messageKeyByType = {
         click: 'stepTypeClick',
+        doubleClick: 'stepTypeDoubleClick',
+        contextMenu: 'stepTypeContextMenu',
+        hoverEnter: 'stepTypeHoverEnter',
+        hoverLeave: 'stepTypeHoverLeave',
+        dragStart: 'stepTypeDragStart',
+        drop: 'stepTypeDrop',
+        file: 'stepTypeFile',
         input: 'stepTypeInput',
         change: 'stepTypeChange',
         submit: 'stepTypeSubmit',

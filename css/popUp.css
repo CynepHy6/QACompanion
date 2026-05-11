@@ -419,6 +419,11 @@ button:focus-visible,
 	box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
+.recording-step-card.is-manual {
+	border-color: rgba(245, 158, 11, 0.42);
+	background: rgba(245, 158, 11, 0.06);
+}
+
 .recording-step-card__meta {
 	display: flex;
 	align-items: center;
@@ -457,6 +462,13 @@ button:focus-visible,
 	font-size: 0.72rem;
 	line-height: 1.35;
 	color: var(--color-bug-text);
+}
+
+.recording-step-card__hint {
+	margin: 6px 0 0;
+	font-size: 0.72rem;
+	line-height: 1.4;
+	color: var(--color-text-secondary);
 }
 
 .recording-step-card__locator {

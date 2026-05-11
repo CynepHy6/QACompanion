@@ -40,6 +40,32 @@ function normalizeLocator(rawLocator = {}) {
     return normalizedLocator;
 }
 
+function normalizePointer(rawPointer = {}) {
+    if (!rawPointer || typeof rawPointer !== 'object') {
+        return null;
+    }
+
+    const normalizedPointer = {};
+    const pointerFields = ['clientX', 'clientY', 'offsetX', 'offsetY', 'button'];
+    pointerFields.forEach((fieldName) => {
+        if (typeof rawPointer[fieldName] === 'number' && Number.isFinite(rawPointer[fieldName])) {
+            normalizedPointer[fieldName] = rawPointer[fieldName];
+        }
+    });
+
+    return Object.keys(normalizedPointer).length > 0 ? normalizedPointer : null;
+}
+
+function normalizeShadowPath(rawShadowPath = []) {
+    if (!Array.isArray(rawShadowPath)) {
+        return [];
+    }
+
+    return rawShadowPath
+        .map((locatorItem) => normalizeLocator(locatorItem))
+        .filter((locatorItem) => locatorItem !== null);
+}
+
 function normalizeRecordingStep(rawStep = {}) {
     return {
         stepId: typeof rawStep.stepId === 'string' ? rawStep.stepId : '',
@@ -51,7 +77,13 @@ function normalizeRecordingStep(rawStep = {}) {
         inputType: typeof rawStep.inputType === 'string' ? rawStep.inputType : '',
         tagName: typeof rawStep.tagName === 'string' ? rawStep.tagName : '',
         text: typeof rawStep.text === 'string' ? rawStep.text : '',
-        screenshotRef: typeof rawStep.screenshotRef === 'string' ? rawStep.screenshotRef : ''
+        screenshotRef: typeof rawStep.screenshotRef === 'string' ? rawStep.screenshotRef : '',
+        pointer: normalizePointer(rawStep.pointer),
+        shadowPath: normalizeShadowPath(rawStep.shadowPath),
+        sourceLocator: normalizeLocator(rawStep.sourceLocator),
+        sourceShadowPath: normalizeShadowPath(rawStep.sourceShadowPath),
+        replayPolicy: typeof rawStep.replayPolicy === 'string' ? rawStep.replayPolicy : 'auto',
+        replayHint: typeof rawStep.replayHint === 'string' ? rawStep.replayHint : ''
     };
 }
 

@@ -409,6 +409,9 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
     let replayHighlightElement = null;
     let replayHighlightTimer = null;
     const pendingInputTimers = new Map();
+    const pendingClickTimers = new Map();
+    let lastRecordedDragSource = null;
+    let activeReplayDragState = null;
 
     function getCookieValue(cookieName) {
         if (typeof cookieName !== 'string' || cookieName === '' || typeof document.cookie !== 'string') {
@@ -525,6 +528,75 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         return pathParts.join(' > ');
     }
 
+    function getComposedTargetElement(event) {
+        const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
+        return eventPath.find((pathItem) => pathItem instanceof HTMLElement)
+            || (event.target instanceof HTMLElement ? event.target : null);
+    }
+
+    function isFileInputElement(targetElement) {
+        return targetElement instanceof HTMLInputElement && targetElement.type === 'file';
+    }
+
+    function getAssociatedFileInput(targetElement) {
+        if (isFileInputElement(targetElement)) {
+            return targetElement;
+        }
+
+        if (targetElement instanceof HTMLLabelElement && targetElement.control instanceof HTMLInputElement && targetElement.control.type === 'file') {
+            return targetElement.control;
+        }
+
+        return null;
+    }
+
+    function buildShadowPath(targetElement) {
+        const shadowPath = [];
+        let currentRoot = targetElement?.getRootNode?.();
+        while (currentRoot instanceof ShadowRoot) {
+            if (!(currentRoot.host instanceof HTMLElement)) {
+                break;
+            }
+
+            shadowPath.unshift(buildElementLocator(currentRoot.host));
+            currentRoot = currentRoot.host.getRootNode();
+        }
+
+        return shadowPath;
+    }
+
+    function buildTargetPathKey(targetElement) {
+        const primaryLocator = buildElementLocator(targetElement);
+        const shadowPath = buildShadowPath(targetElement);
+        return JSON.stringify({
+            locator: primaryLocator,
+            shadowPath
+        });
+    }
+
+    function collectPointerData(event, targetElement) {
+        if (!(event instanceof MouseEvent) || !(targetElement instanceof HTMLElement)) {
+            return null;
+        }
+
+        const targetRect = targetElement.getBoundingClientRect();
+        return {
+            clientX: event.clientX,
+            clientY: event.clientY,
+            offsetX: Math.round(event.clientX - targetRect.left),
+            offsetY: Math.round(event.clientY - targetRect.top),
+            button: event.button
+        };
+    }
+
+    function shouldRecordHoverTarget(targetElement) {
+        if (!(targetElement instanceof HTMLElement)) {
+            return false;
+        }
+
+        return targetElement.matches('.hover-card, [data-record-hover], [data-hover-target]');
+    }
+
     function buildElementLocator(targetElement) {
         if (targetElement.id) {
             return {
@@ -573,23 +645,31 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         return targetElement.value || '';
     }
 
-    function createRecordedStep(stepType, targetElement) {
-        return {
+    function createRecordedStep(stepType, targetElement, extraFields = {}) {
+        const stepPayload = {
             type: stepType,
             url: window.location.href,
             locator: buildElementLocator(targetElement),
             value: normalizeRecordedValue(targetElement),
             inputType: targetElement.type || '',
             tagName: targetElement.tagName || '',
-            text: (targetElement.textContent || '').trim().slice(0, 120)
+            text: (targetElement.textContent || '').trim().slice(0, 120),
+            shadowPath: buildShadowPath(targetElement),
+            replayPolicy: 'auto',
+            replayHint: ''
+        };
+
+        return {
+            ...stepPayload,
+            ...extraFields
         };
     }
 
-    function postRecordedStep(stepType, targetElement) {
+    function postRecordedStep(stepType, targetElement, extraFields = {}) {
         try {
             safeSendMessage({
                 type: 'appendRecordedStep',
-                step: createRecordedStep(stepType, targetElement)
+                step: createRecordedStep(stepType, targetElement, extraFields)
             });
         } catch (error) {
             if (!error.message || !error.message.includes('Extension context invalidated')) {
@@ -610,6 +690,16 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         ].join(':');
     }
 
+    function clearPendingClickRecord(locatorKey) {
+        const pendingClick = pendingClickTimers.get(locatorKey);
+        if (!pendingClick) {
+            return;
+        }
+
+        clearTimeout(pendingClick.timerId);
+        pendingClickTimers.delete(locatorKey);
+    }
+
     function flushPendingInputRecords() {
         for (const [locatorKey, timerData] of pendingInputTimers.entries()) {
             clearTimeout(timerData.timerId);
@@ -618,11 +708,16 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         }
     }
 
+    function flushPendingClickRecords() {
+        for (const [locatorKey, timerData] of pendingClickTimers.entries()) {
+            clearTimeout(timerData.timerId);
+            postRecordedStep(timerData.stepType, timerData.targetElement, timerData.extraFields);
+            pendingClickTimers.delete(locatorKey);
+        }
+    }
+
     function getRecordedClickTarget(event) {
-        const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : [];
-        const originalTarget = event.target instanceof HTMLElement
-            ? event.target
-            : eventPath.find((pathItem) => pathItem instanceof HTMLElement) || null;
+        const originalTarget = getComposedTargetElement(event);
         if (!originalTarget) {
             return null;
         }
@@ -646,6 +741,31 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         return null;
     }
 
+    function scheduleClickRecord(stepType, targetElement, extraFields = {}) {
+        const locatorKey = `${stepType}:${buildTargetPathKey(targetElement)}`;
+        clearPendingClickRecord(locatorKey);
+        const timerId = setTimeout(() => {
+            postRecordedStep(stepType, targetElement, extraFields);
+            pendingClickTimers.delete(locatorKey);
+        }, 260);
+        pendingClickTimers.set(locatorKey, {
+            timerId,
+            stepType,
+            targetElement,
+            extraFields
+        });
+    }
+
+    function shouldRecordClickImmediately(targetElement) {
+        if (!(targetElement instanceof HTMLElement)) {
+            return false;
+        }
+
+        return targetElement.matches(
+            'a, button, summary, input[type="submit"], input[type="button"], [role="button"]'
+        );
+    }
+
     function handleRecordedClick(event) {
         if (!recorderEnabled) {
             return;
@@ -656,8 +776,53 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return;
         }
 
+        if (getAssociatedFileInput(targetElement)) {
+            return;
+        }
+
         flushPendingInputRecords();
-        postRecordedStep('click', targetElement);
+        const clickExtraFields = {
+            pointer: collectPointerData(event, targetElement)
+        };
+        if (shouldRecordClickImmediately(targetElement)) {
+            postRecordedStep('click', targetElement, clickExtraFields);
+            return;
+        }
+
+        scheduleClickRecord('click', targetElement, clickExtraFields);
+    }
+
+    function handleRecordedDoubleClick(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getRecordedClickTarget(event);
+        if (!targetElement) {
+            return;
+        }
+
+        flushPendingInputRecords();
+        clearPendingClickRecord(`click:${buildTargetPathKey(targetElement)}`);
+        postRecordedStep('doubleClick', targetElement, {
+            pointer: collectPointerData(event, targetElement)
+        });
+    }
+
+    function handleRecordedContextMenu(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getRecordedClickTarget(event);
+        if (!targetElement) {
+            return;
+        }
+
+        flushPendingInputRecords();
+        postRecordedStep('contextMenu', targetElement, {
+            pointer: collectPointerData(event, targetElement)
+        });
     }
 
     function scheduleInputRecord(stepType, targetElement) {
@@ -685,8 +850,12 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return;
         }
 
-        const targetElement = event.target;
+        const targetElement = getComposedTargetElement(event);
         if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        if (isFileInputElement(targetElement)) {
             return;
         }
 
@@ -700,8 +869,24 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return;
         }
 
-        const targetElement = event.target;
+        const targetElement = getComposedTargetElement(event);
         if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        if (isFileInputElement(targetElement)) {
+            const fileNames = Array.from(targetElement.files || [])
+                .map((fileItem) => fileItem.name)
+                .filter((fileName) => typeof fileName === 'string' && fileName !== '');
+            postRecordedStep('file', targetElement, {
+                value: fileNames.join(', '),
+                replayPolicy: 'manual',
+                replayHint: getMessage(
+                    'popupRecorderManualFileReplay',
+                    undefined,
+                    'Replay paused. Choose the file manually to continue.'
+                )
+            });
             return;
         }
 
@@ -713,7 +898,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return;
         }
 
-        const targetElement = event.target;
+        const targetElement = getComposedTargetElement(event);
         if (!(targetElement instanceof HTMLElement)) {
             return;
         }
@@ -721,24 +906,114 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         postRecordedStep('submit', targetElement);
     }
 
+    function handleRecordedHoverEnter(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getComposedTargetElement(event);
+        if (!shouldRecordHoverTarget(targetElement)) {
+            return;
+        }
+
+        if (event.relatedTarget instanceof Node && targetElement.contains(event.relatedTarget)) {
+            return;
+        }
+
+        postRecordedStep('hoverEnter', targetElement, {
+            pointer: collectPointerData(event, targetElement)
+        });
+    }
+
+    function handleRecordedHoverLeave(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getComposedTargetElement(event);
+        if (!shouldRecordHoverTarget(targetElement)) {
+            return;
+        }
+
+        if (event.relatedTarget instanceof Node && targetElement.contains(event.relatedTarget)) {
+            return;
+        }
+
+        postRecordedStep('hoverLeave', targetElement, {
+            pointer: collectPointerData(event, targetElement)
+        });
+    }
+
+    function handleRecordedDragStart(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getComposedTargetElement(event);
+        if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        lastRecordedDragSource = targetElement;
+        postRecordedStep('dragStart', targetElement, {
+            pointer: collectPointerData(event, targetElement)
+        });
+    }
+
+    function handleRecordedDrop(event) {
+        if (!recorderEnabled) {
+            return;
+        }
+
+        const targetElement = getComposedTargetElement(event);
+        if (!(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        const sourceTarget = lastRecordedDragSource instanceof HTMLElement ? lastRecordedDragSource : null;
+        postRecordedStep('drop', targetElement, {
+            pointer: collectPointerData(event, targetElement),
+            sourceLocator: sourceTarget ? buildElementLocator(sourceTarget) : null,
+            sourceShadowPath: sourceTarget ? buildShadowPath(sourceTarget) : []
+        });
+        lastRecordedDragSource = null;
+    }
+
     function attachRecorderListeners() {
         document.addEventListener('click', handleRecordedClick, true);
+        document.addEventListener('dblclick', handleRecordedDoubleClick, true);
+        document.addEventListener('contextmenu', handleRecordedContextMenu, true);
         document.addEventListener('input', handleRecordedInput, true);
         document.addEventListener('change', handleRecordedChange, true);
         document.addEventListener('submit', handleRecordedSubmit, true);
+        document.addEventListener('mouseover', handleRecordedHoverEnter, true);
+        document.addEventListener('mouseout', handleRecordedHoverLeave, true);
+        document.addEventListener('dragstart', handleRecordedDragStart, true);
+        document.addEventListener('drop', handleRecordedDrop, true);
+        window.addEventListener('pagehide', flushPendingClickRecords, true);
+        window.addEventListener('beforeunload', flushPendingClickRecords, true);
     }
 
     function detachRecorderListeners() {
         document.removeEventListener('click', handleRecordedClick, true);
+        document.removeEventListener('dblclick', handleRecordedDoubleClick, true);
+        document.removeEventListener('contextmenu', handleRecordedContextMenu, true);
         document.removeEventListener('input', handleRecordedInput, true);
         document.removeEventListener('change', handleRecordedChange, true);
         document.removeEventListener('submit', handleRecordedSubmit, true);
+        document.removeEventListener('mouseover', handleRecordedHoverEnter, true);
+        document.removeEventListener('mouseout', handleRecordedHoverLeave, true);
+        document.removeEventListener('dragstart', handleRecordedDragStart, true);
+        document.removeEventListener('drop', handleRecordedDrop, true);
+        window.removeEventListener('pagehide', flushPendingClickRecords, true);
+        window.removeEventListener('beforeunload', flushPendingClickRecords, true);
 
-        for (const timerId of pendingInputTimers.values()) {
-            clearTimeout(timerId.timerId);
-        }
-
+        flushPendingInputRecords();
+        flushPendingClickRecords();
         pendingInputTimers.clear();
+        pendingClickTimers.clear();
+        lastRecordedDragSource = null;
+        activeReplayDragState = null;
     }
 
     function setRecorderMode(isRecording) {
@@ -776,33 +1051,124 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         });
     }
 
-    function findElementByLocator(locatorData) {
-        if (!locatorData || typeof locatorData !== 'object') {
+    function findElementByLocator(locatorData, rootNode = document) {
+        if (!locatorData || typeof locatorData !== 'object' || !rootNode) {
             return null;
         }
 
         if (locatorData.strategy === 'id') {
-            return document.getElementById(locatorData.value);
+            if (rootNode instanceof Document) {
+                return rootNode.getElementById(locatorData.value);
+            }
+
+            return rootNode.querySelector(`#${CSS.escape(locatorData.value)}`);
         }
 
         if (locatorData.strategy === 'name') {
-            const namedElements = document.getElementsByName(locatorData.value);
-            return namedElements.length > 0 ? namedElements[0] : null;
+            if (rootNode instanceof Document) {
+                const namedElements = rootNode.getElementsByName(locatorData.value);
+                return namedElements.length > 0 ? namedElements[0] : null;
+            }
+
+            return rootNode.querySelector(`[name="${locatorData.value.replace(/"/g, '\\"')}"]`);
         }
 
         if (locatorData.strategy === 'data' && locatorData.name) {
-            return document.querySelector(`[${locatorData.name}="${locatorData.value.replace(/"/g, '\\"')}"]`);
+            return rootNode.querySelector(`[${locatorData.name}="${locatorData.value.replace(/"/g, '\\"')}"]`);
         }
 
         if (locatorData.strategy === 'css') {
             try {
-                return document.querySelector(locatorData.value);
+                return rootNode.querySelector(locatorData.value);
             } catch {
                 return null;
             }
         }
 
         return null;
+    }
+
+    function findReplayTarget(stepData = {}) {
+        if (!Array.isArray(stepData.shadowPath) || stepData.shadowPath.length === 0) {
+            return findElementByLocator(stepData.locator);
+        }
+
+        let currentRoot = document;
+        for (const hostLocator of stepData.shadowPath) {
+            const hostElement = findElementByLocator(hostLocator, currentRoot);
+            if (!(hostElement instanceof HTMLElement) || !(hostElement.shadowRoot instanceof ShadowRoot)) {
+                return null;
+            }
+
+            currentRoot = hostElement.shadowRoot;
+        }
+
+        return findElementByLocator(stepData.locator, currentRoot);
+    }
+
+    function createReplayMouseEvent(targetElement, eventType, stepData = {}, overrides = {}) {
+        const targetRect = targetElement.getBoundingClientRect();
+        const pointerData = stepData.pointer || {};
+        const clientX = typeof pointerData.clientX === 'number'
+            ? pointerData.clientX
+            : Math.round(targetRect.left + (typeof pointerData.offsetX === 'number' ? pointerData.offsetX : targetRect.width / 2));
+        const clientY = typeof pointerData.clientY === 'number'
+            ? pointerData.clientY
+            : Math.round(targetRect.top + (typeof pointerData.offsetY === 'number' ? pointerData.offsetY : targetRect.height / 2));
+
+        return new MouseEvent(eventType, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: window,
+            clientX,
+            clientY,
+            button: typeof pointerData.button === 'number' ? pointerData.button : 0,
+            ...overrides
+        });
+    }
+
+    function dispatchReplayMouseSequence(targetElement, stepData, eventTypes, overrides = {}) {
+        eventTypes.forEach((eventType) => {
+            targetElement.dispatchEvent(createReplayMouseEvent(targetElement, eventType, stepData, overrides));
+        });
+    }
+
+    function createReplayDataTransfer() {
+        if (typeof DataTransfer === 'function') {
+            return new DataTransfer();
+        }
+
+        return {
+            data: {},
+            setData(dataType, dataValue) {
+                this.data[dataType] = String(dataValue);
+            },
+            getData(dataType) {
+                return this.data[dataType] || '';
+            }
+        };
+    }
+
+    function createReplayDragEvent(targetElement, eventType, stepData = {}, dataTransfer = null) {
+        if (typeof DragEvent === 'function') {
+            return new DragEvent(eventType, {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                clientX: stepData.pointer?.clientX || 0,
+                clientY: stepData.pointer?.clientY || 0,
+                dataTransfer: dataTransfer || createReplayDataTransfer()
+            });
+        }
+
+        const fallbackEvent = createReplayMouseEvent(targetElement, eventType, stepData);
+        Object.defineProperty(fallbackEvent, 'dataTransfer', {
+            configurable: true,
+            enumerable: true,
+            value: dataTransfer || createReplayDataTransfer()
+        });
+        return fallbackEvent;
     }
 
     function dispatchInputEvents(targetElement) {
@@ -883,7 +1249,7 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
     }
 
     async function replayStep(stepData) {
-        const targetElement = findElementByLocator(stepData.locator);
+        const targetElement = findReplayTarget(stepData);
         if (!targetElement) {
             return {
                 success: false,
@@ -900,6 +1266,18 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
             return { success: true };
         }
 
+        if (stepData.type === 'file') {
+            return {
+                success: true,
+                manualStop: true,
+                notice: stepData.replayHint || getMessage(
+                    'popupRecorderManualFileReplay',
+                    undefined,
+                    'Replay paused. Choose the file manually to continue.'
+                )
+            };
+        }
+
         if (stepData.type === 'submit') {
             if (typeof targetElement.requestSubmit === 'function') {
                 targetElement.requestSubmit();
@@ -911,7 +1289,62 @@ if (typeof window.qaCompanionRecorderInitialized === 'undefined') {
         }
 
         if (stepData.type === 'click') {
-            targetElement.click();
+            dispatchReplayMouseSequence(targetElement, stepData, ['mousedown', 'mouseup', 'click']);
+            return { success: true };
+        }
+
+        if (stepData.type === 'doubleClick') {
+            dispatchReplayMouseSequence(targetElement, stepData, ['mousedown', 'mouseup', 'click', 'mousedown', 'mouseup', 'click', 'dblclick']);
+            return { success: true };
+        }
+
+        if (stepData.type === 'contextMenu') {
+            dispatchReplayMouseSequence(targetElement, stepData, ['contextmenu'], { button: 2 });
+            return { success: true };
+        }
+
+        if (stepData.type === 'hoverEnter') {
+            dispatchReplayMouseSequence(targetElement, stepData, ['mouseover', 'mouseenter']);
+            return { success: true };
+        }
+
+        if (stepData.type === 'hoverLeave') {
+            dispatchReplayMouseSequence(targetElement, stepData, ['mouseout', 'mouseleave']);
+            return { success: true };
+        }
+
+        if (stepData.type === 'dragStart') {
+            const dataTransfer = createReplayDataTransfer();
+            if (stepData.value) {
+                try {
+                    dataTransfer.setData('text/plain', stepData.value);
+                } catch {
+                    // Ignore custom data transfer limitations.
+                }
+            }
+
+            targetElement.dispatchEvent(createReplayDragEvent(targetElement, 'dragstart', stepData, dataTransfer));
+            activeReplayDragState = {
+                sourceElement: targetElement,
+                dataTransfer
+            };
+            return { success: true };
+        }
+
+        if (stepData.type === 'drop') {
+            const sourceElement = activeReplayDragState?.sourceElement
+                || findReplayTarget({
+                    locator: stepData.sourceLocator,
+                    shadowPath: stepData.sourceShadowPath
+                });
+            const dataTransfer = activeReplayDragState?.dataTransfer || createReplayDataTransfer();
+            targetElement.dispatchEvent(createReplayDragEvent(targetElement, 'dragenter', stepData, dataTransfer));
+            targetElement.dispatchEvent(createReplayDragEvent(targetElement, 'dragover', stepData, dataTransfer));
+            targetElement.dispatchEvent(createReplayDragEvent(targetElement, 'drop', stepData, dataTransfer));
+            if (sourceElement instanceof HTMLElement) {
+                sourceElement.dispatchEvent(createReplayDragEvent(sourceElement, 'dragend', stepData, dataTransfer));
+            }
+            activeReplayDragState = null;
             return { success: true };
         }
 
