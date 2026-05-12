@@ -1,8 +1,10 @@
 # Backlog
 
-This file tracks planned improvements and deferred ideas for `QACompanion`.
+Этот файл содержит идеи для будущих доработок
 
-Update or remove items from this list as soon as they are implemented, reprioritized, or dropped so the backlog stays accurate.
+Обновляй или удаляй элементы в списке после реализации или отказа от реализации, чтобы бэклог держать актуальным
 
-## Pending Ideas
-- publish to Chrome Web Store (register new account in Russia, currently restricted for russian banks)
+## Идеи для реализации
+- отчет: при открытии предпросмотра скрина у записи переходить к следующему и предыдущему шагу с клавиатуры
+- отчет: выделять актуальный шаг у записи (тот по которому был последний клик, сбрасывать при клике мне записи)
+- опубликовать в Chrome Web Store (сейчас не доступна регистрация аккаунта из России из-за ограничений оплаты от российских банков)
